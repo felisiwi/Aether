@@ -14,9 +14,10 @@ import Login from './pages/Login'
 import Lobby from './pages/Lobby'
 import JamRoomPage from './pages/JamRoom'
 import type { MidiEvent, InstrumentMode } from './lib/midi'
+import { getSignalWebSocketUrl } from './lib/serverOrigin'
 
 const FONT = `${fontFamily}, sans-serif`
-const SIGNAL_URL = import.meta.env.VITE_SIGNAL_URL || 'ws://localhost:3000'
+const SIGNAL_URL = getSignalWebSocketUrl()
 
 // ─── Audio suspended banner ──────────────────────────────────────
 

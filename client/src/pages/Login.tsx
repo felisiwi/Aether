@@ -9,6 +9,7 @@ import BasicButton from '../components/BasicButton'
 import ThemeToggle from '../components/ThemeToggle'
 import { useTheme } from '../contexts/ThemeContext'
 import type { InstrumentMode } from '../lib/midi'
+import { serverApiUrl } from '../lib/serverOrigin'
 
 const FONT = `${fontFamily}, sans-serif`
 
@@ -33,7 +34,7 @@ export default function Login({ onLogin }: LoginProps) {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch(serverApiUrl('/api/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: trimmed }),

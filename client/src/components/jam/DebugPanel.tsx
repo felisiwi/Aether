@@ -19,9 +19,10 @@ import Icon from '@ds/Components/icon/Icon.1.1.0'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { TransportType } from '../../lib/webrtc'
 import type { Synth, ExpressionConfig } from '../../lib/synth'
+import { getSignalWebSocketUrl } from '../../lib/serverOrigin'
 
 const FONT = `${fontFamily}, sans-serif`
-const SIGNAL_URL = import.meta.env.VITE_SIGNAL_URL ?? ''
+const SIGNAL_URL = getSignalWebSocketUrl()
 const IS_TUNNEL = SIGNAL_URL.includes('ngrok')
 
 export interface DebugPanelHandle {
