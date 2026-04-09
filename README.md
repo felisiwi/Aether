@@ -11,13 +11,13 @@ Real-time music jamming over the web. Two players connect, pick their instrument
 | Audio | Web Audio API (OscillatorNode, BiquadFilter, ConvolverNode, DelayNode) |
 | MIDI | Web MIDI API, custom parser (`lib/midi.ts`) |
 | Transport | WebRTC data channels (MIDI events), WebSocket (signalling + presence) |
-| Design system | External `@ds` package — tokens, BasicButton, Tag, Icon |
+| Design system | Vendored DS slice in `vendor/DesignSystem/src` (`@ds` alias) |
 | Icons | @phosphor-icons/react |
 
 ## Prerequisites
 
 - Node.js 20+
-- A sibling `DesignSystem` repo at `../DesignSystem` (Vite alias `@ds` → `../../DesignSystem/src`)
+- Design tokens/components live under `vendor/DesignSystem/src` (Vite/TS alias `@ds`)
 - (Optional) [ngrok](https://ngrok.com) for cross-network testing
 - (Optional) [Metered TURN server](https://metered.ca) credentials for NAT traversal
 
@@ -155,7 +155,7 @@ Oscillator → GainNode (per-note envelope) → BiquadFilter (lowpass)
 
 ## Design system integration
 
-JamLink uses an external design system via the `@ds` Vite alias (pointing to `../../DesignSystem/src`). The DS provides:
+JamLink vendors a minimal copy of the design system under `vendor/DesignSystem/src`, exposed as the `@ds` alias. The DS provides:
 
 ### Components used
 
