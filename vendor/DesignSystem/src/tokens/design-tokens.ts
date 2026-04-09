@@ -1,0 +1,259 @@
+// Auto-generated from dependency-graph.json. Do not edit by hand.
+// Run: node scripts/generate-design-tokens.js (or after build-dependency-graph / import from Figma).
+// Re-export Figma variables → rebuild graph → run this script to update.
+// Naming: see header comment in scripts/generate-design-tokens.js (camelCase from Figma paths).
+
+/** Design system font (Dimensions/Text variable/Font-Family/Font in Figma). Use this for typography in components. */
+export const fontFamily = "Mona Sans";
+
+export const typography = {
+  display: {
+    fontSize: 72,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 80,
+    letterSpacing: -2  },
+  headlineL: {
+    fontSize: 64,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 72,
+    letterSpacing: -1.5  },
+  headlineM: {
+    fontSize: 40,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 48,
+    letterSpacing: -1  },
+  titleL: {
+    fontSize: 32,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 40,
+    letterSpacing: -0.5  },
+  bodyL: {
+    fontSize: 24,
+    lineHeight: 32,
+    letterSpacing: 0  },
+  bodyM: {
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.3  },
+  bodyS: {
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0.2  },
+  label: {
+    fontSize: 10,
+    lineHeight: 16,
+    letterSpacing: 0,
+    fontWeight: 600,
+    fontWidth: 120  },
+  buttonM: {
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0,
+    fontWeight: 600,
+    fontWidth: 108  },
+  buttonS: {
+    fontSize: 14,
+    lineHeight: 28,
+    letterSpacing: 0,
+    fontWeight: 600,
+    fontWidth: 108  },
+  titleM: {
+    fontSize: 24,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 32,
+    letterSpacing: -0.5  },
+  titleS: {
+    fontSize: 16,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 24,
+    letterSpacing: 0  },
+  overline: {
+    fontSize: 14,
+    fontWeight: 660,
+    fontWidth: 120,
+    lineHeight: 16,
+    letterSpacing: 0.5  },
+  buttonMActive: {
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.3,
+    fontWeight: 600,
+    fontWidth: 108  },
+  buttonSActive: {
+    fontSize: 14,
+    lineHeight: 28,
+    letterSpacing: 0.2,
+    fontWeight: 600,
+    fontWidth: 108  },
+  h6: {
+    lineHeight: 24,
+    letterSpacing: 0  }
+} as const;
+
+export type TypographyStyle = keyof typeof typography;
+
+/** Text/Practical text colours from Figma. Most keys are Light mode (27:2); `textBodyNeutralDark` / `textBodyColourDark` are Dark mode (27:3) for overlays & dark surfaces. */
+export const colors = {
+  textHeadingNeutral: "#000000",
+  textBodyNeutral: "#00000099",
+  textBodyNeutralDark: "#ffffff99",
+  textHeadingColour: "#F04700",
+  textDisabled: "#0000001f",
+  textBodyColour: "#A33200",
+  textBodyColourDark: "#FFA986",
+  textPressed: "#FF8152",
+  textLabel: "#000000"
+} as const;
+
+/** Surfaces, strokes, backdrop, button tokens from Figma (Light mode). Keys match dependency-graph names → camelCase. */
+export const semanticColors = {
+  buttonSurfacePrimary: "#F04700",
+  buttonSurfaceSmallbuttonDefault: "#FEECE6",
+  buttonSurfaceHoverPrimary: "#F04700",
+  backdropNautralBackground: "#FFFFFF",
+  backdropStatesDisabledSurface: "#0000000f",
+  backdropStatesHoverSurface: "#1A1A1A",
+  backdropOpacityStaticOpacityDarkenedStrong: "#00000099",
+  strokeMedium: "#0000001f",
+  strokeSolid: "#000000",
+  strokeInvertedMedium: "#ffffff1f",
+  strokeColour: "#F04700",
+  strokeDisabled: "#0000001f",
+  textFunctionalError: "#EB0000",
+  textFunctionalSuccess: "#168500",
+  backdropSurfaceThemedSurface: "#EBADD3",
+  backdropSurfaceColouredSurface: "#F04700",
+  backdropOpacityAdaptiveShadowsDropshadowMid: "#0000000f",
+  backdropOpacityAdaptiveShadowsInnerglow: "#ffffff99",
+  textFunctionalWarning: "#C98600",
+  textFunctionalLink: "#006DCC",
+  textFunctionalVisitedLink: "#4400FF",
+  semanticStrokeStaticStrokeBlackSolid: "#000000",
+  semanticStrokeStaticStrokeBlackWeak: "#0000001f",
+  semanticStrokeStaticStrokeBlackStrong: "#00000099",
+  semanticStrokeStaticStrokeWhiteSolid: "#FFFFFF",
+  semanticStrokeStaticStrokeWhiteWeak: "#ffffff1f",
+  strokeElevatedSurface: "#ffffff99",
+  semanticStrokeStaticStrokeDisabledStatic: "#4D4D4D",
+  backdropOpacityStaticOpacityDarkenedWeak: "#0000000f",
+  backdropOpacityStaticOpacityLightenedWeak: "#ffffff0f",
+  backdropStaticWhite: "#FFFFFF",
+  backdropStaticBlack: "#000000",
+  backdropStaticStaticDisabledSurface: "#808080",
+  backdropOpacityAdaptiveShadowsDropshadowHigh: "#0000001f",
+  buttonStrokeTertiary: "#000000",
+  buttonStrokeSecondary: "#FFFFFF",
+  buttonSurfaceSecondarySurface: "#000000",
+  buttonSurfaceDisabled: "#CCCCCC",
+  buttonTextDisabled: "#808080",
+  buttonStrokeDisabled: "#808080",
+  disabledSurfaceColour: "#D64000",
+  buttonTextDisabledTextColour: "#A33200",
+  buttonStrokeDisabledColour: "#D64000",
+  buttonTextButtonText: "#FFFFFF",
+  buttonTextTertiary: "#000000",
+  buttonTextButtonTextTertiaryColour: "#000000",
+  buttonSurfaceSecondaryDarkened: "#FFFFFF",
+  buttonTextPrimary: "#000000",
+  buttonTextSecondary: "#FFFFFF",
+  buttonSurfaceHoverTertiary: "#0000001f",
+  buttonStrokePrimary: "#000000",
+  buttonStrokeSecondaryDarkened: "#000000",
+  buttonStrokeTertiaryDarkened: "#FFFFFF",
+  buttonTextSecondaryDarkened: "#000000",
+  buttonTextTertiaryDarkened: "#FFFFFF",
+  buttonTextSecondaryColour: "#FFFFFF",
+  buttonStrokeTertiaryColour: "#000000",
+  buttonSurfaceSecondarySurfaceS: "#000000",
+  buttonTextTertiaryS: "#000000",
+  buttonStrokeTertiaryS: "#000000",
+  backdropSurfaceElevatedSurface: "#FEECE6",
+  backdropOpacityStaticOpacityLightenedStrong: "#ffffff99",
+  strokeInvertedSolid: "#FFFFFF",
+  buttonStrokeSubtleColour: "#F04700",
+  buttonSurfaceSmallbuttonHover: "#FDE1D8",
+  buttonSurfaceSmallbuttonPressed: "#D64000",
+  wrapperColourPressed: "#FF8152",
+  backdropOpacityAdaptiveShadowsInnershadow: "#0000000f",
+  wrapperElevatedPressed: "#FDE1D8",
+  backdropOpacityAdaptiveOpacityDarkenedMedium: "#0000003d",
+  backdropOpacityAdaptiveOpacityLightenedMedium: "#ffffff3d",
+  backdropOpacityAdaptiveOpacityDarkenedStrong: "#00000099",
+  backdropOpacityAdaptiveOpacityLightenedStrong: "#ffffff99",
+  backdropOpacityAdaptiveOpacityDarkenedWeak: "#0000000f",
+  backdropOpacityAdaptiveOpacityLightenedWeak: "#ffffff0f",
+  backdropSurfaceMidgreySurface: "#808080",
+  strokeColourPressed: "#FF8152",
+  backdropInvertedBackground: "#000000",
+  strokeStrong: "#00000099",
+  strokeInvertedStrong: "#ffffff99",
+  strokeWeak: "#0000000f",
+  strokeInvertedWeak: "#ffffff0f",
+  backdropStaticColour: "#F04700",
+  strokeColourDark: "#A33200",
+  backdropSurfaceColouredSurfaceDark: "#A33200",
+  backdropSurfaceTransparentSurfaceLight: "#ffffffc4",
+  backdropSurfaceTransparentSurfaceDark: "#000000c4",
+  backdropFunctionalWarningSurface: "#C98600",
+  backdropFunctionalSuccessSurface: "#168500",
+  backdropFunctionalInformationSurface: "#006DCC",
+  backdropFunctionalErrorSurface: "#EB0000",
+  strokeFocus: "#007B80",
+  strokeSuccess: "#168500",
+  semanticStrokeStaticStrokeWhiteStrong: "#ffffff99"
+} as const;
+
+/** Spacing gaps, radii, stroke weights (Desktop breakpoint in graph; gaps often identical per mode). */
+export const layout = {
+  radiusRound: 999,
+  radiusXl: 64,
+  radiusXs: 4,
+  radiusM: 16,
+  radiusS: 8,
+  radiusNone: 0,
+  radiusL: 32,
+  strokeS: 1,
+  strokeM: 1.5,
+  strokeL: 2,
+  gap2: 2,
+  gap4: 4,
+  gap8: 8,
+  gap16: 16,
+  gap24: 24,
+  gap32: 32,
+  gap40: 40,
+  gap48: 48,
+  gap56: 56,
+  gap64: 48,
+  gap80: 64,
+  gap96: 96,
+  gap112: 112,
+  gap128: 128,
+  gap144: 144,
+  gap160: 160,
+  gap192: 192,
+  gap224: 224,
+  gap256: 256,
+  strokeXl: 3,
+  stroke2Xl: 4,
+  buttonInnerItemSpacing: 10
+} as const;
+
+/** Focus ring — light backgrounds (WCAG). Prefer over raw stroke-focus hex when matching product spec. */
+export const focusRingLight = "#007B7F";
+/** Focus ring — dark / colour backgrounds (WCAG). */
+export const focusRingDark = "#64FFDA";
+
+export const derivedTokens = {
+  radiusButtonContainer: 24,
+  paddingButton: 16,
+  _formula: {
+    radiusButtonContainer: "radiusM + paddingSubtle",
+    paddingButton: "paddingSubtle * 2"  }
+} as const;

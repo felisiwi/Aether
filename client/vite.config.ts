@@ -11,7 +11,7 @@ export default defineConfig({
   envDir: path.resolve(__dirname, '..'),
   resolve: {
     alias: {
-      '@ds': path.resolve(__dirname, '../DesignSystem/src'),
+      '@ds': path.resolve(__dirname, '../vendor/DesignSystem/src'),
     },
     dedupe: ['react', 'react-dom'],
   },
