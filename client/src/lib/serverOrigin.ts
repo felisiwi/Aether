@@ -1,10 +1,21 @@
 /**
  * WebSocket signalling URL (VITE_SIGNAL_URL or local default).
  * Must match the host/port where the Aether signalling server runs.
+ *
+ * On HTTPS pages, `ws://` is mixed content and the browser blocks it — if the env
+ * was mis-set to `ws://` for production, upgrade to `wss://` for the same host.
  */
 export function getSignalWebSocketUrl(): string {
-  const raw = import.meta.env.VITE_SIGNAL_URL?.trim()
-  return raw || 'ws://localhost:3000'
+  let raw = import.meta.env.VITE_SIGNAL_URL?.trim() || 'ws://localhost:3000'
+  if (
+    typeof globalThis !== 'undefined' &&
+    'location' in globalThis &&
+    globalThis.location.protocol === 'https:' &&
+    raw.startsWith('ws://')
+  ) {
+    raw = `wss://${raw.slice('ws://'.length)}`
+  }
+  return raw
 }
 
 /**

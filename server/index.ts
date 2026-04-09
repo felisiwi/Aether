@@ -35,10 +35,43 @@ app.post('/api/login', (_req, res) => {
 })
 
 const server = createServer(app)
-const wss = new WebSocketServer({ server })
+// `server` handles Upgrade; same port as Express. `perMessageDeflate: false` avoids
+// rare issues with some reverse proxies (e.g. compression + buffering).
+const wss = new WebSocketServer({
+  server,
+  perMessageDeflate: false,
+  clientTracking: true,
+})
 const presence = new Presence()
 
-wss.on('connection', (ws) => {
+/** Ping interval keeps connections warm through Railway / CDN idle timeouts (~60s). */
+const HEARTBEAT_MS = 25_000
+type WsClient = WebSocket & { isAlive?: boolean }
+
+const heartbeat = setInterval(() => {
+  wss.clients.forEach((socket) => {
+    const ws = socket as WsClient
+    if (ws.readyState !== WebSocket.OPEN) return
+    if (ws.isAlive === false) {
+      console.warn('[ws] no pong — terminating idle/zombie socket')
+      ws.terminate()
+      return
+    }
+    ws.isAlive = false
+    ws.ping()
+  })
+}, HEARTBEAT_MS)
+
+wss.on('connection', (ws, req) => {
+  const client = ws as WsClient
+  client.isAlive = true
+  client.on('pong', () => {
+    client.isAlive = true
+  })
+
+  const ip = req.socket.remoteAddress ?? 'unknown'
+  console.log(`[ws] tcp open from ${ip}`)
+
   let username: string | null = null
 
   ws.on('message', (raw) => {
@@ -79,11 +112,15 @@ wss.on('connection', (ws) => {
     }
   })
 
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
     if (username) {
       presence.remove(username)
       presence.broadcastPresence()
-      console.log(`[disconnect] ${username} (${presence.size} online)`)
+      console.log(
+        `[disconnect] ${username} (${presence.size} online) code=${code} reason=${reason.toString() || 'n/a'}`,
+      )
+    } else {
+      console.log(`[ws] closed before join code=${code}`)
     }
   })
 
@@ -99,4 +136,10 @@ wss.on('connection', (ws) => {
 const HOST = process.env.HOST ?? '0.0.0.0'
 server.listen(PORT, HOST, () => {
   console.log(`Aether signalling server on http://${HOST}:${PORT}`)
+})
+
+process.on('SIGTERM', () => {
+  clearInterval(heartbeat)
+  wss.close()
+  server.close()
 })
