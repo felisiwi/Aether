@@ -1,0 +1,40 @@
+{
+  "name": "jamlink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:tunnel": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run tunnel\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:client": "vite client",
+    "tunnel": "ngrok http 3000 --log stdout",
+    "build:server": "tsc -p server/tsconfig.json",
+    "build:client": "vite build client",
+    "build": "npm run build:server && npm run build:client",
+    "start": "node server/dist/index.js",
+    "typecheck": "tsc --noEmit -p client/tsconfig.json && tsc --noEmit -p server/tsconfig.json"
+  },
+  "dependencies": {
+    "@fontsource-variable/mona-sans": "^5.2.8",
+    "@phosphor-icons/react": "^2.1.10",
+    "express": "^5.2.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.5"
+  }
+}
