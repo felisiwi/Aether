@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -24,6 +25,8 @@ import type { InputMeterHandle } from './InputMeter'
 import type { DebugPanelHandle } from './DebugPanel'
 import type { MidiEvent, InstrumentMode } from '../../lib/midi'
 import type { Synth } from '../../lib/synth'
+import { detectChord } from '../../lib/chords'
+import type { ChordResult } from '../../lib/chords'
 import type { DataChannelState, TransportType } from '../../lib/webrtc'
 import { SessionRecorder } from '../../lib/recorder'
 
@@ -135,7 +138,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [pianoOctaveShift, setPianoOctaveShift] = useState(0)
     const debugRef = useRef<DebugPanelHandle>(null)
     const pulseRef = useRef<HTMLDivElement>(null)
+    const oscilloscopeRef = useRef<HTMLCanvasElement>(null)
     const [remoteNotes, setRemoteNotes] = useState<Set<number>>(new Set())
+    const [localNotes, setLocalNotes] = useState<number[]>([])
 
     // Waveform — lifted so toolbar + DebugPanel stay in sync
     const [waveform, setWaveform] = useState<OscillatorType>('sine')
@@ -333,20 +338,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [currentNote, setCurrentNote] = useState<number | null>(null)
     const [remoteCurrentNote, setRemoteCurrentNote] = useState<number | null>(null)
 
-    // Match Octave — shift piano keyboard to center on remote player's octave
-    const [matchLabel, setMatchLabel] = useState<string | null>(null)
-    const matchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const handleMatchOctave = useCallback(() => {
-      if (remoteCurrentNote === null) return
-      const displayOctave = Math.floor(remoteCurrentNote / 12) - 1
-      pianoRef.current?.setOctaveShift(displayOctave - 4)
-
-      const noteName = NOTE_NAMES[((remoteCurrentNote % 12) + 12) % 12]
-      setMatchLabel(`Matched to ${noteName}${displayOctave}`)
-      if (matchTimerRef.current) clearTimeout(matchTimerRef.current)
-      matchTimerRef.current = setTimeout(() => setMatchLabel(null), 2000)
-    }, [remoteCurrentNote])
-
     const handleLocalMidi = useCallback(
       (event: MidiEvent) => {
         if (!synth) return
@@ -382,9 +373,11 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             synth.noteOn(note)
             localMeterRef.current?.flash()
             setCurrentNote(note)
+            setLocalNotes((prev) => prev.includes(note) ? prev : [...prev, note])
           } else {
             synth.noteOff(note)
             setCurrentNote((prev) => (prev === note ? null : prev))
+            setLocalNotes((prev) => prev.filter(n => n !== note))
           }
         } else if (event.type === 'cc') {
           sendMidi(event)
@@ -495,8 +488,93 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       gap: layout.gap8,
     }
 
-    const activeNote = currentNote ?? (syncRemote ? remoteCurrentNote : null)
-    const activeNoteName = activeNote !== null ? midiNoteToName(activeNote) : null
+    const chordResult: ChordResult | null = useMemo(
+      () => detectChord(localNotes),
+      [localNotes],
+    )
+
+    const chordCardNotesLine = useMemo(
+      () =>
+        localNotes.length > 0 ? localNotes.map(midiNoteToName).join(' + ') : null,
+      [localNotes],
+    )
+
+    const chordCardMainLine = useMemo(() => {
+      if (chordResult?.primary) return chordResult.primary
+      if (currentNote !== null) return midiNoteToName(currentNote)
+      return null
+    }, [chordResult, currentNote])
+
+    const chordCardAltLine = useMemo(() => {
+      if (chordResult === null) return null
+      const root = chordResult.primary.match(/^[A-G][#b]?/)?.[0] ?? ''
+      const text =
+        root && chordResult.alternative
+          ? `${root} ${chordResult.alternative}`
+          : chordResult.alternative
+      return text.length > 0 ? text : null
+    }, [chordResult])
+
+    const chordCardMinHeight =
+      layout.gap24 * 2 +
+      typography.label.lineHeight * 2 +
+      typography.titleS.lineHeight +
+      layout.gap4 * 2 +
+      layout.gap8
+
+    // Oscilloscope draw loop
+    useEffect(() => {
+      const canvas = oscilloscopeRef.current
+      const analyser = synth?.getAnalyser()
+      if (!canvas || !analyser) return
+
+      const data = new Uint8Array(analyser.fftSize)
+      let rafId: number
+
+      const draw = () => {
+        rafId = requestAnimationFrame(draw)
+
+        const w = canvas.offsetWidth
+        const h = canvas.offsetHeight
+        if (w === 0 || h === 0) return
+        if (canvas.width !== w) canvas.width = w
+        if (canvas.height !== h) canvas.height = h
+
+        const ctx2d = canvas.getContext('2d')
+        if (!ctx2d) return
+
+        ctx2d.fillStyle = theme.surfaceCard
+        ctx2d.fillRect(0, 0, w, h)
+
+        const hasNotes = localNotes.length > 0
+        if (hasNotes) {
+          analyser.getByteTimeDomainData(data)
+        } else {
+          data.fill(128)
+        }
+
+        ctx2d.beginPath()
+        ctx2d.lineWidth = 2
+        ctx2d.strokeStyle = hasNotes ? theme.accentColour : theme.textDisabled
+
+        const sliceWidth = w / data.length
+        let x = 0
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i] / 128.0
+          const y = (v * h) / 2
+          if (i === 0) {
+            ctx2d.moveTo(x, y)
+          } else {
+            ctx2d.lineTo(x, y)
+          }
+          x += sliceWidth
+        }
+        ctx2d.stroke()
+      }
+
+      draw()
+      return () => cancelAnimationFrame(rafId)
+    }, [synth, theme, localNotes.length])
 
     const readoutStyle: React.CSSProperties = {
       display: 'flex',
@@ -583,21 +661,87 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 transform: 'translate(-50%, -50%)',
               }}
             />
+            {/* Chord / note display */}
             <div
               style={{
-                fontFamily: FONT,
-                fontSize: typography.titleL.fontSize,
-                fontWeight: typography.titleL.fontWeight,
-                lineHeight: `${typography.titleL.lineHeight}px`,
-                fontVariantNumeric: 'tabular-nums',
-                color: activeNoteName !== null
-                  ? theme.textColourHeading
-                  : theme.textDisabled,
-                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: layout.gap4,
+                padding: layout.gap24,
+                borderRadius: layout.radiusS,
+                border: `${layout.strokeS}px solid ${semanticColors.strokeColour}`,
+                minHeight: chordCardMinHeight,
+                boxSizing: 'border-box',
               }}
             >
-              {activeNoteName ?? '—'}
+              {/* Top: all note letter names */}
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: typography.label.lineHeight,
+                  fontFamily: FONT,
+                  fontSize: typography.label.fontSize,
+                  fontWeight: typography.label.fontWeight,
+                  lineHeight: `${typography.label.lineHeight}px`,
+                  color:
+                    chordCardNotesLine !== null
+                      ? semanticColors.strokeColour
+                      : theme.textDisabled,
+                  textAlign: 'center',
+                }}
+              >
+                {chordCardNotesLine ?? '—'}
+              </span>
+
+              {/* Middle: chord name or note + octave */}
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: typography.titleS.lineHeight,
+                  fontFamily: FONT,
+                  fontSize: typography.titleS.fontSize,
+                  fontWeight: typography.titleS.fontWeight,
+                  lineHeight: `${typography.titleS.lineHeight}px`,
+                  color:
+                    chordCardMainLine !== null
+                      ? theme.textColourHeading
+                      : theme.textDisabled,
+                  width: 110,
+                  textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {chordCardMainLine ?? '—'}
+              </span>
+
+              {/* Bottom: alternative name or quality word (from chords.ts) */}
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: typography.label.lineHeight,
+                  fontFamily: FONT,
+                  fontSize: typography.label.fontSize,
+                  fontWeight: typography.label.fontWeight,
+                  lineHeight: `${typography.label.lineHeight}px`,
+                  color: theme.textDisabled,
+                  textAlign: 'center',
+                }}
+              >
+                {chordCardAltLine ?? '—'}
+              </span>
             </div>
+
             <span
               style={{
                 fontFamily: FONT,
@@ -697,6 +841,18 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 )
               })}
             </div>
+            <canvas
+              ref={oscilloscopeRef}
+              style={{
+                display: 'block',
+                width: '100%',
+                height: 72,
+                borderRadius: layout.radiusXs,
+                background: theme.surfaceCard,
+                border: `${layout.strokeS}px solid ${theme.strokeSymbolic}`,
+                marginTop: layout.gap8,
+              }}
+            />
           </div>
 
           {/* ENVELOPE */}
@@ -863,27 +1019,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             </BasicButton>
           )}
 
-          {!isSolo && localMode === 'keyboard' && remoteCurrentNote !== null && (
-            <BasicButton
-              variant="secondary"
-              size="small"
-              onClick={handleMatchOctave}
-            >
-              Match Octave
-            </BasicButton>
-          )}
-          {matchLabel && (
-            <span
-              style={{
-                fontFamily: FONT,
-                fontSize: typography.label.fontSize,
-                color: semanticColors.buttonSurfacePrimary,
-                animation: 'jamlink-flash 2s ease-out forwards',
-              }}
-            >
-              {matchLabel}
-            </span>
-          )}
         </div>
 
         {/* ── Piano keyboard (keyboard mode only) ─────────────────── */}

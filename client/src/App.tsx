@@ -209,10 +209,10 @@ function Session({
 
 export default function App() {
   const [page, setPage] = useState<'login' | 'session'>(() =>
-    localStorage.getItem('jamlink_user') ? 'session' : 'login',
+    localStorage.getItem('aether_user') ? 'session' : 'login',
   )
   const [username, setUsername] = useState(
-    () => localStorage.getItem('jamlink_user') ?? '',
+    () => localStorage.getItem('aether_user') ?? '',
   )
   const [mode, setMode] = useState<InstrumentMode>('keyboard')
 
@@ -223,7 +223,7 @@ export default function App() {
   }, [])
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('jamlink_user')
+    localStorage.removeItem('aether_user')
     setUsername('')
     setPage('login')
   }, [])

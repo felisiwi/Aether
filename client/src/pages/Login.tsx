@@ -41,7 +41,7 @@ export default function Login({ onLogin }: LoginProps) {
       })
       const data = (await res.json()) as { ok: boolean }
       if (data.ok) {
-        localStorage.setItem('jamlink_user', trimmed)
+        localStorage.setItem('aether_user', trimmed)
         onLogin(trimmed, mode)
       } else {
         setError('Something went wrong — try again')

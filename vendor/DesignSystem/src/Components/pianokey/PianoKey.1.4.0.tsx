@@ -27,7 +27,7 @@ import {
  * Both keys:  bottom corners rounded (layout.radiusXs = 4 px) · 1 px border
  *             shortcut label bottom-aligned (Figma primaryAxisAlignItems: MAX)
  *
- * Display-only — state is driven by isPressed prop. The parent (JamLink app) owns
+ * Display-only — state is driven by isPressed prop. The parent (Aether app) owns
  * event handling; no focus, button, or click semantics here.
  *
  * Bound variables resolved (DESIGN-TOKENS-FOR-COMPONENTS.md §Colour resolution):

@@ -44,6 +44,7 @@ export class Synth {
   private dryGain: GainNode | null = null
   private wetGain: GainNode | null = null
   private convolverNode: ConvolverNode | null = null
+  private analyserNode: AnalyserNode | null = null
   private activeNotes = new Map<number, ActiveNote>()
   private waveform: OscillatorType = 'sine'
   private expression: ExpressionConfig = { ...DEFAULT_EXPRESSION }
@@ -62,6 +63,10 @@ export class Synth {
       this.masterGain = audioCtx.createGain()
       this.masterGain.gain.value = 1.0
       this.masterGain.connect(audioCtx.destination)
+
+      this.analyserNode = audioCtx.createAnalyser()
+      this.analyserNode.fftSize = 2048
+      this.masterGain.connect(this.analyserNode)
 
       this.filterNode = audioCtx.createBiquadFilter()
       this.filterNode.type = 'lowpass'
@@ -197,6 +202,7 @@ export class Synth {
     this.dryGain?.disconnect()
     this.wetGain?.disconnect()
     this.convolverNode?.disconnect()
+    this.analyserNode?.disconnect()
     this.masterGain?.disconnect()
     this.filterNode = null
     this.delayNode = null
@@ -204,6 +210,7 @@ export class Synth {
     this.dryGain = null
     this.wetGain = null
     this.convolverNode = null
+    this.analyserNode = null
     this.masterGain = null
   }
 
@@ -229,6 +236,10 @@ export class Synth {
 
   get audioContext(): AudioContext | null {
     return this.ctx
+  }
+
+  getAnalyser(): AnalyserNode | null {
+    return this.analyserNode
   }
 
   /** Bypass CC11 mapping — set expression gain directly (0–1). */

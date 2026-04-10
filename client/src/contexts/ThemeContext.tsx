@@ -11,7 +11,7 @@ interface ThemeContextValue {
 
 const ThemeCtx = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = 'jamlink_theme'
+const STORAGE_KEY = 'aether_theme'
 
 function getInitialMode(): ThemeMode {
   const stored = localStorage.getItem(STORAGE_KEY)

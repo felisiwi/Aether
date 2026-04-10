@@ -15,6 +15,7 @@ export interface Theme {
   strokeSolid: string
   textColour: string
   textColourHeading: string
+  accentColour: string
 }
 
 export const lightTheme: Theme = {
@@ -30,6 +31,7 @@ export const lightTheme: Theme = {
   strokeSolid: semanticColors.strokeSolid,
   textColour: colors.textBodyColour,
   textColourHeading: colors.textHeadingColour,
+  accentColour: semanticColors.buttonSurfacePrimary,
 }
 
 export const darkTheme: Theme = {
@@ -45,4 +47,5 @@ export const darkTheme: Theme = {
   strokeSolid: semanticColors.strokeInvertedSolid,
   textColour: colors.textBodyColourDark,
   textColourHeading: colors.textHeadingColour,
+  accentColour: semanticColors.buttonSurfacePrimary,
 }
