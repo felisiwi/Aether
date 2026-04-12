@@ -4,6 +4,7 @@ import {
   typography,
   fontFamily,
   layout,
+  themeTokens,
 } from '@ds/tokens/design-tokens'
 import PianoKey from '@ds/Components/pianokey/PianoKey.1.4.0'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -312,6 +313,9 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
     }
   }, [noteOff])
 
+  const isLocalActive = (note: number) => localActive.has(note)
+  const isRemoteOnly = (note: number) =>
+    !localActive.has(note) && (remoteActiveNotes?.has(note) ?? false)
   const isActive = (note: number) =>
     localActive.has(note) || (remoteActiveNotes?.has(note) ?? false)
 
@@ -345,6 +349,7 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       <div style={{ position: 'relative', height: NOTE_ROW_H, width: TOTAL_W, marginBottom: ROW_GAP }}>
         {blackKeys.map((k) => {
           const pressed = isActive(k.note)
+          const ghost = isRemoteOnly(k.note)
           return (
             <span
               key={`bn-${k.note}`}
@@ -353,7 +358,7 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
                 position: 'absolute',
                 left: k.x,
                 width: BLACK_W,
-                color: pressed ? colors.textPressed : noteLabelBase.color,
+                color: ghost ? themeTokens.components.primary50 : pressed ? colors.textPressed : noteLabelBase.color,
                 transition: 'color 60ms ease',
               }}
             >
@@ -375,7 +380,8 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
             <PianoKey
               note={noteLabel(k.note, transpose)}
               shortcutLabel={k.label ?? ''}
-              isPressed={isActive(k.note)}
+              isPressed={isLocalActive(k.note)}
+              isGhost={isRemoteOnly(k.note)}
               isBlack={false}
             />
           </div>
@@ -397,7 +403,8 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
             <PianoKey
               note={noteLabel(k.note, transpose)}
               shortcutLabel={k.label ?? ''}
-              isPressed={isActive(k.note)}
+              isPressed={isLocalActive(k.note)}
+              isGhost={isRemoteOnly(k.note)}
               isBlack={true}
             />
           </div>
@@ -408,13 +415,14 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       <div style={{ display: 'inline-flex', marginTop: ROW_GAP }}>
         {whiteKeys.map((k) => {
           const pressed = isActive(k.note)
+          const ghost = isRemoteOnly(k.note)
           return (
             <span
               key={`wn-${k.note}`}
               style={{
                 ...noteLabelBase,
                 width: WHITE_W,
-                color: pressed ? colors.textPressed : noteLabelBase.color,
+                color: ghost ? themeTokens.components.primary50 : pressed ? colors.textPressed : noteLabelBase.color,
                 transition: 'color 60ms ease',
               }}
             >

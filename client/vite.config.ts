@@ -7,13 +7,27 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
+  /** Config file lives in `client/` — project root is this directory (index.html, src/). */
+  root: __dirname,
   plugins: [react()],
   envDir: path.resolve(__dirname, '..'),
   resolve: {
+    preserveSymlinks: true,
     alias: {
+      '@ds/Components/themewheel': path.resolve(
+        __dirname,
+        '../vendor/DesignSystem/src/Components/themewheel',
+      ),
+      '@ds/Components/paginationindicator': path.resolve(
+        __dirname,
+        '../vendor/DesignSystem/src/Components/paginationindicator',
+      ),
       '@ds': path.resolve(__dirname, '../vendor/DesignSystem/src'),
     },
     dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['framer-motion'],
   },
   server: {
     proxy: {

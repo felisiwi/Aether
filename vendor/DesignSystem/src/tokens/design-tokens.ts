@@ -127,7 +127,7 @@ export const semanticColors = {
   strokeDisabled: "#0000001f",
   textFunctionalError: "#EB0000",
   textFunctionalSuccess: "#168500",
-  backdropSurfaceThemedSurface: "#EBADD3",
+  backdropSurfaceThemedSurface: "#CD3291",
   backdropSurfaceColouredSurface: "#F04700",
   backdropOpacityAdaptiveShadowsDropshadowMid: "#0000000f",
   backdropOpacityAdaptiveShadowsInnerglow: "#ffffff99",
@@ -206,7 +206,13 @@ export const semanticColors = {
   backdropFunctionalErrorSurface: "#EB0000",
   strokeFocus: "#007B80",
   strokeSuccess: "#168500",
-  semanticStrokeStaticStrokeWhiteStrong: "#ffffff99"
+  semanticStrokeStaticStrokeWhiteStrong: "#ffffff99",
+  backdropStaticDarkenedWhite: "#F2F2F2",
+  backdropStaticLightenedBlack: "#0D0D0D",
+  strokeTheme: "#CD3291",
+  backdropSurfaceThemedElevatedSurface: "#F5D6E9",
+  backdropStaticThemedElevatedSurface: "#F5D6E9",
+  backdropStaticElevatedSurface: "#FDE1D8"
 } as const;
 
 /** Spacing gaps, radii, stroke weights (Desktop breakpoint in graph; gaps often identical per mode). */
@@ -221,6 +227,10 @@ export const layout = {
   strokeS: 1,
   strokeM: 1.5,
   strokeL: 2,
+  verticalWrapper: 32,
+  paddingWrapperHorizontal: 48,
+  paddingSubtle: 16,
+  paddingSymbolic: 8,
   gap2: 2,
   gap4: 4,
   gap8: 8,
@@ -230,8 +240,8 @@ export const layout = {
   gap40: 40,
   gap48: 48,
   gap56: 56,
-  gap64: 48,
-  gap80: 64,
+  gap64: 64,
+  gap80: 80,
   gap96: 96,
   gap112: 112,
   gap128: 128,
@@ -241,6 +251,10 @@ export const layout = {
   gap224: 224,
   gap256: 256,
   strokeXl: 3,
+  paddingHorizontalSection: 96,
+  paddingVerticalSection: 72,
+  paddingWrapperVertical: 48,
+  paddingWrapperVerticalHover: 40,
   stroke2Xl: 4,
   buttonInnerItemSpacing: 10
 } as const;
@@ -257,3 +271,53 @@ export const derivedTokens = {
     radiusButtonContainer: "radiusM + paddingSubtle",
     paddingButton: "paddingSubtle * 2"  }
 } as const;
+
+/** Theme colour ramps from Figma Themes collection. Each key is a mode (e.g. bubbleGum, components). */
+export const themeTokens = {
+  bubbleGum: {
+    primary20: "#EBADD3",
+    primary30: "#E184BD",
+    primary60: "#A42874",
+    primary10: "#F5D6E9",
+    primary70: "#7B1E57",
+    primary40: "#D75BA7",
+    primary50: "#CD3291",
+    primary80: "#52143A",
+    primary90: "#290A1D",
+    primaryInverse50: "#000000"  },
+  components: {
+    primary20: "#C6ADEB",
+    primary30: "#A984E1",
+    primary60: "#5618B4",
+    primary10: "#E2D6F5",
+    primary70: "#400E8B",
+    primary40: "#8C5AD8",
+    primary50: "#7031CE",
+    primary80: "#2A0462",
+    primary90: "#160A29",
+    primaryInverse50: "#000000"  },
+  developedComponents: {
+    primary20: "#68DF89",
+    primary30: "#3DD669",
+    primary60: "#166A2E",
+    primary10: "#92E8AA",
+    primary70: "#0F481F",
+    primary40: "#27B951",
+    primary50: "#1E8E3E",
+    primary80: "#0A2911",
+    primary90: "#041509",
+    primaryInverse50: "#000000"  },
+  prototypes: {
+    primary20: "#7BAFEB",
+    primary30: "#4E94E4",
+    primary60: "#144986",
+    primary10: "#A8CBF3",
+    primary70: "#0D3159",
+    primary40: "#237ADD",
+    primary50: "#1A62B3",
+    primary80: "#07182D",
+    primary90: "#030C16",
+    primaryInverse50: "#000000"  }
+} as const;
+
+export type ThemeMode = keyof typeof themeTokens;

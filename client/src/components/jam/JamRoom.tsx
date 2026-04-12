@@ -13,15 +13,20 @@ import {
   layout,
   typography,
   fontFamily,
+  themeTokens,
 } from '@ds/tokens/design-tokens'
-import { Tag } from '@ds/Components/tag/Tag.1.0.0'
+import { ChordDisplay } from '@ds/Components/chorddisplay/ChordDisplay.1.0.0'
+import { HandleSlider } from '@ds/Components/handleslider/HandleSlider.1.0.0'
+import type { WaveformType } from '@ds/Components/waveformselector/WaveformSelector.1.0.0'
+import { VUBar } from '@ds/Components/vubar/VUBar.1.0.0'
+import type { VUBarHandle } from '@ds/Components/vubar/VUBar.1.0.0'
+import { LatencyIndicator } from '@ds/Components/latencyindicator/LatencyIndicator.1.0.0'
 import BasicButton from '../BasicButton'
-import InputMeter from './InputMeter'
 import PianoKeyboard from './PianoKeyboard'
 import DebugPanel from './DebugPanel'
+import { ThemeIndicator } from '@ds/Components/themeindicator/ThemeIndicator.1.0.0'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { PianoKeyboardHandle } from './PianoKeyboard'
-import type { InputMeterHandle } from './InputMeter'
 import type { DebugPanelHandle } from './DebugPanel'
 import type { MidiEvent, InstrumentMode } from '../../lib/midi'
 import type { Synth } from '../../lib/synth'
@@ -31,7 +36,6 @@ import type { DataChannelState, TransportType } from '../../lib/webrtc'
 import { SessionRecorder } from '../../lib/recorder'
 
 const FONT = `${fontFamily}, sans-serif`
-const WAVEFORMS: OscillatorType[] = ['sine', 'triangle', 'sawtooth', 'square']
 
 const DEFAULT_TRANSPOSE = 0
 const MIN_TRANSPOSE = -5
@@ -48,52 +52,7 @@ function midiNoteToName(note: number): string {
   return `${NOTE_NAMES[idx]}${octave}`
 }
 
-interface SliderControlProps {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  format: (v: number) => string
-  onChange: (v: number) => void
-  textColor?: string
-}
-
-function SliderControl({ label, value, min, max, step, format, onChange, textColor }: SliderControlProps) {
-  return (
-    <label
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: layout.gap4,
-        fontFamily: FONT,
-        fontSize: typography.label.fontSize,
-        color: textColor ?? colors.textBodyNeutral,
-        cursor: 'pointer',
-      }}
-    >
-      {label}
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: 80, accentColor: semanticColors.buttonSurfacePrimary }}
-      />
-      <span
-        style={{
-          minWidth: '3.5em',
-          fontVariantNumeric: 'tabular-nums',
-          fontSize: typography.label.fontSize,
-        }}
-      >
-        {format(value)}
-      </span>
-    </label>
-  )
-}
+const WAVEFORMS: WaveformType[] = ['sine', 'triangle', 'sawtooth', 'square']
 
 export interface JamRoomHandle {
   handleLocalMidi: (event: MidiEvent) => void
@@ -131,21 +90,23 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     },
     ref,
   ) {
-    const { theme } = useTheme()
-    const localMeterRef = useRef<InputMeterHandle>(null)
-    const remoteMeterRef = useRef<InputMeterHandle>(null)
+    const { theme, mode, setThemeMode } = useTheme()
+    const localMeterRef = useRef<VUBarHandle>(null)
+    const remoteMeterRef = useRef<VUBarHandle>(null)
     const pianoRef = useRef<PianoKeyboardHandle>(null)
     const [pianoOctaveShift, setPianoOctaveShift] = useState(0)
     const debugRef = useRef<DebugPanelHandle>(null)
     const pulseRef = useRef<HTMLDivElement>(null)
     const oscilloscopeRef = useRef<HTMLCanvasElement>(null)
+    const scopeWrapperRef = useRef<HTMLDivElement>(null)
+    const envelopeContentRef = useRef<HTMLDivElement>(null)
     const [remoteNotes, setRemoteNotes] = useState<Set<number>>(new Set())
     const [localNotes, setLocalNotes] = useState<number[]>([])
 
     // Waveform — lifted so toolbar + DebugPanel stay in sync
-    const [waveform, setWaveform] = useState<OscillatorType>('sine')
+    const [waveform, setWaveform] = useState<WaveformType>('sine')
     const handleWaveformChange = useCallback(
-      (w: OscillatorType) => {
+      (w: WaveformType) => {
         setWaveform(w)
         synth?.setWaveform(w)
       },
@@ -183,6 +144,12 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     )
     const handleReverbMix = useCallback(
       (v: number) => { setReverbMix(v); synth?.setReverbMix(v) },
+      [synth],
+    )
+
+    const [volume, setVolume] = useState(1)
+    const handleVolume = useCallback(
+      (v: number) => { setVolume(v); synth?.setMasterVolume(v) },
       [synth],
     )
 
@@ -238,6 +205,17 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     windOctaveShiftRef.current = windOctaveShift
     const windActiveNotesRef = useRef<Map<number, number>>(new Map())
     const keyboardActiveNotesRef = useRef<Map<number, number>>(new Map())
+
+    const handleOctaveChange = useCallback(
+      (v: number) => {
+        if (localMode === 'keyboard') {
+          pianoRef.current?.setOctaveShift(v)
+        } else {
+          setWindOctaveShift(v)
+        }
+      },
+      [localMode],
+    )
 
     useEffect(() => {
       if (localMode !== 'wind') return
@@ -385,7 +363,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             synth.setCC(event.cc, event.value)
           }
           if (event.cc === 11) {
-            localMeterRef.current?.setLevel(event.value)
+            localMeterRef.current?.setLevel(event.value / 127)
             debugRef.current?.pushCC11(event.value, synth.expressionValue)
           }
         }
@@ -424,7 +402,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           })
         } else if (event.type === 'cc') {
           if (event.cc === 11) {
-            remoteMeterRef.current?.setLevel(event.value)
+            remoteMeterRef.current?.setLevel(event.value / 127)
           }
         }
       },
@@ -447,46 +425,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const isSolo = remoteUser === null
 
-    const stateLabel = isSolo
-      ? 'Solo'
-      : connectionState === 'connected'
-        ? 'Connected'
-        : connectionState === 'connecting'
-          ? 'Connecting…'
-          : connectionState === 'disconnected'
-            ? 'Disconnected'
-            : 'Idle'
-
-    const stateColor = isSolo
-      ? theme.textBody
-      : connectionState === 'connected'
-        ? semanticColors.textFunctionalSuccess
-        : connectionState === 'disconnected'
-          ? semanticColors.textFunctionalError
-          : theme.textBody
-
-    const sectionBorder = `${layout.strokeS}px solid ${theme.strokeSymbolic}`
-
-    const sectionLabelStyle: React.CSSProperties = {
-      fontFamily: FONT,
-      fontSize: typography.overline.fontSize,
-      fontWeight: typography.overline.fontWeight,
-      letterSpacing: typography.overline.letterSpacing,
-      lineHeight: `${typography.overline.lineHeight}px`,
-      textTransform: 'uppercase',
-      color: theme.textDisabled,
-      marginBottom: layout.gap8,
-    }
-
-    const sectionStyle: React.CSSProperties = {
-      flex: '1 1 0',
-      minWidth: 0,
-      borderTop: sectionBorder,
-      paddingTop: layout.gap16,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: layout.gap8,
-    }
+    const isDark = theme.mode === 'dark'
 
     const chordResult: ChordResult | null = useMemo(
       () => detectChord(localNotes),
@@ -515,20 +454,52 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       return text.length > 0 ? text : null
     }, [chordResult])
 
-    const chordCardMinHeight =
-      layout.gap24 * 2 +
-      typography.label.lineHeight * 2 +
-      typography.titleS.lineHeight +
-      layout.gap4 * 2 +
-      layout.gap8
+    const remoteNotesArray = useMemo(
+      () => [...remoteNotes].sort((a, b) => a - b),
+      [remoteNotes],
+    )
+    const remoteChordResult: ChordResult | null = useMemo(
+      () => detectChord(remoteNotesArray),
+      [remoteNotesArray],
+    )
+    const remoteChordNotesLine = useMemo(
+      () =>
+        remoteNotesArray.length > 0 ? remoteNotesArray.map(midiNoteToName).join(' + ') : null,
+      [remoteNotesArray],
+    )
+    const remoteChordMainLine = useMemo(() => {
+      if (remoteChordResult?.primary) return remoteChordResult.primary
+      if (remoteCurrentNote !== null) return midiNoteToName(remoteCurrentNote)
+      return null
+    }, [remoteChordResult, remoteCurrentNote])
+    const remoteChordAltLine = useMemo(() => {
+      if (remoteChordResult === null) return null
+      const root = remoteChordResult.primary.match(/^[A-G][#b]?/)?.[0] ?? ''
+      const text =
+        root && remoteChordResult.alternative
+          ? `${root} ${remoteChordResult.alternative}`
+          : remoteChordResult.alternative
+      return text && text.length > 0 ? text : null
+    }, [remoteChordResult])
 
-    // Oscilloscope draw loop
+    const [remoteVolume, setRemoteVolume] = useState(1)
+
+    useEffect(() => {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = prev
+        document.documentElement.style.overflow = ''
+      }
+    }, [])
+
+    // Oscilloscope draw loop — always paint canvas (idle line without analyser / notes; waveform when available)
     useEffect(() => {
       const canvas = oscilloscopeRef.current
-      const analyser = synth?.getAnalyser()
-      if (!canvas || !analyser) return
+      if (!canvas) return
 
-      const data = new Uint8Array(analyser.fftSize)
+      let data = new Uint8Array(2048)
       let rafId: number
 
       const draw = () => {
@@ -546,22 +517,34 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         ctx2d.fillStyle = theme.surfaceCard
         ctx2d.fillRect(0, 0, w, h)
 
+        const analyser = synth?.getAnalyser() ?? null
         const hasNotes = localNotes.length > 0
-        if (hasNotes) {
-          analyser.getByteTimeDomainData(data)
-        } else {
-          data.fill(128)
+
+        if (!hasNotes || !analyser) {
+          ctx2d.beginPath()
+          ctx2d.moveTo(0, h / 2)
+          ctx2d.lineTo(w, h / 2)
+          ctx2d.lineWidth = 1
+          ctx2d.strokeStyle = theme.textDisabled
+          ctx2d.stroke()
+          return
         }
 
-        ctx2d.beginPath()
-        ctx2d.lineWidth = 2
-        ctx2d.strokeStyle = hasNotes ? theme.accentColour : theme.textDisabled
+        if (data.length !== analyser.fftSize) {
+          data = new Uint8Array(analyser.fftSize)
+        }
+        analyser.getByteTimeDomainData(data)
 
+        const clipThreshold = h * 0.02
+        let clipping = false
         const sliceWidth = w / data.length
         let x = 0
+
+        ctx2d.beginPath()
         for (let i = 0; i < data.length; i++) {
           const v = data[i] / 128.0
           const y = (v * h) / 2
+          if (y < clipThreshold || y > h - clipThreshold) clipping = true
           if (i === 0) {
             ctx2d.moveTo(x, y)
           } else {
@@ -569,6 +552,11 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           }
           x += sliceWidth
         }
+
+        ctx2d.lineWidth = 2
+        ctx2d.strokeStyle = clipping
+          ? semanticColors.textFunctionalError
+          : theme.accentColour
         ctx2d.stroke()
       }
 
@@ -576,454 +564,484 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       return () => cancelAnimationFrame(rafId)
     }, [synth, theme, localNotes.length])
 
-    const readoutStyle: React.CSSProperties = {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      cursor: 'pointer',
-      minWidth: '3.5em',
-    }
+    // ── Shared layout tokens ──────────────────────────────────────
+    const sectionGap = layout.gap32
+    const panelBg = isDark
+      ? semanticColors.backdropOpacityAdaptiveOpacityLightenedWeak
+      : semanticColors.backdropOpacityStaticOpacityDarkenedWeak
+    const dividerBg = isDark
+      ? semanticColors.strokeInvertedWeak
+      : semanticColors.strokeWeak
+    const headingColor = theme.textHeading
+    const bodyColor = theme.textBody
+    const disabledColor = theme.textDisabled
+    const weakStroke = theme.strokeWeak
 
-    const readoutValueStyle: React.CSSProperties = {
-      fontFamily: FONT,
-      fontSize: typography.titleM.fontSize,
-      fontWeight: typography.titleM.fontWeight,
-      fontVariantNumeric: 'tabular-nums',
-      color: theme.textHeading,
-    }
-
-    const readoutLabelStyle: React.CSSProperties = {
+    const labelText: React.CSSProperties = {
       fontFamily: FONT,
       fontSize: typography.label.fontSize,
-      color: theme.textDisabled,
+      fontWeight: typography.label.fontWeight,
+      lineHeight: `${typography.label.lineHeight}px`,
+      letterSpacing: typography.label.letterSpacing,
+      fontStretch: `${typography.label.fontWidth}%`,
+      fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+      fontVariationSettings: "'wdth' 120",
     }
+    const titleSText: React.CSSProperties = {
+      fontFamily: FONT,
+      fontSize: typography.titleS.fontSize,
+      fontWeight: typography.titleS.fontWeight,
+      lineHeight: `${typography.titleS.lineHeight}px`,
+      fontStretch: `${typography.titleS.fontWidth}%`,
+      letterSpacing: typography.titleS.letterSpacing,
+      fontVariationSettings: "'wdth' 120",
+      fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+      fontVariantNumeric: 'tabular-nums',
+    }
+    const stepperBtn: React.CSSProperties = {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 44,
+      minHeight: 44,
+      border: `${layout.strokeL}px solid ${weakStroke}`,
+      borderRadius: layout.radiusM,
+      background: 'transparent',
+      cursor: 'pointer',
+      padding: `${layout.gap4}px ${layout.gap8}px`,
+      color: headingColor,
+    }
+    const stepperPanel: React.CSSProperties = {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 48,
+      padding: layout.gap8,
+      borderRadius: layout.radiusS,
+      border: `${layout.strokeM}px solid ${weakStroke}`,
+      backgroundColor: panelBg,
+      boxSizing: 'border-box' as const,
+    }
+
+    const sectionHeader = (title: string) => (
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
+        <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>{title}</span>
+        <div style={{ height: layout.strokeS, background: dividerBg }} />
+      </div>
+    )
+
+    const valueUnit = (
+      val: string | number,
+      unit: string,
+      valColor: string,
+      unitColor: string,
+    ) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: layout.gap2 }}>
+        <span style={{ ...titleSText, color: valColor }}>{val}</span>
+        <div style={{ display: 'flex', alignItems: 'flex-end', padding: `${layout.gap4}px 0`, alignSelf: 'stretch' }}>
+          <span style={{ ...labelText, color: unitColor }}>{unit}</span>
+        </div>
+      </div>
+    )
+
+    const paramStack = (
+      label: string,
+      displayVal: string | number,
+      unit: string,
+      sliderNorm: number,
+      onSlider: (n: number) => void,
+      variant: 'default' | 'colour' | 'theme' = 'default',
+    ) => {
+      const isColour = variant === 'colour'
+      const borderCol = isColour ? semanticColors.strokeColour : weakStroke
+      const valCol = isColour ? colors.textHeadingColour : headingColor
+      const unitCol = isColour ? colors.textPressed : bodyColor
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap4 }}>
+            <span style={{ ...labelText, color: headingColor, height: typography.label.lineHeight }}>{label}</span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              height: 48,
+              padding: layout.gap8,
+              borderRadius: layout.radiusS,
+              border: `${layout.strokeM}px solid ${borderCol}`,
+              backgroundColor: panelBg,
+              boxSizing: 'border-box' as const,
+            }}>
+              {valueUnit(displayVal, unit, valCol, unitCol)}
+            </div>
+          </div>
+          <HandleSlider
+            value={Math.max(0, Math.min(1, sliderNorm))}
+            onChange={onSlider}
+            variant={variant}
+            darkMode={isDark}
+          />
+        </div>
+      )
+    }
+
+    const octaveVal = localMode === 'keyboard' ? pianoOctaveShift : windOctaveShift
 
     return (
       <div
         style={{
+          height: '100vh',
+          maxHeight: '100vh',
+          paddingTop: layout.paddingWrapperVertical,
+          paddingBottom: layout.paddingWrapperVertical,
+          paddingLeft: layout.gap96,
+          paddingRight: layout.gap96,
           display: 'flex',
           flexDirection: 'column',
-          gap: layout.gap24,
-          padding: layout.gap24,
+          overflow: 'hidden',
+          background: theme.pageBg,
+          fontFamily: FONT,
         }}
       >
-        {/* ── Player area ─────────────────────────────────────────── */}
+        {/* DO NOT re-add nav or back button here — layout is intentionally nav-free */}
+        {/* Layout: wordmark row → player area (SOUND + cards + remote) → four-section row (Instrument / Envelope / Effects / Octave & key) → keyboard */}
+        {/* ── Middle content (no flex-grow — avoids empty gap above keyboard) ───────────────────────────────────────── */}
         <div
           style={{
+            flex: 1,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: layout.gap32,
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            gap: layout.gap16,
+            minHeight: 0,
+            overflow: 'hidden',
           }}
         >
-          {/* Local player */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: layout.gap8 }}>
-            <InputMeter ref={localMeterRef} />
-            <div>
-              <div
-                style={{
-                  fontFamily: FONT,
-                  fontSize: typography.titleS.fontSize,
-                  fontWeight: typography.titleS.fontWeight,
-                  color: theme.textHeading,
-                }}
-              >
-                {localUser}
-              </div>
-              <Tag type="default" state="active">
-                {localMode === 'wind' ? 'Aerophone Mini' : 'Piano (keyboard)'}
-              </Tag>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <img
+                src="/aether-wordmark.svg"
+                alt="Aether"
+                style={{ height: 32, filter: isDark ? 'invert(1)' : 'none' }}
+              />
+              {!isSolo && (
+                <BasicButton variant="primary" size="small">
+                  Detether
+                </BasicButton>
+              )}
+              <ThemeIndicator theme={mode} darkMode={isDark} onThemeChange={setThemeMode} />
             </div>
-          </div>
-
-          {/* Active note — centrepiece */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              position: 'relative',
-              minWidth: '4em',
-            }}
-          >
-            <div
-              ref={pulseRef}
-              style={{
-                position: 'absolute',
-                width: 24,
-                height: 24,
-                borderRadius: layout.radiusRound,
-                background: semanticColors.buttonSurfacePrimary,
-                opacity: 0,
-                pointerEvents: 'none',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-              }}
-            />
-            {/* Chord / note display */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: layout.gap4,
-                padding: layout.gap24,
-                borderRadius: layout.radiusS,
-                border: `${layout.strokeS}px solid ${semanticColors.strokeColour}`,
-                minHeight: chordCardMinHeight,
-                boxSizing: 'border-box',
-              }}
-            >
-              {/* Top: all note letter names */}
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: typography.label.lineHeight,
-                  fontFamily: FONT,
-                  fontSize: typography.label.fontSize,
-                  fontWeight: typography.label.fontWeight,
-                  lineHeight: `${typography.label.lineHeight}px`,
-                  color:
-                    chordCardNotesLine !== null
-                      ? semanticColors.strokeColour
-                      : theme.textDisabled,
-                  textAlign: 'center',
-                }}
-              >
-                {chordCardNotesLine ?? '—'}
-              </span>
-
-              {/* Middle: chord name or note + octave */}
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: typography.titleS.lineHeight,
-                  fontFamily: FONT,
-                  fontSize: typography.titleS.fontSize,
-                  fontWeight: typography.titleS.fontWeight,
-                  lineHeight: `${typography.titleS.lineHeight}px`,
-                  color:
-                    chordCardMainLine !== null
-                      ? theme.textColourHeading
-                      : theme.textDisabled,
-                  width: 110,
-                  textAlign: 'center',
-                  fontVariantNumeric: 'tabular-nums',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {chordCardMainLine ?? '—'}
-              </span>
-
-              {/* Bottom: alternative name or quality word (from chords.ts) */}
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: typography.label.lineHeight,
-                  fontFamily: FONT,
-                  fontSize: typography.label.fontSize,
-                  fontWeight: typography.label.fontWeight,
-                  lineHeight: `${typography.label.lineHeight}px`,
-                  color: theme.textDisabled,
-                  textAlign: 'center',
-                }}
-              >
-                {chordCardAltLine ?? '—'}
-              </span>
-            </div>
-
-            <span
-              style={{
-                fontFamily: FONT,
-                fontSize: typography.bodyS.fontSize,
-                fontWeight: 600,
-                color: stateColor,
-              }}
-            >
-              {stateLabel}
-            </span>
-          </div>
-
-          {/* Remote player (hidden in solo mode) */}
-          {!isSolo && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: layout.gap8 }}>
-              <div style={{ textAlign: 'right' }}>
-                <div
-                  style={{
-                    fontFamily: FONT,
-                    fontSize: typography.titleS.fontSize,
-                    fontWeight: typography.titleS.fontWeight,
-                    color: theme.textHeading,
-                  }}
-                >
-                  {remoteUser}
+            {/* ── Player dashboards row ──────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: sectionGap }}>
+              {/* Player 1: SOUND panel + name/chord/VU */}
+              <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
+                {/* SOUND volume */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136, height: 142 }}>
+                  {sectionHeader('SOUND')}
+                  <div style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: layout.gap8, justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
+                      <span style={{ ...labelText, color: headingColor }}>Volume</span>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: 48,
+                        padding: layout.gap8,
+                        borderRadius: layout.radiusS,
+                        border: `${layout.strokeM}px solid ${weakStroke}`,
+                        backgroundColor: panelBg,
+                        boxSizing: 'border-box' as const,
+                      }}>
+                        {valueUnit(Math.round(volume * 100), '%', headingColor, bodyColor)}
+                      </div>
+                    </div>
+                    <HandleSlider value={volume} onChange={handleVolume} darkMode={isDark} />
+                  </div>
                 </div>
-                {rtt !== null && (
-                  <span
-                    style={{
-                      fontFamily: FONT,
-                      fontSize: typography.label.fontSize,
-                      color: theme.textBody,
-                    }}
-                  >
-                    {rtt}ms
-                  </span>
+
+                {/* Name row + ChordDisplay + VUBar */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, whiteSpace: 'nowrap' as const }}>
+                    <span style={{ color: colors.textHeadingColour }}>YOU</span>
+                    <span style={{ color: bodyColor }}>
+                      {localMode === 'wind' ? 'Aerophone Mini' : 'Piano (Keyboard)'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'flex-start' }}>
+                    <VUBar
+                      ref={localMeterRef}
+                      variant="colour"
+                      darkMode={isDark}
+                      orientation="vertical"
+                      thickness={8}
+                      length={120}
+                      style={{
+                        borderRadius: 0,
+                        border: `${layout.strokeM}px solid ${semanticColors.strokeColour}`,
+                      }}
+                    />
+                    <ChordDisplay
+                      notes={chordCardNotesLine ? chordCardNotesLine.split(' + ') : []}
+                      chordName={chordCardMainLine ?? ''}
+                      altName={chordCardAltLine ?? ''}
+                      variant="colour"
+                      darkMode={isDark}
+                      style={{ width: 158, minHeight: 120 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Latency indicator (centred, flex-grow) */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: layout.gap8, alignSelf: 'center' }}>
+                {!isSolo && (
+                  <div style={{ position: 'relative' }}>
+                    <LatencyIndicator rtt={rtt} darkMode={isDark} showUnit={false} />
+                    <div
+                      ref={pulseRef}
+                      style={{
+                        position: 'absolute',
+                        width: 24,
+                        height: 24,
+                        borderRadius: layout.radiusRound,
+                        background: semanticColors.buttonSurfacePrimary,
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                      }}
+                    />
+                  </div>
                 )}
               </div>
-              <InputMeter ref={remoteMeterRef} />
-            </div>
-          )}
-        </div>
 
-        {/* ── Control surface — 4 equal-width sections ────────────── */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: layout.gap16,
-          }}
-        >
-          {/* INSTRUMENT */}
-          <div style={sectionStyle}>
-            <div style={sectionLabelStyle}>Instrument</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
-              {WAVEFORMS.map((w) => {
-                const selected = waveform === w
-                return (
-                  <label
-                    key={w}
-                    onClick={() => handleWaveformChange(w)}
+              {/* Player 2: name/chord/VU + RECEIVED SOUND panel */}
+              {!isSolo && (
+                <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, whiteSpace: 'nowrap' as const }}>
+                      <span style={{ color: themeTokens.components.primary50 }}>
+                        {(remoteUser ?? '').toUpperCase()}
+                      </span>
+                      <span style={{ color: bodyColor }}>Piano (Keyboard)</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'flex-start' }}>
+                      <ChordDisplay
+                        notes={remoteChordNotesLine ? remoteChordNotesLine.split(' + ') : []}
+                        chordName={remoteChordMainLine ?? ''}
+                        altName={remoteChordAltLine ?? ''}
+                        variant="theme"
+                        darkMode={isDark}
+                        style={{ width: 158, minHeight: 120 }}
+                      />
+                      <VUBar
+                        ref={remoteMeterRef}
+                        variant="theme"
+                        darkMode={isDark}
+                        orientation="vertical"
+                        thickness={8}
+                        length={120}
+                        style={{
+                          borderRadius: 0,
+                          border: `${layout.strokeM}px solid ${themeTokens.components.primary50}`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* RECEIVED SOUND volume */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136, height: 142 }}>
+                    {sectionHeader('RECEIVED SOUND')}
+                    <div style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: layout.gap8, justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
+                        <span style={{ ...labelText, color: headingColor }}>Volume</span>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          height: 48,
+                          padding: layout.gap8,
+                          borderRadius: layout.radiusS,
+                          border: `${layout.strokeM}px solid ${themeTokens.components.primary50}`,
+                          backgroundColor: panelBg,
+                          boxSizing: 'border-box' as const,
+                        }}>
+                          {valueUnit(
+                            Math.round(remoteVolume * 100),
+                            '%',
+                            themeTokens.components.primary50,
+                            themeTokens.components.primary50,
+                          )}
+                        </div>
+                      </div>
+                      <HandleSlider value={remoteVolume} onChange={setRemoteVolume} variant="theme" darkMode={isDark} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Control surface row ────────────────────────────── */}
+            <div style={{ display: 'flex', gap: sectionGap, alignItems: 'flex-start' }}>
+              {/* INSTRUMENT — DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'flex-start' }}>
+                {sectionHeader('INSTRUMENT')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
+                  <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', padding: `0 ${layout.gap4}px` }}>
+                    {WAVEFORMS.map((w) => (
+                      <span
+                        key={w}
+                        onClick={() => handleWaveformChange(w)}
+                        style={{
+                          ...labelText,
+                          color: waveform === w ? headingColor : bodyColor,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {w.charAt(0).toUpperCase() + w.slice(1)}
+                      </span>
+                    ))}
+                  </div>
+                  {/* DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
+                  <canvas
+                    ref={oscilloscopeRef}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: layout.gap8,
-                      fontFamily: FONT,
-                      fontSize: typography.bodyS.fontSize,
-                      color: selected ? theme.textHeading : theme.textBody,
-                      cursor: 'pointer',
+                      display: 'block',
+                      width: '100%',
+                      height: 180,
+                      flexShrink: 0,
+                      borderRadius: layout.radiusS,
+                      background: theme.surfaceCard,
+                      border: `${layout.strokeM}px solid ${weakStroke}`,
                     }}
-                  >
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 16,
-                        height: 16,
-                        borderRadius: layout.radiusRound,
-                        border: `${layout.strokeM}px solid ${selected ? semanticColors.buttonSurfacePrimary : theme.strokeSolid}`,
-                        transition: 'border-color 80ms ease',
-                      }}
-                    >
-                      {selected && (
-                        <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: layout.radiusRound,
-                            background: semanticColors.buttonSurfacePrimary,
-                          }}
-                        />
-                      )}
-                    </span>
-                    {w}
-                  </label>
-                )
-              })}
-            </div>
-            <canvas
-              ref={oscilloscopeRef}
-              style={{
-                display: 'block',
-                width: '100%',
-                height: 72,
-                borderRadius: layout.radiusXs,
-                background: theme.surfaceCard,
-                border: `${layout.strokeS}px solid ${theme.strokeSymbolic}`,
-                marginTop: layout.gap8,
-              }}
-            />
-          </div>
-
-          {/* ENVELOPE */}
-          <div style={sectionStyle}>
-            <div style={sectionLabelStyle}>Envelope</div>
-            <SliderControl
-              label="Attack"
-              value={attack}
-              min={0}
-              max={500}
-              step={5}
-              format={(v) => `${v}ms`}
-              onChange={handleAttack}
-              textColor={theme.textBody}
-            />
-            <SliderControl
-              label="Release"
-              value={release}
-              min={10}
-              max={500}
-              step={5}
-              format={(v) => `${v}ms`}
-              onChange={handleRelease}
-              textColor={theme.textBody}
-            />
-          </div>
-
-          {/* EFFECTS */}
-          <div style={sectionStyle}>
-            <div style={sectionLabelStyle}>Effects</div>
-            <SliderControl
-              label="Filter"
-              value={brightness}
-              min={500}
-              max={20000}
-              step={100}
-              format={(v) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}Hz`}
-              onChange={handleBrightness}
-              textColor={theme.textBody}
-            />
-            <SliderControl
-              label="Delay"
-              value={delayTime}
-              min={0}
-              max={1000}
-              step={10}
-              format={(v) => `${v}ms`}
-              onChange={handleDelayTime}
-              textColor={theme.textBody}
-            />
-            <SliderControl
-              label="Feedback"
-              value={delayFeedback}
-              min={0}
-              max={0.8}
-              step={0.05}
-              format={(v) => `${Math.round(v * 100)}%`}
-              onChange={handleDelayFeedback}
-              textColor={theme.textBody}
-            />
-            <SliderControl
-              label="Reverb"
-              value={reverbMix}
-              min={0}
-              max={1}
-              step={0.05}
-              format={(v) => `${Math.round(v * 100)}%`}
-              onChange={handleReverbMix}
-              textColor={theme.textBody}
-            />
-          </div>
-
-          {/* OUTPUT */}
-          <div style={sectionStyle}>
-            <div style={sectionLabelStyle}>Output</div>
-            {isRecording ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap8 }}>
-                <span style={{
-                  fontFamily: FONT,
-                  fontSize: typography.label.fontSize,
-                  fontVariantNumeric: 'tabular-nums',
-                  color: semanticColors.textFunctionalError,
-                  fontWeight: 600,
-                }}>
-                  ● {Math.floor(recTime / 60000)}:{String(Math.floor((recTime % 60000) / 1000)).padStart(2, '0')}
-                </span>
-                <BasicButton variant="secondary" size="small" onClick={handleStopRecord}>
-                  Stop
-                </BasicButton>
+                  />
+                </div>
               </div>
-            ) : (
-              <BasicButton variant="secondary" size="small" onClick={handleRecord}>
-                Record
-              </BasicButton>
-            )}
+
+              {/* ENVELOPE (136px) */}
+              <div style={{ width: 136, display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                {sectionHeader('ENVELOPE')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                  {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'colour')}
+                  {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5))}
+                </div>
+              </div>
+
+              {/* EFFECTS (2-column) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                {sectionHeader('EFFECTS')}
+                <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
+                    {paramStack(
+                      'Filter',
+                      brightness >= 1000 ? (brightness / 1000).toFixed(1) : String(brightness),
+                      brightness >= 1000 ? 'K' : 'Hz',
+                      (brightness - 500) / 19500,
+                      (n) => handleBrightness(Math.round((n * 19500 + 500) / 100) * 100),
+                    )}
+                    {paramStack('Delay', Math.round(delayTime), 'ms', delayTime / 1000, (n) => handleDelayTime(Math.round(n * 100) * 10))}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
+                    {paramStack('Feedback', Math.round(delayFeedback * 100), '%', delayFeedback / 0.8, (n) => handleDelayFeedback(Math.round(n * 0.8 * 20) / 20))}
+                    {paramStack('Reverb', Math.round(reverbMix * 100), '%', reverbMix, (n) => handleReverbMix(Math.round(n * 20) / 20))}
+                  </div>
+                </div>
+              </div>
+
+              {/* OCTAVE & KEY (196px) */}
+              <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch' }}>
+                {sectionHeader('OCTAVE & KEY')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap40 }}>
+                  {/* Octave stepper */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
+                    <span style={{ ...labelText, color: headingColor }}>Octave</span>
+                    <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleOctaveChange(Math.min(octaveVal + 1, 3))}
+                        style={stepperBtn}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+                      </button>
+                      <div style={stepperPanel}>
+                        <div style={{ display: 'flex', gap: layout.gap4, alignItems: 'center', justifyContent: 'center', ...labelText }}>
+                          <span style={{ color: bodyColor, width: 16, textAlign: 'right' as const }}>+</span>
+                          <span style={{ ...titleSText, color: headingColor, width: 20, textAlign: 'center' as const }}>{Math.abs(octaveVal)}</span>
+                          <span style={{ color: bodyColor, width: 16 }}>-</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOctaveChange(Math.max(octaveVal - 1, -3))}
+                        style={stepperBtn}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scale stepper */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
+                      <span style={{ ...labelText, color: headingColor }}>Scale</span>
+                      <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
+                          style={stepperBtn}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+                        </button>
+                        <div style={stepperPanel}>
+                          <div style={{ display: 'flex', gap: layout.gap4, alignItems: 'center', justifyContent: 'center', ...labelText }}>
+                            <span style={{ color: bodyColor, width: 16, textAlign: 'right' as const }}>+</span>
+                            <span style={{ ...titleSText, color: headingColor, width: 20, textAlign: 'center' as const }}>{TRANSPOSE_KEY[transpose] ?? 'C'}</span>
+                            <span style={{ color: bodyColor, width: 16 }}>-</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
+                          style={stepperBtn}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, color: disabledColor, whiteSpace: 'nowrap' as const }}>
+                      <span>Arrow up</span>
+                      <span>Shift</span>
+                      <span>Arrow dwn</span>
+                    </div>
+                  </div>
+                </div>
+
+                {localMode === 'wind' && (
+                  <BasicButton
+                    variant="primary"
+                    colourFill
+                    size="small"
+                    latching
+                    state={!expressionLocked ? 'pressed' : 'active'}
+                    onClick={toggleExpressionLock}
+                  >
+                    Breath Control
+                  </BasicButton>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* ── Instrument-specific strip ───────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: layout.gap24,
-            borderTop: sectionBorder,
-            paddingTop: layout.gap16,
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Octave readout */}
-          <div
-            onDoubleClick={() =>
-              localMode === 'keyboard'
-                ? pianoRef.current?.setOctaveShift(0)
-                : setWindOctaveShift(0)
-            }
-            title="Double-click to reset · ↑↓ to shift"
-            style={readoutStyle}
-          >
-            <span style={readoutValueStyle}>
-              {(() => {
-                const v = localMode === 'keyboard' ? pianoOctaveShift : windOctaveShift
-                return v >= 0 ? `+${v}` : `${v}`
-              })()}
-            </span>
-            <span style={readoutLabelStyle}>Oct</span>
-          </div>
-
-          {/* Transpose readout */}
-          <div
-            onDoubleClick={() => setTranspose(0)}
-            title="Double-click to reset · Shift+↑↓ to change"
-            style={readoutStyle}
-          >
-            <span style={readoutValueStyle}>
-              {transpose >= 0 ? `+${transpose}` : `${transpose}`}
-            </span>
-            <span style={readoutLabelStyle}>{TRANSPOSE_KEY[transpose]}</span>
-          </div>
-
-          {/* Mode-specific controls */}
-          {!isSolo && (
-            <BasicButton
-              variant={syncRemote ? 'primary' : 'secondary'}
-              colourFill={syncRemote}
-              size="small"
-              onClick={() => setSyncRemote((v) => !v)}
-            >
-              {syncRemote ? 'Remote ON' : 'Remote OFF'}
-            </BasicButton>
-          )}
-
-          {localMode === 'wind' && (
-            <BasicButton
-              variant="primary"
-              colourFill
-              size="small"
-              latching
-              state={!expressionLocked ? 'pressed' : 'active'}
-              onClick={toggleExpressionLock}
-            >
-              Breath Control
-            </BasicButton>
-          )}
-
-        </div>
-
-        {/* ── Piano keyboard (keyboard mode only) ─────────────────── */}
+        {/* ── Bottom piano keyboard ────────────────────────────────── */}
         {localMode === 'keyboard' && (
-          <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              justifyContent: 'center',
+              overflowX: 'auto',
+              paddingBottom: layout.gap16,
+            }}
+          >
             <PianoKeyboard
               ref={pianoRef}
               onMidiEvent={handleLocalMidi}
@@ -1034,7 +1052,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           </div>
         )}
 
-        {/* Debug panel */}
         <DebugPanel
           ref={debugRef}
           rtt={rtt}
@@ -1043,8 +1060,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           samplesRef={samplesRef}
           transportType={transportType}
           synth={synth}
-          waveform={waveform}
-          onWaveformChange={handleWaveformChange}
+          waveform={waveform as OscillatorType}
+          onWaveformChange={handleWaveformChange as (w: OscillatorType) => void}
         />
       </div>
     )

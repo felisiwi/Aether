@@ -5,6 +5,7 @@ import {
   colors,
   semanticColors,
   layout,
+  themeTokens,
 } from '../../tokens/design-tokens';
 
 /**
@@ -67,6 +68,8 @@ export interface PianoKeyProps {
   isPressed: boolean;
   /** Whether this is a black (sharp/flat) key. Affects size, colours, and padding. */
   isBlack: boolean;
+  /** Whether a remote player is pressing this key (ghost highlight). */
+  isGhost?: boolean;
 }
 
 // White key: 16 px padding each side + 16 px label content area = 48 px total (Figma HUG)
@@ -84,6 +87,7 @@ export default function PianoKey({
   shortcutLabel,
   isPressed,
   isBlack,
+  isGhost = false,
 }: PianoKeyProps) {
   const width = isBlack ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
   const height = isBlack ? BLACK_KEY_HEIGHT : WHITE_KEY_HEIGHT;
@@ -93,6 +97,8 @@ export default function PianoKey({
   let background: string;
   if (isPressed) {
     background = semanticColors.backdropSurfaceColouredSurface;
+  } else if (isGhost) {
+    background = themeTokens.components.primary20;
   } else if (isBlack) {
     background = semanticColors.backdropStatesHoverSurface;
   } else {

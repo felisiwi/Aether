@@ -6,7 +6,7 @@ import {
   fontFamily,
 } from '@ds/tokens/design-tokens'
 import BasicButton from '../components/BasicButton'
-import ThemeToggle from '../components/ThemeToggle'
+import { ThemeIndicator } from '@ds/Components/themeindicator/ThemeIndicator.1.0.0'
 import { Tag } from '@ds/Components/tag/Tag.1.0.0'
 import LobbyGrid from '../components/jam/LobbyGrid'
 import { useTheme } from '../contexts/ThemeContext'
@@ -43,7 +43,8 @@ export default function Lobby({
   mode,
   onLogout,
 }: LobbyProps) {
-  const { theme } = useTheme()
+  const { theme, mode: themeMode, setThemeMode } = useTheme()
+  const isDark = theme.mode === 'dark'
 
   return (
     <div
@@ -92,7 +93,7 @@ export default function Lobby({
           <Tag type="default" state="active">
             {mode === 'wind' ? 'Aerophone Mini' : 'Piano (keyboard)'}
           </Tag>
-          <ThemeToggle />
+          <ThemeIndicator theme={themeMode} darkMode={isDark} onThemeChange={setThemeMode} />
           <BasicButton variant="secondary" size="small" onClick={onLogout}>
             Log out
           </BasicButton>

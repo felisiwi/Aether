@@ -1,12 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  layout,
-  fontFamily,
-} from '@ds/tokens/design-tokens'
-import BasicButton from '../components/BasicButton'
-import ThemeToggle from '../components/ThemeToggle'
+import { useCallback, useEffect, useRef } from 'react'
+import { fontFamily } from '@ds/tokens/design-tokens'
 import JamRoomComponent from '../components/jam/JamRoom'
-import DeviceSelector from '../components/jam/DeviceSelector'
 import { useTheme } from '../contexts/ThemeContext'
 import type { JamRoomHandle } from '../components/jam/JamRoom'
 import type { MidiEvent, InstrumentMode } from '../lib/midi'
@@ -45,7 +39,7 @@ export default function JamRoomPage({
   jitter,
   samplesRef,
   remoteMidiRef,
-  onLeave,
+  onLeave: _onLeave,
 }: JamRoomPageProps) {
   const jamRoomRef = useRef<JamRoomHandle>(null)
 
@@ -53,7 +47,7 @@ export default function JamRoomPage({
     jamRoomRef.current?.handleLocalMidi(event)
   }, [])
 
-  const midi = useMIDI({ onMidiEvent, enabled: mode === 'wind' })
+  useMIDI({ onMidiEvent, enabled: mode === 'wind' })
 
   // Wire remote MIDI from Session → JamRoom component
   useEffect(() => {
@@ -69,43 +63,6 @@ export default function JamRoomPage({
 
   return (
     <div style={{ fontFamily: FONT, minHeight: '100vh', background: theme.pageBg, transition: 'background-color 200ms ease' }}>
-      {/* Header bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: `${layout.gap8}px ${layout.gap16}px`,
-          borderBottom: `${layout.strokeS}px solid ${theme.strokeSymbolic}`,
-        }}
-      >
-        <BasicButton
-          variant="secondary"
-          size="small"
-          onClick={onLeave}
-          showIcon
-          iconName="arrow-left"
-        >
-          {remoteUser === null ? 'Back to Lobby' : 'Leave'}
-        </BasicButton>
-
-        {mode === 'wind' && (
-          <div style={{ flex: 1, maxWidth: 320, marginLeft: layout.gap16 }}>
-            <DeviceSelector
-              mode={mode}
-              onModeChange={() => {}}
-              devices={midi.devices}
-              selectedDeviceId={midi.selectedDeviceId}
-              onSelectDevice={midi.setSelectedDeviceId}
-              error={midi.error}
-            />
-          </div>
-        )}
-
-        <ThemeToggle />
-      </div>
-
-      {/* Jam room */}
       <JamRoomComponent
         ref={jamRoomRef}
         localUser={username}

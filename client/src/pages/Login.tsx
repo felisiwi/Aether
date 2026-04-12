@@ -6,7 +6,6 @@ import {
   fontFamily,
 } from '@ds/tokens/design-tokens'
 import BasicButton from '../components/BasicButton'
-import ThemeToggle from '../components/ThemeToggle'
 import { useTheme } from '../contexts/ThemeContext'
 import type { InstrumentMode } from '../lib/midi'
 import { serverApiUrl } from '../lib/serverOrigin'
@@ -19,6 +18,7 @@ interface LoginProps {
 
 export default function Login({ onLogin }: LoginProps) {
   const { theme } = useTheme()
+  const isDark = theme.mode === 'dark'
   const [username, setUsername] = useState('')
   const [mode, setMode] = useState<InstrumentMode>('keyboard')
   const [error, setError] = useState<string | null>(null)
@@ -67,21 +67,15 @@ export default function Login({ onLogin }: LoginProps) {
         transition: 'background-color 200ms ease',
       }}
     >
-      <div style={{ position: 'absolute', top: layout.gap16, right: layout.gap16 }}>
-        <ThemeToggle />
-      </div>
-
-      <h1
+      <img
+        src="/aether-wordmark.svg"
+        alt="Aether"
         style={{
-          fontSize: typography.headlineM.fontSize,
-          fontWeight: typography.headlineM.fontWeight,
-          lineHeight: `${typography.headlineM.lineHeight}px`,
-          color: theme.textColourHeading,
+          height: 40,
           marginBottom: layout.gap4,
+          filter: isDark ? 'invert(1)' : 'none',
         }}
-      >
-        Aether
-      </h1>
+      />
       <p
         style={{
           fontSize: typography.bodyM.fontSize,
