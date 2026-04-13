@@ -53,20 +53,19 @@ export const darkTheme: Theme = {
   strokeWeak: semanticColors.strokeInvertedWeak,
 }
 
-/** Light UI with colour-forward strokes and headings (brand / jam accent). */
 export const colourTheme: Theme = {
   mode: 'colour',
-  pageBg: semanticColors.backdropStaticWhite,
-  textHeading: colors.textHeadingColour,
-  textBody: colors.textBodyNeutral,
-  textDisabled: colors.textDisabled,
-  surfaceCard: semanticColors.backdropStaticWhite,
-  surfaceInput: semanticColors.backdropStaticWhite,
-  surfaceDisabled: semanticColors.backdropStatesDisabledSurface,
-  strokeSymbolic: semanticColors.strokeColour,
-  strokeSolid: semanticColors.strokeSolid,
-  textColour: colors.textBodyColour,
-  textColourHeading: colors.textHeadingColour,
-  accentColour: semanticColors.buttonSurfacePrimary,
-  strokeWeak: semanticColors.strokeWeak,
+  pageBg: semanticColors.backdropStaticColour,
+  textHeading: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  textBody: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  textDisabled: semanticColors.backdropSurfaceColouredSurfaceDark,
+  surfaceCard: semanticColors.backdropSurfaceColouredSurfaceDark,
+  surfaceInput: semanticColors.backdropSurfaceColouredSurfaceDark,
+  surfaceDisabled: semanticColors.disabledSurfaceColour,
+  strokeSymbolic: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  strokeSolid: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  textColour: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  textColourHeading: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  accentColour: semanticColors.semanticStrokeStaticStrokeBlackSolid,
+  strokeWeak: semanticColors.backdropOpacityAdaptiveOpacityDarkenedWeak,
 }

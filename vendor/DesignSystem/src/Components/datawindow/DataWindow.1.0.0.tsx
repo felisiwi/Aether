@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   typography,
   fontFamily,
@@ -10,35 +10,240 @@ import {
 export type DataWindowVariant = "default" | "colour" | "theme";
 
 export interface DataWindowProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  /** default = neutral, colour = orange/local player, theme = purple/remote player */
   variant?: DataWindowVariant;
+  /** Optional overline label above the display */
   label?: string;
+  /** Reduced padding for inline/dense layouts */
   compact?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  /** Current numeric value */
+  value?: number;
+  /** Min/max range for scroll clamping */
+  min?: number;
+  max?: number;
+  /** Called when value changes via scroll */
+  onChange?: (value: number) => void;
+  /** Suffix label e.g. "ms", "%", "K" — never editable */
+  suffix?: string;
+  /** Step size for scroll wheel changes (default 1) */
+  step?: number;
+  /** When true (e.g. linked slider dragging), use active styling together with scroll feedback. */
+  isActive?: boolean;
 }
 
-const labelType = typography.label;
-
-interface VariantTokens { borderColor: string; surfaceColor: string; labelColor: string; innerShadow: string; }
+interface VariantTokens {
+  borderColor: string;
+  labelColor: string;
+  innerShadow: string;
+}
 
 function getVariantTokens(variant: DataWindowVariant): VariantTokens {
   switch (variant) {
     case "colour":
-      return { borderColor: semanticColors.strokeColour, surfaceColor: semanticColors.backdropOpacityStaticOpacityDarkenedWeak, labelColor: colors.textHeadingColour, innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}` };
+      return {
+        borderColor: semanticColors.strokeColour,
+        labelColor: colors.textHeadingColour,
+        innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}`,
+      };
     case "theme":
-      return { borderColor: semanticColors.backdropSurfaceThemedSurface, surfaceColor: semanticColors.backdropOpacityStaticOpacityDarkenedWeak, labelColor: semanticColors.backdropSurfaceThemedSurface, innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}` };
+      return {
+        borderColor: semanticColors.backdropSurfaceThemedSurface,
+        labelColor: semanticColors.backdropSurfaceThemedSurface,
+        innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}`,
+      };
+    case "default":
     default:
-      return { borderColor: semanticColors.strokeMedium, surfaceColor: semanticColors.backdropOpacityStaticOpacityDarkenedWeak, labelColor: colors.textBodyNeutral, innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}` };
+      return {
+        borderColor: semanticColors.strokeMedium,
+        labelColor: colors.textBodyNeutral,
+        innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}`,
+      };
   }
 }
 
-export const DataWindow: React.FC<DataWindowProps> = ({ children, variant = "default", label, compact = false, className, style }) => {
+function clampValue(n: number, min?: number, max?: number): number {
+  let v = n;
+  if (min !== undefined) v = Math.max(min, v);
+  if (max !== undefined) v = Math.min(max, v);
+  return v;
+}
+
+export const DataWindow: React.FC<DataWindowProps> = ({
+  children,
+  variant = "default",
+  label,
+  compact = false,
+  className,
+  style,
+  value,
+  min,
+  max,
+  onChange,
+  suffix,
+  step = 1,
+  isActive: isActiveProp = false,
+}) => {
   const tokens = getVariantTokens(variant);
+  const numericMode = value !== undefined;
+  const interactive = numericMode && onChange !== undefined;
+
+  const [scrollHot, setScrollHot] = useState(false);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelContainerRef = useRef<HTMLDivElement>(null);
+
+  const isActive = isActiveProp || scrollHot;
+
+  const clearScrollTimer = useCallback(() => {
+    if (scrollTimerRef.current !== null) {
+      clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = null;
+    }
+  }, []);
+
+  const markScrollActive = useCallback(() => {
+    setScrollHot(true);
+    clearScrollTimer();
+    scrollTimerRef.current = setTimeout(() => {
+      scrollTimerRef.current = null;
+      setScrollHot(false);
+    }, 800);
+  }, [clearScrollTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearScrollTimer();
+    };
+  }, [clearScrollTimer]);
+
+  useEffect(() => {
+    if (!interactive) return;
+    const el = wheelContainerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.deltaY === 0) return;
+      markScrollActive();
+      const next = clampValue(
+        value + (e.deltaY > 0 ? step : -step),
+        min,
+        max,
+      );
+      if (next !== value) onChange(next);
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [interactive, value, step, min, max, onChange, markScrollActive]);
+
+  const valueType = compact ? typography.titleS : typography.titleM;
+
+  const valueTextStyle = (active: boolean): React.CSSProperties => ({
+    fontFamily,
+    fontSize: valueType.fontSize,
+    lineHeight: `${valueType.lineHeight}px`,
+    letterSpacing: valueType.letterSpacing,
+    fontWeight: valueType.fontWeight,
+    fontStretch: `${valueType.fontWidth}%`,
+    color: active ? colors.textHeadingColour : colors.textHeadingNeutral,
+    fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+    margin: 0,
+    padding: 0,
+  });
+
+  const suffixTextStyle = (active: boolean): React.CSSProperties => ({
+    fontFamily,
+    fontSize: typography.label.fontSize,
+    lineHeight: `${typography.label.lineHeight}px`,
+    letterSpacing: typography.label.letterSpacing,
+    fontWeight: typography.label.fontWeight,
+    fontStretch: `${typography.label.fontWidth}%`,
+    color: active ? colors.textPressed : colors.textBodyNeutral,
+    fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+    margin: 0,
+    padding: 0,
+    userSelect: "none",
+  });
+
+  const panelBorderColor = numericMode
+    ? isActive
+      ? semanticColors.strokeColour
+      : semanticColors.strokeWeak
+    : tokens.borderColor;
+
+  const wrapperStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: compact ? layout.gap2 : layout.gap4,
+    ...style,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily,
+    fontSize: typography.label.fontSize,
+    lineHeight: `${typography.label.lineHeight}px`,
+    letterSpacing: typography.label.letterSpacing,
+    fontWeight: typography.label.fontWeight,
+    fontStretch: `${typography.label.fontWidth}%`,
+    color: tokens.labelColor,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+    margin: 0,
+    padding: 0,
+  };
+
+  const panelStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 48,
+    paddingTop: layout.gap8,
+    paddingBottom: layout.gap8,
+    paddingLeft: compact ? layout.gap8 : layout.gap16,
+    paddingRight: compact ? layout.gap8 : layout.gap16,
+    borderRadius: layout.radiusS,
+    borderWidth: layout.strokeS,
+    borderStyle: "solid",
+    borderColor: panelBorderColor,
+    backgroundColor:
+      semanticColors.backdropOpacityAdaptiveOpacityLightenedWeak,
+    boxShadow: tokens.innerShadow,
+    boxSizing: "border-box",
+    minWidth: 0,
+  };
+
+  const valueRowStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: layout.gap4,
+    minWidth: 0,
+    cursor: "default",
+  };
+
   return (
-    <div className={className} style={{ display: "flex", flexDirection: "column", gap: compact ? layout.gap2 : layout.gap4, ...style }}>
-      {label && <span style={{ fontFamily, fontSize: labelType.fontSize, lineHeight: `${labelType.lineHeight}px`, letterSpacing: labelType.letterSpacing, fontWeight: labelType.fontWeight, fontStretch: `${labelType.fontWidth}%`, color: tokens.labelColor, textTransform: "uppercase", whiteSpace: "nowrap", fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1", margin: 0, padding: 0 }}>{label}</span>}
-      <div style={{ display: "flex", flexDirection: "column", padding: compact ? `${layout.gap4}px ${layout.gap8}px` : `${layout.gap8}px ${layout.gap16}px`, borderRadius: layout.radiusS, borderWidth: layout.strokeS, borderStyle: "solid", borderColor: tokens.borderColor, backgroundColor: tokens.surfaceColor, boxShadow: tokens.innerShadow, boxSizing: "border-box", minWidth: 0 }}>{children}</div>
+    <div className={className} style={wrapperStyle}>
+      {label && <span style={labelStyle}>{label}</span>}
+      <div
+        ref={numericMode ? wheelContainerRef : undefined}
+        style={panelStyle}
+      >
+        {numericMode && (
+          <div style={valueRowStyle}>
+            <span style={valueTextStyle(isActive)}>{value}</span>
+            {suffix ? (
+              <span style={suffixTextStyle(isActive)}>{suffix}</span>
+            ) : null}
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   );
 };

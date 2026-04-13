@@ -33,11 +33,25 @@ export type DataChannelState =
 
 export type TransportType = 'unknown' | 'host' | 'srflx' | 'relay'
 
+/** Full synth patch — sent only on the reliable `patch` data channel, never on `midi`. */
+export interface PatchStateMessage {
+  type: 'patchState'
+  waveform: string
+  attack: number
+  release: number
+  brightness: number
+  delay: number
+  feedback: number
+  reverb: number
+  volume: number
+}
+
 export interface PeerCallbacks {
   onStateChange: (state: DataChannelState) => void
   onTransportType: (type: TransportType) => void
   onRemoteMidi: (event: MidiEvent) => void
   onPong: (originTs: number) => void
+  onRemotePatchState: (patch: PatchStateMessage) => void
 }
 
 // ─── Compact data-channel wire format ────────────────────────────
@@ -129,6 +143,7 @@ function dcToMidiEvent(msg: DCNoteOn | DCNoteOff | DCCC): MidiEvent {
 export class PeerManager {
   private pc: RTCPeerConnection | null = null
   private dc: RTCDataChannel | null = null
+  private patchDc: RTCDataChannel | null = null
   private signal: SignallingClient
   private localUser: string
   private _remoteUser = ''
@@ -165,6 +180,12 @@ export class PeerManager {
     })
     this.wireDataChannel(this.dc)
 
+    this.patchDc = pc.createDataChannel('patch', {
+      ordered: true,
+      maxRetransmits: 3,
+    })
+    this.wirePatchChannel(this.patchDc)
+
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
     this.signal.sendOffer(targetUser, offer)
@@ -180,8 +201,14 @@ export class PeerManager {
 
     const pc = this.createPC()
     pc.ondatachannel = (e) => {
-      this.dc = e.channel
-      this.wireDataChannel(this.dc)
+      const ch = e.channel
+      if (ch.label === 'midi') {
+        this.dc = ch
+        this.wireDataChannel(ch)
+      } else if (ch.label === 'patch') {
+        this.patchDc = ch
+        this.wirePatchChannel(ch)
+      }
     }
 
     await pc.setRemoteDescription(sdp)
@@ -211,6 +238,12 @@ export class PeerManager {
   sendPing(): void {
     if (this.dc && this.dc.readyState === 'open') {
       this.dc.send(`{"t":"ping","ts":${Date.now()}}`)
+    }
+  }
+
+  sendPatchState(patch: PatchStateMessage): void {
+    if (this.patchDc && this.patchDc.readyState === 'open') {
+      this.patchDc.send(JSON.stringify(patch))
     }
   }
 
@@ -259,6 +292,20 @@ export class PeerManager {
     dc.onclose = () => {
       if (this._state === 'connected') {
         this.handlePeerDisconnect()
+      }
+    }
+  }
+
+  private wirePatchChannel(dc: RTCDataChannel): void {
+    dc.onmessage = (e: MessageEvent<string>) => {
+      const raw = typeof e.data === 'string' ? e.data : ''
+      try {
+        const msg = JSON.parse(raw) as PatchStateMessage
+        if (msg?.type === 'patchState') {
+          this.callbacks.onRemotePatchState(msg)
+        }
+      } catch {
+        /* invalid patch payload */
       }
     }
   }
@@ -333,6 +380,16 @@ export class PeerManager {
   }
 
   private cleanup(): void {
+    if (this.patchDc) {
+      this.patchDc.onmessage = null
+      this.patchDc.onclose = null
+      try {
+        this.patchDc.close()
+      } catch {
+        /* already closed */
+      }
+      this.patchDc = null
+    }
     if (this.dc) {
       this.dc.onopen = null
       this.dc.onmessage = null

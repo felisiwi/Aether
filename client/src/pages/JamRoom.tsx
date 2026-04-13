@@ -5,7 +5,11 @@ import { useTheme } from '../contexts/ThemeContext'
 import type { JamRoomHandle } from '../components/jam/JamRoom'
 import type { MidiEvent, InstrumentMode } from '../lib/midi'
 import type { Synth } from '../lib/synth'
-import type { DataChannelState, TransportType } from '../lib/webrtc'
+import type {
+  DataChannelState,
+  PatchStateMessage,
+  TransportType,
+} from '../lib/webrtc'
 import { useMIDI } from '../hooks/useMIDI'
 
 const FONT = `${fontFamily}, sans-serif`
@@ -14,6 +18,8 @@ interface JamRoomPageProps {
   username: string
   mode: InstrumentMode
   synth: Synth | null
+  remoteSynth: Synth | null
+  sendPatchState: (patch: PatchStateMessage) => void
   remoteUser: string | null
   connectionState: DataChannelState
   transportType: TransportType
@@ -30,6 +36,8 @@ export default function JamRoomPage({
   username,
   mode,
   synth,
+  remoteSynth,
+  sendPatchState,
   remoteUser,
   connectionState,
   transportType,
@@ -39,7 +47,7 @@ export default function JamRoomPage({
   jitter,
   samplesRef,
   remoteMidiRef,
-  onLeave: _onLeave,
+  onLeave,
 }: JamRoomPageProps) {
   const jamRoomRef = useRef<JamRoomHandle>(null)
 
@@ -69,6 +77,8 @@ export default function JamRoomPage({
         remoteUser={remoteUser}
         localMode={mode}
         synth={synth}
+        remoteSynth={remoteSynth}
+        sendPatchState={sendPatchState}
         connectionState={connectionState}
         transportType={transportType}
         sendMidi={sendMidi}
@@ -76,6 +86,7 @@ export default function JamRoomPage({
         oneWay={oneWay}
         jitter={jitter}
         samplesRef={samplesRef}
+        onLeave={onLeave}
       />
     </div>
   )

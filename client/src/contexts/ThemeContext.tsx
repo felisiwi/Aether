@@ -42,6 +42,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.body.style.background = resolvedTheme.pageBg
+    document.body.style.transition = 'background-color 0.4s ease'
     document.body.style.colorScheme = mode === 'dark' ? 'dark' : 'light'
   }, [mode, resolvedTheme.pageBg])
 

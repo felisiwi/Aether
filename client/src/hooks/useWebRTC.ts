@@ -4,7 +4,11 @@ import {
   PeerManager,
   turnConfigured as _turnConfigured,
 } from '../lib/webrtc'
-import type { DataChannelState, TransportType } from '../lib/webrtc'
+import type {
+  DataChannelState,
+  PatchStateMessage,
+  TransportType,
+} from '../lib/webrtc'
 import type { MidiEvent } from '../lib/midi'
 
 export type { DataChannelState, TransportType }
@@ -14,6 +18,7 @@ export interface UseWebRTCOptions {
   username: string | null
   onRemoteMidi: (event: MidiEvent) => void
   onPong: (originTs: number) => void
+  onRemotePatchState: (patch: PatchStateMessage) => void
 }
 
 export function useWebRTC({
@@ -21,6 +26,7 @@ export function useWebRTC({
   username,
   onRemoteMidi,
   onPong,
+  onRemotePatchState,
 }: UseWebRTCOptions) {
   const [presence, setPresence] = useState<string[]>([])
   const [connectionState, setConnectionState] =
@@ -34,6 +40,8 @@ export function useWebRTC({
   midiRef.current = onRemoteMidi
   const pongRef = useRef(onPong)
   pongRef.current = onPong
+  const patchRef = useRef(onRemotePatchState)
+  patchRef.current = onRemotePatchState
 
   const signalRef = useRef<SignallingClient | null>(null)
   const peerRef = useRef<PeerManager | null>(null)
@@ -53,6 +61,7 @@ export function useWebRTC({
       onTransportType: setTransportType,
       onRemoteMidi: (event) => midiRef.current(event),
       onPong: (ts) => pongRef.current(ts),
+      onRemotePatchState: (patch) => patchRef.current(patch),
     })
     peerRef.current = peer
 
@@ -117,6 +126,10 @@ export function useWebRTC({
     peerRef.current?.sendPing()
   }, [])
 
+  const sendPatchState = useCallback((patch: PatchStateMessage) => {
+    peerRef.current?.sendPatchState(patch)
+  }, [])
+
   return {
     presence,
     connectionState,
@@ -128,5 +141,6 @@ export function useWebRTC({
     disconnect,
     sendMidi,
     sendPing,
+    sendPatchState,
   }
 }

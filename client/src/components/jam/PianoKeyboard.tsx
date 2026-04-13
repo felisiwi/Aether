@@ -116,6 +116,8 @@ export interface PianoKeyboardProps {
   onMidiEvent: (event: MidiEvent) => void
   remoteActiveNotes?: ReadonlySet<number>
   onOctaveShiftChange?: (shift: number) => void
+  /** When Caps Lock is turned off: parent may panic synth; we clear computer-key press state. */
+  onCapsLockOff?: () => void
   transpose?: number
 }
 
@@ -130,10 +132,14 @@ function noteLabel(midiNote: number, transpose: number): string {
 
 export interface PianoKeyboardHandle {
   setOctaveShift: (shift: number) => void
+  clearComputerKeyboardPressState: () => void
 }
 
 const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
-  function PianoKeyboard({ onMidiEvent, remoteActiveNotes, onOctaveShiftChange, transpose = 0 }, ref) {
+  function PianoKeyboard(
+    { onMidiEvent, remoteActiveNotes, onOctaveShiftChange, onCapsLockOff, transpose = 0 },
+    ref,
+  ) {
   const { theme } = useTheme()
   const [localActive, setLocalActive] = useState<Set<number>>(new Set())
   const [octaveShift, _setOctaveShift] = useState(0)
@@ -158,9 +164,22 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
   const capsLockInitializedRef = useRef(false)
   const pointerNoteRef = useRef<number | null>(null)
 
-  useImperativeHandle(ref, () => ({
-    setOctaveShift: (s: number) => setOctaveShift(s),
-  }), [setOctaveShift])
+  const clearComputerKeyboardPressState = useCallback(() => {
+    latchedNotesRef.current.clear()
+    activeKeyNotesRef.current.clear()
+    skipLatchOnKeyupRef.current.clear()
+    pointerNoteRef.current = null
+    setLocalActive(new Set())
+  }, [])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      setOctaveShift: (s: number) => setOctaveShift(s),
+      clearComputerKeyboardPressState,
+    }),
+    [setOctaveShift, clearComputerKeyboardPressState],
+  )
 
   const startNote = BASE_START_NOTE + octaveShift * 12
   const allKeys = useMemo(() => buildKeys(startNote, octaveShift), [startNote, octaveShift])
@@ -188,13 +207,6 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
   }, [])
 
   useEffect(() => {
-    const isNoteHeldByKeyboard = (note: number) => {
-      for (const n of activeKeyNotesRef.current.values()) {
-        if (n === note) return true
-      }
-      return false
-    }
-
     const syncCapsLock = (e: KeyboardEvent) => {
       const caps = e.getModifierState('CapsLock')
       if (!capsLockInitializedRef.current) {
@@ -209,11 +221,8 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
           latchedNotesRef.current.add(n)
         }
       } else {
-        for (const note of latchedNotesRef.current) {
-          if (!isNoteHeldByKeyboard(note)) noteOff(note)
-        }
-        latchedNotesRef.current.clear()
-        skipLatchOnKeyupRef.current.clear()
+        onCapsLockOff?.()
+        clearComputerKeyboardPressState()
       }
       prevCapsLockRef.current = caps
     }
@@ -277,7 +286,7 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [noteOn, noteOff, setOctaveShift])
+  }, [noteOn, noteOff, setOctaveShift, onCapsLockOff, clearComputerKeyboardPressState])
 
   const handlePointerDown = useCallback(
     (note: number) => (e: React.PointerEvent) => {

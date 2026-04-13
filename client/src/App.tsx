@@ -10,10 +10,15 @@ import { useWebRTC } from './hooks/useWebRTC'
 import { useLatency } from './hooks/useLatency'
 import { useTheme } from './contexts/ThemeContext'
 import { Synth } from './lib/synth'
+import {
+  applyPatchStateToSynth,
+  DEFAULT_PATCH_STATE,
+} from './lib/patchApply'
 import Login from './pages/Login'
 import Lobby from './pages/Lobby'
 import JamRoomPage from './pages/JamRoom'
 import type { MidiEvent, InstrumentMode } from './lib/midi'
+import type { PatchStateMessage } from './lib/webrtc'
 import { getSignalWebSocketUrl } from './lib/serverOrigin'
 
 const FONT = `${fontFamily}, sans-serif`
@@ -67,13 +72,19 @@ function Session({
   const [joined, setJoined] = useState(false)
   const [view, setView] = useState<'lobby' | 'jam' | 'solo'>('lobby')
 
-  // ── Synth (recreated when audioCtx or mode changes) ──
+  // ── Local + remote synths (recreated when audioCtx or mode changes) ──
   const [synth, setSynth] = useState<Synth | null>(null)
+  const [remoteSynth, setRemoteSynth] = useState<Synth | null>(null)
   useEffect(() => {
     if (!audioCtx) return
-    const s = new Synth(audioCtx, mode)
-    setSynth(s)
-    return () => s.dispose()
+    const local = new Synth(audioCtx, mode)
+    const remote = new Synth(audioCtx, mode)
+    setSynth(local)
+    setRemoteSynth(remote)
+    return () => {
+      local.dispose()
+      remote.dispose()
+    }
   }, [audioCtx, mode])
 
   // ── Remote MIDI dispatch (set by JamRoom page) ──
@@ -81,6 +92,13 @@ function Session({
   const onRemoteMidi = useCallback((event: MidiEvent) => {
     remoteMidiRef.current(event)
   }, [])
+
+  const onRemotePatchState = useCallback(
+    (patch: PatchStateMessage) => {
+      applyPatchStateToSynth(remoteSynth, patch)
+    },
+    [remoteSynth],
+  )
 
   // ── Latency: sendPing ref breaks circular dep ──
   const sendPingRef = useRef<() => void>(() => {})
@@ -104,14 +122,30 @@ function Session({
     disconnect,
     sendMidi,
     sendPing,
+    sendPatchState,
   } = useWebRTC({
     signalUrl: SIGNAL_URL,
     username: joined ? username : null,
     onRemoteMidi,
     onPong: latency.handlePong,
+    onRemotePatchState,
   })
 
   sendPingRef.current = sendPing
+
+  useEffect(() => {
+    if (!remoteSynth) return
+    if (connectionState === 'idle' || connectionState === 'disconnected') {
+      applyPatchStateToSynth(remoteSynth, DEFAULT_PATCH_STATE)
+    }
+  }, [connectionState, remoteSynth])
+
+  useEffect(() => {
+    if (!remoteSynth) return
+    if (connectionState === 'connected' && remoteUser) {
+      applyPatchStateToSynth(remoteSynth, DEFAULT_PATCH_STATE)
+    }
+  }, [connectionState, remoteUser, remoteSynth])
 
   useEffect(() => {
     setIsConnected(connectionState === 'connected')
@@ -133,6 +167,7 @@ function Session({
   }, [resume])
 
   const noopSendMidi = useCallback(() => {}, [])
+  const noopSendPatchState = useCallback((_patch: PatchStateMessage) => {}, [])
   const soloRemoteMidiRef = useRef<(event: MidiEvent) => void>(() => {})
   const emptySamplesRef = useRef<number[]>([])
 
@@ -173,6 +208,8 @@ function Session({
           username={username}
           mode={mode}
           synth={synth}
+          remoteSynth={remoteSynth}
+          sendPatchState={noopSendPatchState}
           remoteUser={null}
           connectionState="idle"
           transportType="unknown"
@@ -189,6 +226,8 @@ function Session({
           username={username}
           mode={mode}
           synth={synth}
+          remoteSynth={remoteSynth}
+          sendPatchState={sendPatchState}
           remoteUser={remoteUser}
           connectionState={connectionState}
           transportType={transportType}

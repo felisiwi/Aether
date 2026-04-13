@@ -1,5 +1,5 @@
 import React from "react";
-import { layout, semanticColors } from "../../tokens/design-tokens";
+import { layout } from "../../tokens/design-tokens";
 import { ThemeWheel } from "../themewheel/ThemeWheel.1.0.0";
 import type { ThemeWheelState, ThemeWheelTheme } from "../themewheel/ThemeWheel.1.0.0";
 import { PaginationIndicator } from "../paginationindicator/PaginationIndicator.1.0.0";
@@ -63,9 +63,7 @@ export const ThemeIndicator: React.FC<ThemeIndicatorProps> = ({
         justifyContent: "center",
         minWidth: 32,
         minHeight: 44,
-        backgroundColor: darkMode
-          ? semanticColors.backdropSurfaceTransparentSurfaceDark
-          : semanticColors.backdropSurfaceTransparentSurfaceLight,
+        background: "transparent",
         ...style,
       }}
     >

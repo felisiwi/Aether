@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { CSSProperties } from 'react'
 import {
   colors,
   semanticColors,
@@ -17,6 +18,7 @@ import {
 } from '@ds/tokens/design-tokens'
 import { ChordDisplay } from '@ds/Components/chorddisplay/ChordDisplay.1.0.0'
 import { HandleSlider } from '@ds/Components/handleslider/HandleSlider.1.0.0'
+import { DataWindow } from '@ds/Components/datawindow/DataWindow.1.0.0'
 import type { WaveformType } from '@ds/Components/waveformselector/WaveformSelector.1.0.0'
 import { VUBar } from '@ds/Components/vubar/VUBar.1.0.0'
 import type { VUBarHandle } from '@ds/Components/vubar/VUBar.1.0.0'
@@ -24,7 +26,7 @@ import { LatencyIndicator } from '@ds/Components/latencyindicator/LatencyIndicat
 import BasicButton from '../BasicButton'
 import PianoKeyboard from './PianoKeyboard'
 import DebugPanel from './DebugPanel'
-import { ThemeIndicator } from '@ds/Components/themeindicator/ThemeIndicator.1.0.0'
+import { ThemeWheel } from '@ds/Components/themewheel/ThemeWheel.1.0.0'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { PianoKeyboardHandle } from './PianoKeyboard'
 import type { DebugPanelHandle } from './DebugPanel'
@@ -32,7 +34,11 @@ import type { MidiEvent, InstrumentMode } from '../../lib/midi'
 import type { Synth } from '../../lib/synth'
 import { detectChord } from '../../lib/chords'
 import type { ChordResult } from '../../lib/chords'
-import type { DataChannelState, TransportType } from '../../lib/webrtc'
+import type {
+  DataChannelState,
+  PatchStateMessage,
+  TransportType,
+} from '../../lib/webrtc'
 import { SessionRecorder } from '../../lib/recorder'
 
 const FONT = `${fontFamily}, sans-serif`
@@ -64,6 +70,8 @@ export interface JamRoomProps {
   remoteUser: string | null
   localMode: InstrumentMode
   synth: Synth | null
+  remoteSynth: Synth | null
+  sendPatchState: (patch: PatchStateMessage) => void
   connectionState: DataChannelState
   transportType: TransportType
   sendMidi: (event: MidiEvent) => void
@@ -71,6 +79,72 @@ export interface JamRoomProps {
   oneWay: number | null
   jitter: number | null
   samplesRef: React.RefObject<number[]>
+  onLeave: () => void
+}
+
+interface JamRoomParamStackRowProps {
+  labelStyle: CSSProperties
+  label: string
+  value: number
+  suffix: string
+  sliderNorm: number
+  onSlider: (n: number) => void
+  variant?: 'default' | 'colour' | 'theme'
+  min?: number
+  max?: number
+  step?: number
+  onDataValueChange?: (v: number) => void
+  isDark: boolean
+}
+
+function JamRoomParamStackRow({
+  labelStyle,
+  label,
+  value,
+  suffix,
+  sliderNorm,
+  onSlider,
+  variant = 'default',
+  min = 0,
+  max = 100,
+  step = 1,
+  onDataValueChange,
+  isDark,
+}: JamRoomParamStackRowProps) {
+  const [isDragging, setIsDragging] = useState(false)
+  const span = max - min || 1
+  const handleDataWindow =
+    onDataValueChange ??
+    ((v: number) => {
+      const clamped = Math.min(max, Math.max(min, v))
+      onSlider((clamped - min) / span)
+    })
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap4 }}>
+        <span style={labelStyle}>{label}</span>
+        <DataWindow
+          value={value}
+          suffix={suffix}
+          min={min}
+          max={max}
+          step={step}
+          onChange={handleDataWindow}
+          variant={variant}
+          compact
+          isActive={isDragging}
+        />
+      </div>
+      <HandleSlider
+        value={Math.max(0, Math.min(1, sliderNorm))}
+        onChange={onSlider}
+        variant={variant}
+        darkMode={isDark}
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={() => setIsDragging(false)}
+      />
+    </div>
+  )
 }
 
 const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
@@ -80,6 +154,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       remoteUser,
       localMode,
       synth,
+      remoteSynth,
+      sendPatchState,
       connectionState,
       transportType,
       sendMidi,
@@ -87,6 +163,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       oneWay,
       jitter,
       samplesRef,
+      onLeave,
     },
     ref,
   ) {
@@ -105,52 +182,145 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     // Waveform — lifted so toolbar + DebugPanel stay in sync
     const [waveform, setWaveform] = useState<WaveformType>('sine')
-    const handleWaveformChange = useCallback(
-      (w: WaveformType) => {
-        setWaveform(w)
-        synth?.setWaveform(w)
-      },
-      [synth],
-    )
 
     // Sound controls
     const [attack, setAttack] = useState(0)
     const [release, setRelease] = useState(20)
     const [brightness, setBrightness] = useState(20000)
-    const handleAttack = useCallback(
-      (ms: number) => { setAttack(ms); synth?.setAttack(ms) },
-      [synth],
-    )
-    const handleRelease = useCallback(
-      (ms: number) => { setRelease(ms); synth?.setRelease(ms) },
-      [synth],
-    )
-    const handleBrightness = useCallback(
-      (hz: number) => { setBrightness(hz); synth?.setBrightness(hz) },
-      [synth],
-    )
 
     // Delay + Reverb controls
     const [delayTime, setDelayTime] = useState(0)
     const [delayFeedback, setDelayFeedback] = useState(0)
     const [reverbMix, setReverbMix] = useState(0)
-    const handleDelayTime = useCallback(
-      (ms: number) => { setDelayTime(ms); synth?.setDelayTime(ms) },
-      [synth],
-    )
-    const handleDelayFeedback = useCallback(
-      (v: number) => { setDelayFeedback(v); synth?.setDelayFeedback(v) },
-      [synth],
-    )
-    const handleReverbMix = useCallback(
-      (v: number) => { setReverbMix(v); synth?.setReverbMix(v) },
-      [synth],
-    )
 
     const [volume, setVolume] = useState(1)
+
+    const patchSnapshotRef = useRef({
+      waveform: 'sine' as WaveformType,
+      attack: 0,
+      release: 20,
+      brightness: 20000,
+      delayTime: 0,
+      delayFeedback: 0,
+      reverbMix: 0,
+      volume: 1,
+    })
+
+    useEffect(() => {
+      patchSnapshotRef.current = {
+        waveform,
+        attack,
+        release,
+        brightness,
+        delayTime,
+        delayFeedback,
+        reverbMix,
+        volume,
+      }
+    })
+
+    const patchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const sendPatchStateRef = useRef(sendPatchState)
+    sendPatchStateRef.current = sendPatchState
+
+    const buildPatchMessage = useCallback((): PatchStateMessage => {
+      const p = patchSnapshotRef.current
+      return {
+        type: 'patchState',
+        waveform: String(p.waveform),
+        attack: p.attack,
+        release: p.release,
+        brightness: p.brightness,
+        delay: p.delayTime,
+        feedback: p.delayFeedback,
+        reverb: p.reverbMix,
+        volume: p.volume,
+      }
+    }, [])
+
+    const schedulePatchSend = useCallback(() => {
+      if (connectionState !== 'connected' || !remoteUser) return
+      if (patchDebounceRef.current) clearTimeout(patchDebounceRef.current)
+      patchDebounceRef.current = setTimeout(() => {
+        patchDebounceRef.current = null
+        sendPatchStateRef.current(buildPatchMessage())
+      }, 200)
+    }, [connectionState, remoteUser, buildPatchMessage])
+
+    useEffect(() => {
+      return () => {
+        if (patchDebounceRef.current) clearTimeout(patchDebounceRef.current)
+      }
+    }, [])
+
+    useEffect(() => {
+      if (connectionState !== 'connected' || !remoteUser) return
+      sendPatchStateRef.current(buildPatchMessage())
+    }, [connectionState, remoteUser, buildPatchMessage])
+
+    const handleWaveformChange = useCallback(
+      (w: WaveformType) => {
+        setWaveform(w)
+        synth?.setWaveform(w)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
+    const handleAttack = useCallback(
+      (ms: number) => {
+        setAttack(ms)
+        synth?.setAttack(ms)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
+    const handleRelease = useCallback(
+      (ms: number) => {
+        setRelease(ms)
+        synth?.setRelease(ms)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
+    const handleBrightness = useCallback(
+      (hz: number) => {
+        setBrightness(hz)
+        synth?.setBrightness(hz)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
+    const handleDelayTime = useCallback(
+      (ms: number) => {
+        setDelayTime(ms)
+        synth?.setDelayTime(ms)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
+    const handleDelayFeedback = useCallback(
+      (v: number) => {
+        setDelayFeedback(v)
+        synth?.setDelayFeedback(v)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
+    const handleReverbMix = useCallback(
+      (v: number) => {
+        setReverbMix(v)
+        synth?.setReverbMix(v)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
+    )
     const handleVolume = useCallback(
-      (v: number) => { setVolume(v); synth?.setMasterVolume(v) },
-      [synth],
+      (v: number) => {
+        setVolume(v)
+        synth?.setMasterVolume(v)
+        schedulePatchSend()
+      },
+      [synth, schedulePatchSend],
     )
 
     // Transpose offset (semitones) — applied to audio/WebRTC in both modes
@@ -205,58 +375,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     windOctaveShiftRef.current = windOctaveShift
     const windActiveNotesRef = useRef<Map<number, number>>(new Map())
     const keyboardActiveNotesRef = useRef<Map<number, number>>(new Map())
-
-    const handleOctaveChange = useCallback(
-      (v: number) => {
-        if (localMode === 'keyboard') {
-          pianoRef.current?.setOctaveShift(v)
-        } else {
-          setWindOctaveShift(v)
-        }
-      },
-      [localMode],
-    )
-
-    useEffect(() => {
-      if (localMode !== 'wind') return
-      const down = (e: KeyboardEvent) => {
-        if (e.repeat) return
-        if (e.code === 'ArrowUp') {
-          e.preventDefault()
-          if (e.shiftKey) {
-            setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
-          } else {
-            setWindOctaveShift((v) => Math.min(v + 1, 3))
-          }
-        } else if (e.code === 'ArrowDown') {
-          e.preventDefault()
-          if (e.shiftKey) {
-            setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
-          } else {
-            setWindOctaveShift((v) => Math.max(v - 1, -3))
-          }
-        }
-      }
-      window.addEventListener('keydown', down)
-      return () => window.removeEventListener('keydown', down)
-    }, [localMode])
-
-    // Keyboard mode: Shift+Arrow for transpose (octave is handled inside PianoKeyboard via Arrow)
-    useEffect(() => {
-      if (localMode !== 'keyboard') return
-      const down = (e: KeyboardEvent) => {
-        if (e.repeat || !e.shiftKey) return
-        if (e.code === 'ArrowUp') {
-          e.preventDefault()
-          setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
-        } else if (e.code === 'ArrowDown') {
-          e.preventDefault()
-          setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
-        }
-      }
-      window.addEventListener('keydown', down)
-      return () => window.removeEventListener('keydown', down)
-    }, [localMode])
 
     // Glide held notes when transpose or octave changes mid-hold (wind)
     useEffect(() => {
@@ -316,6 +434,65 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [currentNote, setCurrentNote] = useState<number | null>(null)
     const [remoteCurrentNote, setRemoteCurrentNote] = useState<number | null>(null)
 
+    const handleComputerKeyboardCapsLockOff = useCallback(() => {
+      synth?.panicAllNotesOff()
+      keyboardActiveNotesRef.current.clear()
+      setLocalNotes([])
+      setCurrentNote(null)
+    }, [synth])
+
+    const handleOctaveChange = useCallback(
+      (v: number) => {
+        if (localMode === 'keyboard') {
+          pianoRef.current?.setOctaveShift(v)
+        } else {
+          setWindOctaveShift(v)
+        }
+      },
+      [localMode],
+    )
+
+    useEffect(() => {
+      if (localMode !== 'wind') return
+      const down = (e: KeyboardEvent) => {
+        if (e.repeat) return
+        if (e.code === 'ArrowUp') {
+          e.preventDefault()
+          if (e.shiftKey) {
+            setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
+          } else {
+            setWindOctaveShift((v) => Math.min(v + 1, 3))
+          }
+        } else if (e.code === 'ArrowDown') {
+          e.preventDefault()
+          if (e.shiftKey) {
+            setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
+          } else {
+            setWindOctaveShift((v) => Math.max(v - 1, -3))
+          }
+        }
+      }
+      window.addEventListener('keydown', down)
+      return () => window.removeEventListener('keydown', down)
+    }, [localMode])
+
+    // Keyboard mode: Shift+Arrow for transpose (octave is handled inside PianoKeyboard via Arrow)
+    useEffect(() => {
+      if (localMode !== 'keyboard') return
+      const down = (e: KeyboardEvent) => {
+        if (e.repeat || !e.shiftKey) return
+        if (e.code === 'ArrowUp') {
+          e.preventDefault()
+          setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
+        } else if (e.code === 'ArrowDown') {
+          e.preventDefault()
+          setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
+        }
+      }
+      window.addEventListener('keydown', down)
+      return () => window.removeEventListener('keydown', down)
+    }, [localMode])
+
     const handleLocalMidi = useCallback(
       (event: MidiEvent) => {
         if (!synth) return
@@ -373,9 +550,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const handleRemoteMidi = useCallback(
       (event: MidiEvent) => {
-        if (!synth || !syncRemote) return
+        if (!remoteSynth || !syncRemote) return
         if (event.type === 'noteOn') {
-          synth.noteOn(event.note)
+          remoteSynth.noteOn(event.note)
           remoteMeterRef.current?.flash()
           setRemoteCurrentNote(event.note)
           setRemoteNotes((prev) => {
@@ -393,7 +570,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             )
           }
         } else if (event.type === 'noteOff') {
-          synth.noteOff(event.note)
+          remoteSynth.noteOff(event.note)
           setRemoteCurrentNote((prev) => (prev === event.note ? null : prev))
           setRemoteNotes((prev) => {
             const next = new Set(prev)
@@ -401,12 +578,13 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             return next
           })
         } else if (event.type === 'cc') {
+          remoteSynth.setCC(event.cc, event.value)
           if (event.cc === 11) {
             remoteMeterRef.current?.setLevel(event.value / 127)
           }
         }
       },
-      [synth, syncRemote],
+      [remoteSynth, syncRemote],
     )
 
     const localMidiRef = useRef(handleLocalMidi)
@@ -644,44 +822,39 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       </div>
     )
 
+    const paramLabelStyle: CSSProperties = {
+      ...labelText,
+      color: colors.textHeadingNeutral,
+      height: typography.label.lineHeight,
+    }
+
     const paramStack = (
       label: string,
-      displayVal: string | number,
-      unit: string,
+      value: number,
+      suffix: string,
       sliderNorm: number,
       onSlider: (n: number) => void,
       variant: 'default' | 'colour' | 'theme' = 'default',
-    ) => {
-      const isColour = variant === 'colour'
-      const borderCol = isColour ? semanticColors.strokeColour : weakStroke
-      const valCol = isColour ? colors.textHeadingColour : headingColor
-      const unitCol = isColour ? colors.textPressed : bodyColor
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap4 }}>
-            <span style={{ ...labelText, color: headingColor, height: typography.label.lineHeight }}>{label}</span>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              height: 48,
-              padding: layout.gap8,
-              borderRadius: layout.radiusS,
-              border: `${layout.strokeM}px solid ${borderCol}`,
-              backgroundColor: panelBg,
-              boxSizing: 'border-box' as const,
-            }}>
-              {valueUnit(displayVal, unit, valCol, unitCol)}
-            </div>
-          </div>
-          <HandleSlider
-            value={Math.max(0, Math.min(1, sliderNorm))}
-            onChange={onSlider}
-            variant={variant}
-            darkMode={isDark}
-          />
-        </div>
-      )
-    }
+      min = 0,
+      max = 100,
+      step = 1,
+      onDataValueChange?: (v: number) => void,
+    ) => (
+      <JamRoomParamStackRow
+        labelStyle={paramLabelStyle}
+        label={label}
+        value={value}
+        suffix={suffix}
+        sliderNorm={sliderNorm}
+        onSlider={onSlider}
+        variant={variant}
+        min={min}
+        max={max}
+        step={step}
+        onDataValueChange={onDataValueChange}
+        isDark={isDark}
+      />
+    )
 
     const octaveVal = localMode === 'keyboard' ? pianoOctaveShift : windOctaveShift
 
@@ -698,6 +871,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           flexDirection: 'column',
           overflow: 'hidden',
           background: theme.pageBg,
+          transition: 'background-color 600ms ease',
           fontFamily: FONT,
         }}
       >
@@ -723,11 +897,15 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 style={{ height: 32, filter: isDark ? 'invert(1)' : 'none' }}
               />
               {!isSolo && (
-                <BasicButton variant="primary" size="small">
+                <BasicButton variant="primary" size="small" onClick={onLeave}>
                   Detether
                 </BasicButton>
               )}
-              <ThemeIndicator theme={mode} darkMode={isDark} onThemeChange={setThemeMode} />
+              <ThemeWheel
+                theme={mode}
+                onThemeChange={setThemeMode}
+                darkMode={mode === 'dark'}
+              />
             </div>
             {/* ── Player dashboards row ──────────────────────────── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: sectionGap }}>
@@ -920,8 +1098,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               <div style={{ width: 136, display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
                 {sectionHeader('ENVELOPE')}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                  {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'colour')}
-                  {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5))}
+                  {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'default', 0, 500, 5)}
+                  {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5), 'default', 10, 500, 5)}
                 </div>
               </div>
 
@@ -930,18 +1108,35 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 {sectionHeader('EFFECTS')}
                 <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
-                    {paramStack(
-                      'Filter',
-                      brightness >= 1000 ? (brightness / 1000).toFixed(1) : String(brightness),
-                      brightness >= 1000 ? 'K' : 'Hz',
-                      (brightness - 500) / 19500,
-                      (n) => handleBrightness(Math.round((n * 19500 + 500) / 100) * 100),
-                    )}
-                    {paramStack('Delay', Math.round(delayTime), 'ms', delayTime / 1000, (n) => handleDelayTime(Math.round(n * 100) * 10))}
+                    {(() => {
+                      const filterInK = brightness >= 1000
+                      const dwValue = filterInK
+                        ? Math.round((brightness / 1000) * 10) / 10
+                        : brightness
+                      const dwMin = filterInK ? 0.5 : 500
+                      const dwMax = filterInK ? 20 : 20000
+                      const dwStep = filterInK ? 0.1 : 100
+                      return paramStack(
+                        'Filter',
+                        dwValue,
+                        filterInK ? 'K' : 'Hz',
+                        (brightness - 500) / 19500,
+                        (n) => handleBrightness(Math.round((n * 19500 + 500) / 100) * 100),
+                        'colour',
+                        dwMin,
+                        dwMax,
+                        dwStep,
+                        (v) =>
+                          filterInK
+                            ? handleBrightness(Math.round((v * 1000) / 100) * 100)
+                            : handleBrightness(Math.round((v - 500) / 100) * 100 + 500),
+                      )
+                    })()}
+                    {paramStack('Delay', Math.round(delayTime), 'ms', delayTime / 1000, (n) => handleDelayTime(Math.round(n * 100) * 10), 'default', 0, 1000, 10)}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
-                    {paramStack('Feedback', Math.round(delayFeedback * 100), '%', delayFeedback / 0.8, (n) => handleDelayFeedback(Math.round(n * 0.8 * 20) / 20))}
-                    {paramStack('Reverb', Math.round(reverbMix * 100), '%', reverbMix, (n) => handleReverbMix(Math.round(n * 20) / 20))}
+                    {paramStack('Feedback', Math.round(delayFeedback * 100), '%', delayFeedback / 0.8, (n) => handleDelayFeedback(Math.round(n * 0.8 * 20) / 20), 'default', 0, 80, 5)}
+                    {paramStack('Reverb', Math.round(reverbMix * 100), '%', reverbMix, (n) => handleReverbMix(Math.round(n * 20) / 20), 'default', 0, 100, 5)}
                   </div>
                 </div>
               </div>
@@ -963,9 +1158,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                       </button>
                       <div style={stepperPanel}>
                         <div style={{ display: 'flex', gap: layout.gap4, alignItems: 'center', justifyContent: 'center', ...labelText }}>
-                          <span style={{ color: bodyColor, width: 16, textAlign: 'right' as const }}>+</span>
+                          <span style={{ color: colors.textHeadingNeutral, width: 16, textAlign: 'right' as const }}>+</span>
                           <span style={{ ...titleSText, color: headingColor, width: 20, textAlign: 'center' as const }}>{Math.abs(octaveVal)}</span>
-                          <span style={{ color: bodyColor, width: 16 }}>-</span>
+                          <span style={{ color: colors.textHeadingNeutral, width: 16 }}>-</span>
                         </div>
                       </div>
                       <button
@@ -992,9 +1187,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                         </button>
                         <div style={stepperPanel}>
                           <div style={{ display: 'flex', gap: layout.gap4, alignItems: 'center', justifyContent: 'center', ...labelText }}>
-                            <span style={{ color: bodyColor, width: 16, textAlign: 'right' as const }}>+</span>
+                            <span style={{ color: colors.textHeadingNeutral, width: 16, textAlign: 'right' as const }}>+</span>
                             <span style={{ ...titleSText, color: headingColor, width: 20, textAlign: 'center' as const }}>{TRANSPOSE_KEY[transpose] ?? 'C'}</span>
-                            <span style={{ color: bodyColor, width: 16 }}>-</span>
+                            <span style={{ color: colors.textHeadingNeutral, width: 16 }}>-</span>
                           </div>
                         </div>
                         <button
@@ -1044,6 +1239,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           >
             <PianoKeyboard
               ref={pianoRef}
+              onCapsLockOff={handleComputerKeyboardCapsLockOff}
               onMidiEvent={handleLocalMidi}
               remoteActiveNotes={remoteNotes}
               onOctaveShiftChange={setPianoOctaveShift}
