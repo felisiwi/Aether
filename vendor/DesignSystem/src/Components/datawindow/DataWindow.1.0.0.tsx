@@ -32,6 +32,7 @@ export interface DataWindowProps {
   step?: number;
   /** When true (e.g. linked slider dragging), use active styling together with scroll feedback. */
   isActive?: boolean;
+  innerPanelStyle?: React.CSSProperties;
 }
 
 interface VariantTokens {
@@ -85,6 +86,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
   suffix,
   step = 1,
   isActive: isActiveProp = false,
+  innerPanelStyle = undefined,
 }) => {
   const tokens = getVariantTokens(variant);
   const numericMode = value !== undefined;
@@ -232,7 +234,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
       {label && <span style={labelStyle}>{label}</span>}
       <div
         ref={numericMode ? wheelContainerRef : undefined}
-        style={panelStyle}
+        style={{ ...panelStyle, ...innerPanelStyle }}
       >
         {numericMode && (
           <div style={valueRowStyle}>

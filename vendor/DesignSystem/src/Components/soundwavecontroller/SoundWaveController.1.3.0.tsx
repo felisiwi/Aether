@@ -1,23 +1,10 @@
 import React from "react";
 import Icon from "../icon/Icon.1.2.0";
-import {
-  typography,
-  fontFamily,
-  colors,
-  semanticColors,
-  layout,
-} from "../../tokens/design-tokens";
+import { colors, semanticColors, layout } from "../../tokens/design-tokens";
 
 export type WaveformId = "sine" | "triangle" | "sawtooth" | "square";
 
 const ORDER: WaveformId[] = ["sine", "triangle", "sawtooth", "square"];
-
-const LABELS: Record<WaveformId, string> = {
-  sine: "Sine",
-  triangle: "Triangle",
-  sawtooth: "Sawtooth",
-  square: "Square",
-};
 
 const ICONS: Record<WaveformId, "waveform-sine" | "waveform-triangle" | "waveform-sawtooth" | "waveform-square"> = {
   sine: "waveform-sine",
@@ -32,8 +19,6 @@ export interface SoundWaveControllerProps {
   className?: string;
   style?: React.CSSProperties;
 }
-
-const labelType = typography.label;
 
 export const SoundWaveController: React.FC<SoundWaveControllerProps> = ({
   selectedWaveform,
@@ -71,7 +56,7 @@ export const SoundWaveController: React.FC<SoundWaveControllerProps> = ({
               alignItems: "center",
               justifyContent: "center",
               gap: layout.gap8,
-              width: "100%",
+              width: layout.gap40,
               minHeight: layout.gap40,
               paddingLeft: layout.gap8,
               paddingRight: layout.gap8,
@@ -86,21 +71,6 @@ export const SoundWaveController: React.FC<SoundWaveControllerProps> = ({
             }}
           >
             <Icon name={ICONS[waveform]} size={32} color={fg} />
-            <span
-              style={{
-                fontFamily,
-                fontSize: labelType.fontSize,
-                fontWeight: labelType.fontWeight,
-                lineHeight: `${labelType.lineHeight}px`,
-                letterSpacing: labelType.letterSpacing,
-                fontStretch: `${labelType.fontWidth}%`,
-                color: fg,
-                fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {LABELS[waveform]}
-            </span>
           </button>
         );
       })}

@@ -134,6 +134,10 @@ function JamRoomParamStackRow({
           variant={variant}
           compact
           isActive={isDragging}
+          innerPanelStyle={isDark ? {
+            backgroundColor: semanticColors.backdropOpacityAdaptiveOpacityLightenedMedium,
+            borderColor: semanticColors.strokeInvertedMedium,
+          } : undefined}
         />
       </div>
       <HandleSlider
@@ -1078,9 +1082,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, color: disabledColor, whiteSpace: 'nowrap' as const }}>
-                      <span>Arrow up</span>
-                      <span>Shift</span>
-                      <span>Arrow dwn</span>
+                      <span>↑</span>
+                      <span>⇧</span>
+                      <span>↓</span>
                     </div>
                   </div>
                 </div>
