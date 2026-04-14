@@ -25,6 +25,7 @@ import { TopNav } from '@ds/Components/topnav/TopNav.1.1.0'
 import { Dashboard } from '@ds/Components/dashboard/Dashboard.1.1.0'
 import { VolumeController } from '@ds/Components/volumecontroller/VolumeController.1.0.0'
 import { VerticalControl } from '@ds/Components/verticalcontrol/VerticalControl.1.0.0'
+import { InstrumentInterface } from '@ds/Components/instrumentinterface/InstrumentInterface.1.1.0'
 import BasicButton from '../BasicButton'
 import PianoKeyboard from './PianoKeyboard'
 import DebugPanel from './DebugPanel'
@@ -800,8 +801,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       />
     )
 
-    const octaveVal = localMode === 'keyboard' ? pianoOctaveShift : windOctaveShift
-
     const topNavDefaultTheme = mode === 'dark' ? 'dark' : 'light'
 
     const localPlayerProps = {
@@ -992,20 +991,12 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
               {/* RIGHT — OCTAVE & KEY */}
               <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch', flexShrink: 0 }}>
-                <div style={{ display: 'flex', flexDirection: 'row', gap: layout.gap16, alignItems: 'flex-start' }}>
-                  <VerticalControl
-                    title="Octave"
-                    value={String(octaveVal)}
-                    onUp={() => handleOctaveChange(Math.min(octaveVal + 1, 3))}
-                    onDown={() => handleOctaveChange(Math.max(octaveVal - 1, -3))}
-                  />
-                  <VerticalControl
-                    title="Key"
-                    value={TRANSPOSE_KEY[transpose] ?? 'C'}
-                    onUp={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
-                    onDown={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
-                  />
-                </div>
+                <VerticalControl
+                  title="Key"
+                  value={TRANSPOSE_KEY[transpose] ?? 'C'}
+                  onUp={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
+                  onDown={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
+                />
 
                 {localMode === 'wind' && (
                   <BasicButton
@@ -1059,22 +1050,28 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
         {/* ── Bottom piano keyboard ────────────────────────────────── */}
         {localMode === 'keyboard' && (
-          <div
-            style={{
-              flexShrink: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              overflowX: 'auto',
-              paddingBottom: layout.gap16,
-            }}
-          >
-            <PianoKeyboard
-              ref={pianoRef}
-              onCapsLockOff={handleComputerKeyboardCapsLockOff}
-              onMidiEvent={handleLocalMidi}
-              remoteActiveNotes={remoteNotes}
-              onOctaveShiftChange={setPianoOctaveShift}
-              transpose={transpose}
+          <div style={{ flexShrink: 0, paddingBottom: layout.gap16, paddingLeft: layout.gap96, paddingRight: layout.gap96 }}>
+            {/* Hidden PianoKeyboard keeps window keyboard event listeners alive */}
+            <div style={{ display: 'none' }}>
+              <PianoKeyboard
+                ref={pianoRef}
+                onCapsLockOff={handleComputerKeyboardCapsLockOff}
+                onMidiEvent={handleLocalMidi}
+                remoteActiveNotes={remoteNotes}
+                onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
+                transpose={transpose}
+              />
+            </div>
+            <InstrumentInterface
+              octave={3 + pianoOctaveShift}
+              onOctaveChange={(n) => {
+                pianoRef.current?.setOctaveShift(n - 3)
+                handleOctaveChange(n - 3)
+              }}
+              octaveSpan={3}
+              pressedNotes={localNotes.map(midiNoteToName)}
+              variant="Keyboard"
+              style={{ background: 'transparent' }}
             />
           </div>
         )}
