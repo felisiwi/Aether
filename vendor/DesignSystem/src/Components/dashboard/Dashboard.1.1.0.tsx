@@ -2,7 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PlayerDisplay from "../playerdisplay/PlayerDisplay.1.1.0";
 import type { PlayerDisplayProps } from "../playerdisplay/PlayerDisplay.1.1.0";
-import { layout, semanticColors } from "../../tokens/design-tokens";
+import { layout } from "../../tokens/design-tokens";
 
 export interface DashboardProps {
   localPlayer: PlayerDisplayProps;
@@ -29,7 +29,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     minHeight: layout.gap128,
     padding: layout.gap24,
     boxSizing: "border-box",
-    background: semanticColors.backdropStaticDarkenedWhite,
     ...style,
   };
 

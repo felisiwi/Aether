@@ -62,7 +62,7 @@ export const SoundWaveController: React.FC<SoundWaveControllerProps> = ({
               paddingRight: layout.gap8,
               paddingTop: layout.gap4,
               paddingBottom: layout.gap4,
-              borderRadius: layout.radiusM,
+              borderRadius: layout.radiusS,
               border: "none",
               background,
               color: fg,

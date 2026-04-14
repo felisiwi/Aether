@@ -90,7 +90,7 @@ export const VolumeController: React.FC<VolumeControllerProps> = ({
       ev.preventDefault();
       if (ev.deltaY === 0) return;
       const next = clamp(
-        value + (ev.deltaY > 0 ? -WHEEL_STEP : WHEEL_STEP),
+        value + (ev.deltaY > 0 ? WHEEL_STEP : -WHEEL_STEP),
         min,
         max,
       );
@@ -119,7 +119,7 @@ export const VolumeController: React.FC<VolumeControllerProps> = ({
     height: layout.gap256,
     borderRadius: layout.radiusM,
     border: `${layout.strokeS}px solid ${borderCol}`,
-    background: semanticColors.backdropStatesDisabledSurface,
+    background: 'transparent',
     boxSizing: "border-box",
     overflow: "hidden",
     cursor: disabled ? "not-allowed" : "pointer",
