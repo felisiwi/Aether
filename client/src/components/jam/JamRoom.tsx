@@ -14,7 +14,6 @@ import {
   layout,
   typography,
   fontFamily,
-  themeTokens,
 } from '@ds/tokens/design-tokens'
 import { HandleSlider } from '@ds/Components/handleslider/HandleSlider.1.0.0'
 import { DataWindow } from '@ds/Components/datawindow/DataWindow.1.0.0'
@@ -22,8 +21,6 @@ import {
   SoundWaveController,
   type WaveformId,
 } from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
-import { VUBar } from '@ds/Components/vubar/VUBar.1.0.0'
-import type { VUBarHandle } from '@ds/Components/vubar/VUBar.1.0.0'
 import { TopNav } from '@ds/Components/topnav/TopNav.1.1.0'
 import { Dashboard } from '@ds/Components/dashboard/Dashboard.1.1.0'
 import { VolumeController } from '@ds/Components/volumecontroller/VolumeController.1.0.0'
@@ -173,8 +170,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     ref,
   ) {
     const { theme, mode, setThemeMode } = useTheme()
-    const localMeterRef = useRef<VUBarHandle>(null)
-    const remoteMeterRef = useRef<VUBarHandle>(null)
     const pianoRef = useRef<PianoKeyboardHandle>(null)
     const [pianoOctaveShift, setPianoOctaveShift] = useState(0)
     const debugRef = useRef<DebugPanelHandle>(null)
@@ -531,7 +526,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           sendMidi(shifted)
           if (event.type === 'noteOn') {
             synth.noteOn(note)
-            localMeterRef.current?.flash()
             setCurrentNote(note)
             setLocalNotes((prev) => prev.includes(note) ? prev : [...prev, note])
           } else {
@@ -545,7 +539,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             synth.setCC(event.cc, event.value)
           }
           if (event.cc === 11) {
-            localMeterRef.current?.setLevel(event.value / 127)
             debugRef.current?.pushCC11(event.value, synth.expressionValue)
           }
         }
@@ -558,7 +551,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         if (!remoteSynth || !syncRemote) return
         if (event.type === 'noteOn') {
           remoteSynth.noteOn(event.note)
-          remoteMeterRef.current?.flash()
           setRemoteCurrentNote(event.note)
           setRemoteNotes((prev) => {
             const next = new Set(prev)
@@ -584,9 +576,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           })
         } else if (event.type === 'cc') {
           remoteSynth.setCC(event.cc, event.value)
-          if (event.cc === 11) {
-            remoteMeterRef.current?.setLevel(event.value / 127)
-          }
         }
       },
       [remoteSynth, syncRemote],
@@ -697,7 +686,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         const ctx2d = canvas.getContext('2d')
         if (!ctx2d) return
 
-        ctx2d.fillStyle = theme.surfaceCard
+        ctx2d.fillStyle = semanticColors.backdropStaticBlack
         ctx2d.fillRect(0, 0, w, h)
 
         const analyser = synth?.getAnalyser() ?? null
@@ -708,7 +697,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           ctx2d.moveTo(0, h / 2)
           ctx2d.lineTo(w, h / 2)
           ctx2d.lineWidth = 1
-          ctx2d.strokeStyle = theme.textDisabled
+          ctx2d.strokeStyle = semanticColors.strokeInvertedMedium
           ctx2d.stroke()
           return
         }
@@ -739,13 +728,13 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         ctx2d.lineWidth = 2
         ctx2d.strokeStyle = clipping
           ? semanticColors.textFunctionalError
-          : theme.accentColour
+          : semanticColors.strokeColour
         ctx2d.stroke()
       }
 
       draw()
       return () => cancelAnimationFrame(rafId)
-    }, [synth, theme, localNotes.length])
+    }, [synth, localNotes.length])
 
     // ── Shared layout tokens ──────────────────────────────────────
     const sectionGap = layout.gap32
@@ -801,8 +790,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       height: 48,
       padding: layout.gap8,
       borderRadius: layout.radiusS,
-      border: `${layout.strokeM}px solid ${weakStroke}`,
-      backgroundColor: panelBg,
+      border: 'none',
+      backgroundColor: 'transparent',
       boxSizing: 'border-box' as const,
     }
 
@@ -949,7 +938,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'column',
+                  flexDirection: 'row',
                   gap: layout.gap16,
                   alignSelf: 'flex-start',
                   flex: '0 1 auto',
@@ -964,8 +953,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                   ref={oscilloscopeRef}
                   style={{
                     display: 'block',
-                    width: '100%',
-                    minWidth: 200,
+                    flex: '1 1 auto',
                     height: 180,
                     flexShrink: 0,
                     borderRadius: layout.radiusS,
@@ -978,7 +966,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               {/* CENTRE — parameter columns */}
               <div style={{ display: 'flex', flex: '1 1 280px', gap: sectionGap, alignItems: 'flex-start', minWidth: 0 }}>
                 <div style={{ width: 136, display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                  {sectionHeader('ENVELOPE')}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
                     {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'default', 0, 500, 5)}
                     {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5), 'default', 10, 500, 5)}
@@ -986,7 +973,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, flex: '1 1 auto', minWidth: 0 }}>
-                  {sectionHeader('EFFECTS')}
                   <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
                       {(() => {
@@ -1025,7 +1011,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
               {/* RIGHT — OCTAVE & KEY */}
               <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch', flexShrink: 0 }}>
-                {sectionHeader('OCTAVE & KEY')}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap40 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
                     <span style={{ ...labelText, color: headingColor }}>Octave</span>
@@ -1113,45 +1098,17 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                   flexShrink: 0,
                 }}
               >
-                <div style={{ display: 'flex', flexDirection: 'row', gap: layout.gap8, alignItems: 'flex-start' }}>
-                  <VUBar
-                    ref={localMeterRef}
-                    variant="colour"
-                    darkMode={isDark}
-                    orientation="vertical"
-                    thickness={8}
-                    length={120}
-                    style={{
-                      borderRadius: 0,
-                      border: `${layout.strokeM}px solid ${semanticColors.strokeColour}`,
-                    }}
-                  />
-                  <VolumeController
-                    variant="local"
-                    value={volume * 100}
-                    onChange={(v) => handleVolume(v / 100)}
-                  />
-                </div>
+                <VolumeController
+                  variant="local"
+                  value={volume * 100}
+                  onChange={(v) => handleVolume(v / 100)}
+                />
                 {!isSolo && (
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: layout.gap8, alignItems: 'flex-start' }}>
-                    <VUBar
-                      ref={remoteMeterRef}
-                      variant="theme"
-                      darkMode={isDark}
-                      orientation="vertical"
-                      thickness={8}
-                      length={120}
-                      style={{
-                        borderRadius: 0,
-                        border: `${layout.strokeM}px solid ${themeTokens.components.primary50}`,
-                      }}
-                    />
-                    <VolumeController
-                      variant="remote"
-                      value={remoteVolume * 100}
-                      onChange={(v) => setRemoteVolume(v / 100)}
-                    />
-                  </div>
+                  <VolumeController
+                    variant="remote"
+                    value={remoteVolume * 100}
+                    onChange={(v) => setRemoteVolume(v / 100)}
+                  />
                 )}
               </div>
             </div>
