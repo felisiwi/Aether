@@ -24,6 +24,7 @@ import {
 import { TopNav } from '@ds/Components/topnav/TopNav.1.1.0'
 import { Dashboard } from '@ds/Components/dashboard/Dashboard.1.1.0'
 import { VolumeController } from '@ds/Components/volumecontroller/VolumeController.1.0.0'
+import { VerticalControl } from '@ds/Components/verticalcontrol/VerticalControl.1.0.0'
 import BasicButton from '../BasicButton'
 import PianoKeyboard from './PianoKeyboard'
 import DebugPanel from './DebugPanel'
@@ -746,7 +747,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       : semanticColors.strokeWeak
     const headingColor = theme.textHeading
     const bodyColor = theme.textBody
-    const disabledColor = theme.textDisabled
     const weakStroke = theme.strokeWeak
 
     const labelText: React.CSSProperties = {
@@ -759,42 +759,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
       fontVariationSettings: "'wdth' 120",
     }
-    const titleSText: React.CSSProperties = {
-      fontFamily: FONT,
-      fontSize: typography.titleS.fontSize,
-      fontWeight: typography.titleS.fontWeight,
-      lineHeight: `${typography.titleS.lineHeight}px`,
-      fontStretch: `${typography.titleS.fontWidth}%`,
-      letterSpacing: typography.titleS.letterSpacing,
-      fontVariationSettings: "'wdth' 120",
-      fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
-      fontVariantNumeric: 'tabular-nums',
-    }
-    const stepperBtn: React.CSSProperties = {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minWidth: 44,
-      minHeight: 44,
-      border: `${layout.strokeL}px solid ${weakStroke}`,
-      borderRadius: layout.radiusM,
-      background: 'transparent',
-      cursor: 'pointer',
-      padding: `${layout.gap4}px ${layout.gap8}px`,
-      color: headingColor,
-    }
-    const stepperPanel: React.CSSProperties = {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: 48,
-      padding: layout.gap8,
-      borderRadius: layout.radiusS,
-      border: 'none',
-      backgroundColor: 'transparent',
-      boxSizing: 'border-box' as const,
-    }
-
     const sectionHeader = (title: string) => (
       <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
         <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>{title}</span>
@@ -905,8 +869,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             minHeight: 0,
             overflow: 'hidden',
             paddingBottom: layout.paddingWrapperVertical,
-            paddingLeft: layout.gap96,
-            paddingRight: layout.gap96,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, minHeight: 0 }}>
@@ -933,34 +895,53 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             </div>
 
             {/* ── Control surface row ────────────────────────────── */}
-            <div style={{ display: 'flex', gap: sectionGap, alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: sectionGap,
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                minHeight: 0,
+                paddingLeft: layout.gap96,
+                paddingRight: layout.gap96,
+              }}
+            >
               {/* INSTRUMENT — DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'row',
-                  gap: layout.gap16,
-                  alignSelf: 'flex-start',
-                  flex: '0 1 auto',
+                  flexDirection: 'column',
+                  gap: layout.gap8,
                 }}
               >
-                <SoundWaveController
-                  selectedWaveform={waveform}
-                  onWaveformChange={handleWaveformChange}
-                />
-                {/* DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
-                <canvas
-                  ref={oscilloscopeRef}
+                <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>Oscilloscope</span>
+                <div
                   style={{
-                    display: 'block',
-                    flex: '1 1 auto',
-                    height: 180,
-                    flexShrink: 0,
-                    borderRadius: layout.radiusS,
-                    background: theme.surfaceCard,
-                    border: `${layout.strokeM}px solid ${weakStroke}`,
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap: layout.gap16,
+                    alignSelf: 'flex-start',
+                    flex: '0 1 auto',
                   }}
-                />
+                >
+                  <SoundWaveController
+                    selectedWaveform={waveform}
+                    onWaveformChange={handleWaveformChange}
+                  />
+                  {/* DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
+                  <canvas
+                    ref={oscilloscopeRef}
+                    style={{
+                      display: 'block',
+                      flex: '1 1 auto',
+                      height: 180,
+                      flexShrink: 0,
+                      borderRadius: layout.radiusS,
+                      background: theme.surfaceCard,
+                      border: `${layout.strokeM}px solid ${weakStroke}`,
+                    }}
+                  />
+                </div>
               </div>
 
               {/* CENTRE — parameter columns */}
@@ -1011,67 +992,19 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
               {/* RIGHT — OCTAVE & KEY */}
               <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch', flexShrink: 0 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap40 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
-                    <span style={{ ...labelText, color: headingColor }}>Octave</span>
-                    <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', justifyContent: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleOctaveChange(Math.min(octaveVal + 1, 3))}
-                        style={stepperBtn}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
-                      </button>
-                      <div style={stepperPanel}>
-                        <div style={{ display: 'flex', gap: layout.gap4, alignItems: 'center', justifyContent: 'center', ...labelText }}>
-                          <span style={{ color: colors.textHeadingNeutral, width: 16, textAlign: 'right' as const }}>+</span>
-                          <span style={{ ...titleSText, color: headingColor, width: 20, textAlign: 'center' as const }}>{Math.abs(octaveVal)}</span>
-                          <span style={{ color: colors.textHeadingNeutral, width: 16 }}>-</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleOctaveChange(Math.max(octaveVal - 1, -3))}
-                        style={stepperBtn}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap8 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
-                      <span style={{ ...labelText, color: headingColor }}>Scale</span>
-                      <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
-                          style={stepperBtn}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
-                        </button>
-                        <div style={stepperPanel}>
-                          <div style={{ display: 'flex', gap: layout.gap4, alignItems: 'center', justifyContent: 'center', ...labelText }}>
-                            <span style={{ color: colors.textHeadingNeutral, width: 16, textAlign: 'right' as const }}>+</span>
-                            <span style={{ ...titleSText, color: headingColor, width: 20, textAlign: 'center' as const }}>{TRANSPOSE_KEY[transpose] ?? 'C'}</span>
-                            <span style={{ color: colors.textHeadingNeutral, width: 16 }}>-</span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
-                          style={stepperBtn}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, color: disabledColor, whiteSpace: 'nowrap' as const }}>
-                      <span>↑</span>
-                      <span>⇧</span>
-                      <span>↓</span>
-                    </div>
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'row', gap: layout.gap16, alignItems: 'flex-start' }}>
+                  <VerticalControl
+                    title="Octave"
+                    value={String(octaveVal)}
+                    onUp={() => handleOctaveChange(Math.min(octaveVal + 1, 3))}
+                    onDown={() => handleOctaveChange(Math.max(octaveVal - 1, -3))}
+                  />
+                  <VerticalControl
+                    title="Key"
+                    value={TRANSPOSE_KEY[transpose] ?? 'C'}
+                    onUp={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
+                    onDown={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
+                  />
                 </div>
 
                 {localMode === 'wind' && (
@@ -1098,11 +1031,20 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                   flexShrink: 0,
                 }}
               >
-                <VolumeController
-                  variant="local"
-                  value={volume * 100}
-                  onChange={(v) => handleVolume(v / 100)}
-                />
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: layout.gap8,
+                  }}
+                >
+                  <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>Volume</span>
+                  <VolumeController
+                    variant="local"
+                    value={volume * 100}
+                    onChange={(v) => handleVolume(v / 100)}
+                  />
+                </div>
                 {!isSolo && (
                   <VolumeController
                     variant="remote"
