@@ -37,13 +37,28 @@ export function getCustomIconRadiusViewBox(size: number): number {
   return (1 * 24) / 32;
 }
 
-export const CUSTOM_ICON_NAMES: IconName[] = ['rewind', 'fast-forward', 'play', 'pause', 'stop'];
+export const CUSTOM_ICON_NAMES: IconName[] = [
+  'rewind',
+  'fast-forward',
+  'play',
+  'pause',
+  'stop',
+  'waveform-sine',
+  'waveform-triangle',
+  'waveform-sawtooth',
+  'waveform-square',
+];
 
 const STROKE_VIEWBOX = 1.5;
 
 const PLAY_D = 'M8 5.5v13l10.5-6.5L8 5.5z';
 const REWIND_D = 'M11 17V7L3 12l8 5zm1-5l8 5V7l-8 5z';
 const FAST_FORWARD_D = 'M13 17V7l8 5-8 5zm-1-5l-8-5v10l8-5z';
+const WAVEFORM_Y_OFFSET = 5.75;
+const WAVEFORM_SINE_D = 'M1.00024 6.99996C10.7502 -13.7844 10.7502 27.7843 20.5002 6.99996';
+const WAVEFORM_TRIANGLE_D = 'M1.00007 7.75L5.87507 1L15.6251 14.5L20.5001 7.75';
+const WAVEFORM_SAWTOOTH_D = 'M1.00014 7L10.7501 1V13L20.5001 7';
+const WAVEFORM_SQUARE_D = 'M20.5 6.25V11.5H10.75V1H1V6.25';
 
 function CustomPlay({ size, color, weight }: CustomIconProps) {
   const isFill = weight === 'fill';
@@ -167,10 +182,50 @@ function CustomStop({ size, color, weight, radiusViewBox }: CustomIconProps) {
   );
 }
 
+function CustomWaveform({
+  size,
+  color,
+  d,
+}: Pick<CustomIconProps, 'size' | 'color'> & { d: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d={d}
+        transform={`translate(0 ${WAVEFORM_Y_OFFSET})`}
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function CustomWaveformSine({ size, color }: CustomIconProps) {
+  return <CustomWaveform size={size} color={color} d={WAVEFORM_SINE_D} />;
+}
+
+function CustomWaveformTriangle({ size, color }: CustomIconProps) {
+  return <CustomWaveform size={size} color={color} d={WAVEFORM_TRIANGLE_D} />;
+}
+
+function CustomWaveformSawtooth({ size, color }: CustomIconProps) {
+  return <CustomWaveform size={size} color={color} d={WAVEFORM_SAWTOOTH_D} />;
+}
+
+function CustomWaveformSquare({ size, color }: CustomIconProps) {
+  return <CustomWaveform size={size} color={color} d={WAVEFORM_SQUARE_D} />;
+}
+
 export const CUSTOM_ICON_MAP: Partial<Record<IconName, CustomIconComponent>> = {
   rewind: CustomRewind,
   'fast-forward': CustomFastForward,
   play: CustomPlay,
   pause: CustomPause,
   stop: CustomStop,
+  'waveform-sine': CustomWaveformSine,
+  'waveform-triangle': CustomWaveformTriangle,
+  'waveform-sawtooth': CustomWaveformSawtooth,
+  'waveform-square': CustomWaveformSquare,
 };

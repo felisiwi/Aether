@@ -16,17 +16,20 @@ import {
   fontFamily,
   themeTokens,
 } from '@ds/tokens/design-tokens'
-import { ChordDisplay } from '@ds/Components/chorddisplay/ChordDisplay.1.0.0'
 import { HandleSlider } from '@ds/Components/handleslider/HandleSlider.1.0.0'
 import { DataWindow } from '@ds/Components/datawindow/DataWindow.1.0.0'
-import type { WaveformType } from '@ds/Components/waveformselector/WaveformSelector.1.0.0'
+import {
+  SoundWaveController,
+  type WaveformId,
+} from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
 import { VUBar } from '@ds/Components/vubar/VUBar.1.0.0'
 import type { VUBarHandle } from '@ds/Components/vubar/VUBar.1.0.0'
-import { LatencyIndicator } from '@ds/Components/latencyindicator/LatencyIndicator.1.0.0'
+import { TopNav } from '@ds/Components/topnav/TopNav.1.1.0'
+import { Dashboard } from '@ds/Components/dashboard/Dashboard.1.1.0'
+import { VolumeController } from '@ds/Components/volumecontroller/VolumeController.1.0.0'
 import BasicButton from '../BasicButton'
 import PianoKeyboard from './PianoKeyboard'
 import DebugPanel from './DebugPanel'
-import { ThemeWheel } from '@ds/Components/themewheel/ThemeWheel.1.0.0'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { PianoKeyboardHandle } from './PianoKeyboard'
 import type { DebugPanelHandle } from './DebugPanel'
@@ -57,8 +60,6 @@ function midiNoteToName(note: number): string {
   const octave = Math.floor(note / 12) - 1
   return `${NOTE_NAMES[idx]}${octave}`
 }
-
-const WAVEFORMS: WaveformType[] = ['sine', 'triangle', 'sawtooth', 'square']
 
 export interface JamRoomHandle {
   handleLocalMidi: (event: MidiEvent) => void
@@ -181,7 +182,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [localNotes, setLocalNotes] = useState<number[]>([])
 
     // Waveform — lifted so toolbar + DebugPanel stay in sync
-    const [waveform, setWaveform] = useState<WaveformType>('sine')
+    const [waveform, setWaveform] = useState<WaveformId>('sine')
 
     // Sound controls
     const [attack, setAttack] = useState(0)
@@ -196,7 +197,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [volume, setVolume] = useState(1)
 
     const patchSnapshotRef = useRef({
-      waveform: 'sine' as WaveformType,
+      waveform: 'sine' as WaveformId,
       attack: 0,
       release: 20,
       brightness: 20000,
@@ -259,7 +260,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     }, [connectionState, remoteUser, buildPatchMessage])
 
     const handleWaveformChange = useCallback(
-      (w: WaveformType) => {
+      (w: WaveformId) => {
         setWaveform(w)
         synth?.setWaveform(w)
         schedulePatchSend()
@@ -808,20 +809,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       </div>
     )
 
-    const valueUnit = (
-      val: string | number,
-      unit: string,
-      valColor: string,
-      unitColor: string,
-    ) => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: layout.gap2 }}>
-        <span style={{ ...titleSText, color: valColor }}>{val}</span>
-        <div style={{ display: 'flex', alignItems: 'flex-end', padding: `${layout.gap4}px 0`, alignSelf: 'stretch' }}>
-          <span style={{ ...labelText, color: unitColor }}>{unit}</span>
-        </div>
-      </div>
-    )
-
     const paramLabelStyle: CSSProperties = {
       ...labelText,
       color: colors.textHeadingNeutral,
@@ -858,15 +845,35 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const octaveVal = localMode === 'keyboard' ? pianoOctaveShift : windOctaveShift
 
+    const topNavDefaultTheme = mode === 'dark' ? 'dark' : 'light'
+
+    const localPlayerProps = {
+      playerName: 'YOU',
+      variant: 'local' as const,
+      instrument: localMode === 'wind' ? 'Aerophone Mini' : 'Piano',
+      latency: rtt ?? 0,
+      chordName: chordCardMainLine ?? '',
+      notes: chordCardNotesLine ? chordCardNotesLine.split(' + ') : [],
+      keyName: chordCardAltLine ?? '',
+    }
+
+    const remotePlayerProps = isSolo
+      ? null
+      : {
+          playerName: (remoteUser ?? '').toUpperCase(),
+          variant: 'remote' as const,
+          instrument: 'Piano',
+          latency: rtt ?? 0,
+          chordName: remoteChordMainLine ?? '',
+          notes: remoteChordNotesLine ? remoteChordNotesLine.split(' + ') : [],
+          keyName: remoteChordAltLine ?? '',
+        }
+
     return (
       <div
         style={{
           height: '100vh',
           maxHeight: '100vh',
-          paddingTop: layout.paddingWrapperVertical,
-          paddingBottom: layout.paddingWrapperVertical,
-          paddingLeft: layout.gap96,
-          paddingRight: layout.gap96,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -875,6 +882,23 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           fontFamily: FONT,
         }}
       >
+        <div
+          style={{
+            flexShrink: 0,
+            position: 'sticky',
+            top: 0,
+            zIndex: 20,
+            width: '100%',
+          }}
+        >
+          <TopNav
+            key={mode}
+            onBackToLobby={onLeave}
+            defaultTheme={topNavDefaultTheme}
+            onThemeChange={(t) => setThemeMode(t)}
+          />
+        </div>
+
         {/* DO NOT re-add nav or back button here — layout is intentionally nav-free */}
         {/* Layout: wordmark row → player area (SOUND + cards + remote) → four-section row (Instrument / Envelope / Effects / Octave & key) → keyboard */}
         {/* ── Middle content (no flex-grow — avoids empty gap above keyboard) ───────────────────────────────────────── */}
@@ -887,265 +911,118 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             gap: layout.gap16,
             minHeight: 0,
             overflow: 'hidden',
+            paddingBottom: layout.paddingWrapperVertical,
+            paddingLeft: layout.gap96,
+            paddingRight: layout.gap96,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <img
-                src="/aether-wordmark.svg"
-                alt="Aether"
-                style={{ height: 32, filter: isDark ? 'invert(1)' : 'none' }}
-              />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, minHeight: 0 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
               {!isSolo && (
-                <BasicButton variant="primary" size="small" onClick={onLeave}>
-                  Detether
-                </BasicButton>
+                <div
+                  ref={pulseRef}
+                  style={{
+                    position: 'absolute',
+                    width: 24,
+                    height: 24,
+                    borderRadius: layout.radiusRound,
+                    background: semanticColors.buttonSurfacePrimary,
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 2,
+                  }}
+                />
               )}
-              <ThemeWheel
-                theme={mode}
-                onThemeChange={setThemeMode}
-                darkMode={mode === 'dark'}
-              />
-            </div>
-            {/* ── Player dashboards row ──────────────────────────── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: sectionGap }}>
-              {/* Player 1: SOUND panel + name/chord/VU */}
-              <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
-                {/* SOUND volume */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136, height: 142 }}>
-                  {sectionHeader('SOUND')}
-                  <div style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: layout.gap8, justifyContent: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
-                      <span style={{ ...labelText, color: headingColor }}>Volume</span>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        height: 48,
-                        padding: layout.gap8,
-                        borderRadius: layout.radiusS,
-                        border: `${layout.strokeM}px solid ${weakStroke}`,
-                        backgroundColor: panelBg,
-                        boxSizing: 'border-box' as const,
-                      }}>
-                        {valueUnit(Math.round(volume * 100), '%', headingColor, bodyColor)}
-                      </div>
-                    </div>
-                    <HandleSlider value={volume} onChange={handleVolume} darkMode={isDark} />
-                  </div>
-                </div>
-
-                {/* Name row + ChordDisplay + VUBar */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, whiteSpace: 'nowrap' as const }}>
-                    <span style={{ color: colors.textHeadingColour }}>YOU</span>
-                    <span style={{ color: bodyColor }}>
-                      {localMode === 'wind' ? 'Aerophone Mini' : 'Piano (Keyboard)'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'flex-start' }}>
-                    <VUBar
-                      ref={localMeterRef}
-                      variant="colour"
-                      darkMode={isDark}
-                      orientation="vertical"
-                      thickness={8}
-                      length={120}
-                      style={{
-                        borderRadius: 0,
-                        border: `${layout.strokeM}px solid ${semanticColors.strokeColour}`,
-                      }}
-                    />
-                    <ChordDisplay
-                      notes={chordCardNotesLine ? chordCardNotesLine.split(' + ') : []}
-                      chordName={chordCardMainLine ?? ''}
-                      altName={chordCardAltLine ?? ''}
-                      variant="colour"
-                      darkMode={isDark}
-                      style={{ width: 158, minHeight: 120 }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Latency indicator (centred, flex-grow) */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: layout.gap8, alignSelf: 'center' }}>
-                {!isSolo && (
-                  <div style={{ position: 'relative' }}>
-                    <LatencyIndicator rtt={rtt} darkMode={isDark} showUnit={false} />
-                    <div
-                      ref={pulseRef}
-                      style={{
-                        position: 'absolute',
-                        width: 24,
-                        height: 24,
-                        borderRadius: layout.radiusRound,
-                        background: semanticColors.buttonSurfacePrimary,
-                        opacity: 0,
-                        pointerEvents: 'none',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Player 2: name/chord/VU + RECEIVED SOUND panel */}
-              {!isSolo && (
-                <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', ...labelText, whiteSpace: 'nowrap' as const }}>
-                      <span style={{ color: themeTokens.components.primary50 }}>
-                        {(remoteUser ?? '').toUpperCase()}
-                      </span>
-                      <span style={{ color: bodyColor }}>Piano (Keyboard)</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'flex-start' }}>
-                      <ChordDisplay
-                        notes={remoteChordNotesLine ? remoteChordNotesLine.split(' + ') : []}
-                        chordName={remoteChordMainLine ?? ''}
-                        altName={remoteChordAltLine ?? ''}
-                        variant="theme"
-                        darkMode={isDark}
-                        style={{ width: 158, minHeight: 120 }}
-                      />
-                      <VUBar
-                        ref={remoteMeterRef}
-                        variant="theme"
-                        darkMode={isDark}
-                        orientation="vertical"
-                        thickness={8}
-                        length={120}
-                        style={{
-                          borderRadius: 0,
-                          border: `${layout.strokeM}px solid ${themeTokens.components.primary50}`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* RECEIVED SOUND volume */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136, height: 142 }}>
-                    {sectionHeader('RECEIVED SOUND')}
-                    <div style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: layout.gap8, justifyContent: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
-                        <span style={{ ...labelText, color: headingColor }}>Volume</span>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          height: 48,
-                          padding: layout.gap8,
-                          borderRadius: layout.radiusS,
-                          border: `${layout.strokeM}px solid ${themeTokens.components.primary50}`,
-                          backgroundColor: panelBg,
-                          boxSizing: 'border-box' as const,
-                        }}>
-                          {valueUnit(
-                            Math.round(remoteVolume * 100),
-                            '%',
-                            themeTokens.components.primary50,
-                            themeTokens.components.primary50,
-                          )}
-                        </div>
-                      </div>
-                      <HandleSlider value={remoteVolume} onChange={setRemoteVolume} variant="theme" darkMode={isDark} />
-                    </div>
-                  </div>
-                </div>
-              )}
+              <Dashboard localPlayer={localPlayerProps} remotePlayer={remotePlayerProps} />
             </div>
 
             {/* ── Control surface row ────────────────────────────── */}
-            <div style={{ display: 'flex', gap: sectionGap, alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: sectionGap, alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 0 }}>
               {/* INSTRUMENT — DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'flex-start' }}>
-                {sectionHeader('INSTRUMENT')}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
-                  <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', padding: `0 ${layout.gap4}px` }}>
-                    {WAVEFORMS.map((w) => (
-                      <span
-                        key={w}
-                        onClick={() => handleWaveformChange(w)}
-                        style={{
-                          ...labelText,
-                          color: waveform === w ? headingColor : bodyColor,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap' as const,
-                        }}
-                      >
-                        {w.charAt(0).toUpperCase() + w.slice(1)}
-                      </span>
-                    ))}
-                  </div>
-                  {/* DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
-                  <canvas
-                    ref={oscilloscopeRef}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      height: 180,
-                      flexShrink: 0,
-                      borderRadius: layout.radiusS,
-                      background: theme.surfaceCard,
-                      border: `${layout.strokeM}px solid ${weakStroke}`,
-                    }}
-                  />
-                </div>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: layout.gap16,
+                  alignSelf: 'flex-start',
+                  flex: '0 1 auto',
+                }}
+              >
+                <SoundWaveController
+                  selectedWaveform={waveform}
+                  onWaveformChange={handleWaveformChange}
+                />
+                {/* DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
+                <canvas
+                  ref={oscilloscopeRef}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    minWidth: 200,
+                    height: 180,
+                    flexShrink: 0,
+                    borderRadius: layout.radiusS,
+                    background: theme.surfaceCard,
+                    border: `${layout.strokeM}px solid ${weakStroke}`,
+                  }}
+                />
               </div>
 
-              {/* ENVELOPE (136px) */}
-              <div style={{ width: 136, display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                {sectionHeader('ENVELOPE')}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                  {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'default', 0, 500, 5)}
-                  {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5), 'default', 10, 500, 5)}
-                </div>
-              </div>
-
-              {/* EFFECTS (2-column) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                {sectionHeader('EFFECTS')}
-                <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
-                    {(() => {
-                      const filterInK = brightness >= 1000
-                      const dwValue = filterInK
-                        ? Math.round((brightness / 1000) * 10) / 10
-                        : brightness
-                      const dwMin = filterInK ? 0.5 : 500
-                      const dwMax = filterInK ? 20 : 20000
-                      const dwStep = filterInK ? 0.1 : 100
-                      return paramStack(
-                        'Filter',
-                        dwValue,
-                        filterInK ? 'K' : 'Hz',
-                        (brightness - 500) / 19500,
-                        (n) => handleBrightness(Math.round((n * 19500 + 500) / 100) * 100),
-                        'colour',
-                        dwMin,
-                        dwMax,
-                        dwStep,
-                        (v) =>
-                          filterInK
-                            ? handleBrightness(Math.round((v * 1000) / 100) * 100)
-                            : handleBrightness(Math.round((v - 500) / 100) * 100 + 500),
-                      )
-                    })()}
-                    {paramStack('Delay', Math.round(delayTime), 'ms', delayTime / 1000, (n) => handleDelayTime(Math.round(n * 100) * 10), 'default', 0, 1000, 10)}
+              {/* CENTRE — parameter columns */}
+              <div style={{ display: 'flex', flex: '1 1 280px', gap: sectionGap, alignItems: 'flex-start', minWidth: 0 }}>
+                <div style={{ width: 136, display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                  {sectionHeader('ENVELOPE')}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
+                    {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'default', 0, 500, 5)}
+                    {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5), 'default', 10, 500, 5)}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
-                    {paramStack('Feedback', Math.round(delayFeedback * 100), '%', delayFeedback / 0.8, (n) => handleDelayFeedback(Math.round(n * 0.8 * 20) / 20), 'default', 0, 80, 5)}
-                    {paramStack('Reverb', Math.round(reverbMix * 100), '%', reverbMix, (n) => handleReverbMix(Math.round(n * 20) / 20), 'default', 0, 100, 5)}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, flex: '1 1 auto', minWidth: 0 }}>
+                  {sectionHeader('EFFECTS')}
+                  <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
+                      {(() => {
+                        const filterInK = brightness >= 1000
+                        const dwValue = filterInK
+                          ? Math.round((brightness / 1000) * 10) / 10
+                          : brightness
+                        const dwMin = filterInK ? 0.5 : 500
+                        const dwMax = filterInK ? 20 : 20000
+                        const dwStep = filterInK ? 0.1 : 100
+                        return paramStack(
+                          'Filter',
+                          dwValue,
+                          filterInK ? 'K' : 'Hz',
+                          (brightness - 500) / 19500,
+                          (n) => handleBrightness(Math.round((n * 19500 + 500) / 100) * 100),
+                          'colour',
+                          dwMin,
+                          dwMax,
+                          dwStep,
+                          (v) =>
+                            filterInK
+                              ? handleBrightness(Math.round((v * 1000) / 100) * 100)
+                              : handleBrightness(Math.round((v - 500) / 100) * 100 + 500),
+                        )
+                      })()}
+                      {paramStack('Delay', Math.round(delayTime), 'ms', delayTime / 1000, (n) => handleDelayTime(Math.round(n * 100) * 10), 'default', 0, 1000, 10)}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
+                      {paramStack('Feedback', Math.round(delayFeedback * 100), '%', delayFeedback / 0.8, (n) => handleDelayFeedback(Math.round(n * 0.8 * 20) / 20), 'default', 0, 80, 5)}
+                      {paramStack('Reverb', Math.round(reverbMix * 100), '%', reverbMix, (n) => handleReverbMix(Math.round(n * 20) / 20), 'default', 0, 100, 5)}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* OCTAVE & KEY (196px) */}
-              <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch' }}>
+              {/* RIGHT — OCTAVE & KEY */}
+              <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch', flexShrink: 0 }}>
                 {sectionHeader('OCTAVE & KEY')}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap40 }}>
-                  {/* Octave stepper */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
                     <span style={{ ...labelText, color: headingColor }}>Octave</span>
                     <div style={{ display: 'flex', gap: layout.gap8, alignItems: 'center', justifyContent: 'center' }}>
@@ -1173,7 +1050,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     </div>
                   </div>
 
-                  {/* Scale stepper */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap8 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap4 }}>
                       <span style={{ ...labelText, color: headingColor }}>Scale</span>
@@ -1220,6 +1096,58 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                   >
                     Breath Control
                   </BasicButton>
+                )}
+              </div>
+
+              {/* FAR RIGHT — volumes + VU */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: layout.gap24,
+                  alignItems: 'flex-start',
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'row', gap: layout.gap8, alignItems: 'flex-start' }}>
+                  <VUBar
+                    ref={localMeterRef}
+                    variant="colour"
+                    darkMode={isDark}
+                    orientation="vertical"
+                    thickness={8}
+                    length={120}
+                    style={{
+                      borderRadius: 0,
+                      border: `${layout.strokeM}px solid ${semanticColors.strokeColour}`,
+                    }}
+                  />
+                  <VolumeController
+                    variant="local"
+                    value={volume * 100}
+                    onChange={(v) => handleVolume(v / 100)}
+                  />
+                </div>
+                {!isSolo && (
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: layout.gap8, alignItems: 'flex-start' }}>
+                    <VUBar
+                      ref={remoteMeterRef}
+                      variant="theme"
+                      darkMode={isDark}
+                      orientation="vertical"
+                      thickness={8}
+                      length={120}
+                      style={{
+                        borderRadius: 0,
+                        border: `${layout.strokeM}px solid ${themeTokens.components.primary50}`,
+                      }}
+                    />
+                    <VolumeController
+                      variant="remote"
+                      value={remoteVolume * 100}
+                      onChange={(v) => setRemoteVolume(v / 100)}
+                    />
+                  </div>
                 )}
               </div>
             </div>

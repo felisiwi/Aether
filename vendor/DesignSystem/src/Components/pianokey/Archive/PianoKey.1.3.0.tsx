@@ -5,7 +5,6 @@ import {
   colors,
   semanticColors,
   layout,
-  themeTokens,
 } from '../../tokens/design-tokens';
 
 /**
@@ -24,7 +23,8 @@ import {
  * The `note` prop is kept for aria-label accessibility only.
  *
  * White key:  32×142 px · padding 16 all sides  · bg #E6E6E6 (default) / orange (pressed)
- * Black key:  32×89 px  · padding 8 all sides     · bg #1A1A1A (default) / orange (pressed)
+ * Black key:  24×89 px  · padding 8 top/bottom,
+ *                          8 left/right          · bg #1A1A1A (default) / orange (pressed)
  * Both keys:  bottom corners rounded (layout.radiusXs = 4 px) · 1 px border
  *             shortcut label bottom-aligned (Figma primaryAxisAlignItems: MAX)
  *
@@ -48,7 +48,6 @@ import {
  * Black key default background uses semanticColors.backdropStatesHoverSurface (#1A1A1A)
  * — same resolved hex as snapshot raw color.
  *
- * v1.3.0 archived at Archive/PianoKey.1.3.0.tsx
  * v1.2.0 archived at Archive/PianoKey.1.2.0.tsx
  * v1.1.0 archived at Archive/PianoKey.1.1.0.tsx
  * v1.0.0 archived at Archive/PianoKey.1.0.0.tsx
@@ -68,15 +67,13 @@ export interface PianoKeyProps {
   isPressed: boolean;
   /** Whether this is a black (sharp/flat) key. Affects size, colours, and padding. */
   isBlack: boolean;
-  /** Remote peer is holding this note (local key idle). */
-  isGhost?: boolean;
 }
 
 // White key: 16 px padding each side + 16 px label content area = 48 px total (Figma HUG)
 const WHITE_KEY_WIDTH = 48;
 const WHITE_KEY_HEIGHT = 142;
-// Black key: 8 px padding each side + 16 px label content area = 32 px total (Figma HUG)
-const BLACK_KEY_WIDTH = 32;
+// Black key: 8 px padding each side + 8 px label content area = 24 px total (unchanged)
+const BLACK_KEY_WIDTH = 24;
 const BLACK_KEY_HEIGHT = 89;
 
 /** White key default surface — no semantic token yet. TODO: white-key-surface token. */
@@ -87,7 +84,6 @@ export default function PianoKey({
   shortcutLabel,
   isPressed,
   isBlack,
-  isGhost = false,
 }: PianoKeyProps) {
   const width = isBlack ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
   const height = isBlack ? BLACK_KEY_HEIGHT : WHITE_KEY_HEIGHT;
@@ -103,12 +99,9 @@ export default function PianoKey({
     background = WHITE_KEY_DEFAULT_BG;
   }
 
-  const borderColor =
-    isGhost && !isPressed
-      ? themeTokens.components.primary50
-      : isBlack
-        ? semanticColors.strokeInvertedWeak
-        : semanticColors.strokeWeak;
+  const borderColor = isBlack
+    ? semanticColors.strokeInvertedWeak
+    : semanticColors.strokeWeak;
 
   const containerStyle: React.CSSProperties = {
     width,
@@ -138,9 +131,7 @@ export default function PianoKey({
     textAlign: 'center',
     color: isPressed
       ? colors.textPressed
-      : isGhost
-        ? themeTokens.components.primary50
-        : isBlack
+      : isBlack
       /**
        * VariableID:14886:17771 — inverted-disabled text.
        * Not yet in design-tokens.ts; resolved hex #ffffff1f matches

@@ -5,8 +5,7 @@ import {
   colors,
   semanticColors,
   layout,
-  themeTokens,
-} from '../../tokens/design-tokens';
+} from '../../../tokens/design-tokens';
 
 /**
  * PianoKey v1.2.0 — Figma "Frame 954" (14886:17770), Variables-Figma-file.
@@ -68,8 +67,6 @@ export interface PianoKeyProps {
   isPressed: boolean;
   /** Whether this is a black (sharp/flat) key. Affects size, colours, and padding. */
   isBlack: boolean;
-  /** Remote peer is holding this note (local key idle). */
-  isGhost?: boolean;
 }
 
 // White key: 16 px padding each side + 16 px label content area = 48 px total (Figma HUG)
@@ -87,7 +84,6 @@ export default function PianoKey({
   shortcutLabel,
   isPressed,
   isBlack,
-  isGhost = false,
 }: PianoKeyProps) {
   const width = isBlack ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
   const height = isBlack ? BLACK_KEY_HEIGHT : WHITE_KEY_HEIGHT;
@@ -103,12 +99,9 @@ export default function PianoKey({
     background = WHITE_KEY_DEFAULT_BG;
   }
 
-  const borderColor =
-    isGhost && !isPressed
-      ? themeTokens.components.primary50
-      : isBlack
-        ? semanticColors.strokeInvertedWeak
-        : semanticColors.strokeWeak;
+  const borderColor = isBlack
+    ? semanticColors.strokeInvertedWeak
+    : semanticColors.strokeWeak;
 
   const containerStyle: React.CSSProperties = {
     width,
@@ -138,9 +131,7 @@ export default function PianoKey({
     textAlign: 'center',
     color: isPressed
       ? colors.textPressed
-      : isGhost
-        ? themeTokens.components.primary50
-        : isBlack
+      : isBlack
       /**
        * VariableID:14886:17771 — inverted-disabled text.
        * Not yet in design-tokens.ts; resolved hex #ffffff1f matches

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
-import { LatencyIndicator } from "./LatencyIndicator.1.0.0";
+import { semanticColors, layout } from "../../tokens/design-tokens";
+import { LatencyIndicator } from "./LatencyIndicator.1.1.0";
 
 const meta: Meta<typeof LatencyIndicator> = {
   title: "Components/LatencyIndicator",
@@ -46,11 +47,11 @@ export const DarkBackground: Story = {
     <div
       style={{
         display: "flex",
-        gap: 32,
+        gap: layout.gap32,
         alignItems: "flex-start",
-        backgroundColor: "#1A1A1A",
-        padding: 24,
-        borderRadius: 16,
+        background: semanticColors.backdropInvertedBackground,
+        padding: layout.gap24,
+        borderRadius: layout.radiusM,
       }}
     >
       <LatencyIndicator rtt={28} darkMode />
