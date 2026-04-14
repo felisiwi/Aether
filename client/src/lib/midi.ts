@@ -1,6 +1,6 @@
 // ─── Instrument mode ─────────────────────────────────────────────
 
-export type InstrumentMode = 'keyboard' | 'wind'
+export type InstrumentMode = 'keyboard' | 'wind' | 'nanokey'
 
 // ─── MIDI event types ────────────────────────────────────────────
 

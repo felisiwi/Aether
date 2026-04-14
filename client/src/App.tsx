@@ -77,8 +77,9 @@ function Session({
   const [remoteSynth, setRemoteSynth] = useState<Synth | null>(null)
   useEffect(() => {
     if (!audioCtx) return
-    const local = new Synth(audioCtx, mode)
-    const remote = new Synth(audioCtx, mode)
+    const synthMode: 'keyboard' | 'wind' = mode === 'nanokey' ? 'keyboard' : mode
+    const local = new Synth(audioCtx, synthMode)
+    const remote = new Synth(audioCtx, synthMode)
     setSynth(local)
     setRemoteSynth(remote)
     return () => {

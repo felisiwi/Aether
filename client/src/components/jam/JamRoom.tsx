@@ -405,7 +405,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const prevKbTransposeRef = useRef(transpose)
     const prevKbOctaveRef = useRef(pianoOctaveShift)
     useEffect(() => {
-      if (localMode !== 'keyboard' || !synth) return
+      if ((localMode !== 'keyboard' && localMode !== 'nanokey') || !synth) return
       const tDelta = transpose - prevKbTransposeRef.current
       const oDelta = (pianoOctaveShift - prevKbOctaveRef.current) * 12
       const totalDelta = tDelta + oDelta
@@ -445,7 +445,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const handleOctaveChange = useCallback(
       (v: number) => {
-        if (localMode === 'keyboard') {
+        if (localMode === 'keyboard' || localMode === 'nanokey') {
           pianoRef.current?.setOctaveShift(v)
         } else {
           setWindOctaveShift(v)
@@ -536,6 +536,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             setLocalNotes((prev) => prev.filter(n => n !== note))
           }
         } else if (event.type === 'cc') {
+          if (localMode === 'nanokey') return
           sendMidi(event)
           if (!expressionLocked) {
             synth.setCC(event.cc, event.value)
@@ -806,7 +807,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const localPlayerProps = {
       playerName: 'YOU',
       variant: 'local' as const,
-      instrument: localMode === 'wind' ? 'Aerophone Mini' : 'Piano',
+      instrument: localMode === 'wind' ? 'Aerophone Mini' : localMode === 'nanokey' ? 'nanoKEY2' : 'Piano',
       latency: rtt ?? 0,
       chordName: chordCardMainLine ?? '',
       notes: chordCardNotesLine ? chordCardNotesLine.split(' + ') : [],
@@ -1049,7 +1050,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         </div>
 
         {/* ── Bottom piano keyboard ────────────────────────────────── */}
-        {localMode === 'keyboard' && (
+        {(localMode === 'keyboard' || localMode === 'nanokey') && (
           <div style={{ flexShrink: 0, paddingBottom: layout.gap16, paddingLeft: layout.gap96, paddingRight: layout.gap96 }}>
             {/* Hidden PianoKeyboard keeps window keyboard event listeners alive */}
             <div style={{ display: 'none' }}>

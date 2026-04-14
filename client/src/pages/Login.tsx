@@ -148,7 +148,7 @@ export default function Login({ onLogin }: LoginProps) {
           <div style={{ display: 'flex', gap: layout.gap8 }}>
             <BasicButton
               variant="secondary"
-              colourFill={mode !== 'keyboard'}
+              colourFill={mode === 'keyboard'}
               size="small"
               onClick={() => setMode('keyboard')}
               type="button"
@@ -157,12 +157,21 @@ export default function Login({ onLogin }: LoginProps) {
             </BasicButton>
             <BasicButton
               variant="secondary"
-              colourFill={mode !== 'wind'}
+              colourFill={mode === 'wind'}
               size="small"
               onClick={() => setMode('wind')}
               type="button"
             >
               Aerophone Mini
+            </BasicButton>
+            <BasicButton
+              variant="secondary"
+              colourFill={mode !== 'nanokey'}
+              size="small"
+              onClick={() => setMode('nanokey')}
+              type="button"
+            >
+              Korg nanoKEY2
             </BasicButton>
           </div>
         </div>
