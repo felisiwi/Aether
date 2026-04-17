@@ -20,10 +20,12 @@ export interface ChordDisplayProps {
   style?: React.CSSProperties;
 }
 
+/** Semantic colour guide: local card = light peach; remote = components primary10. */
 function surfaceBg(v: ChordDisplayVariant): string {
-  return v === "local"
-    ? semanticColors.backdropSurfaceElevatedSurface
-    : themeTokens.purple.primary10;
+  if (v === "local") {
+    return semanticColors.backdropSurfaceElevatedSurface;
+  }
+  return themeTokens.purple.primary10;
 }
 
 function borderCol(v: ChordDisplayVariant): string {
@@ -50,16 +52,17 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
     display: "flex",
     flexDirection: "column",
     alignItems: "stretch",
-    gap: layout.gap8,
-    padding: layout.gap24,
-    borderRadius: layout.radiusS,
-    borderWidth: layout.strokeS,
+    gap: layout.gap16,
+    padding: layout.gap32,
+    borderRadius: layout.radiusM,
+    borderWidth: layout.strokeM,
     borderStyle: "solid",
     borderColor: borderCol(variant),
     boxSizing: "border-box",
     minWidth: 0,
-    background: surfaceBg(variant),
     ...style,
+    /* Variant surface must win over arbitrary `style` so local stays peach / remote light purple. */
+    background: surfaceBg(variant),
   };
 
   const chordStyle: React.CSSProperties = {
@@ -76,7 +79,6 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
   const keyStyle: React.CSSProperties = {
     fontFamily,
     fontSize: keyType.fontSize,
-    fontWeight: keyType.fontWeight,
     lineHeight: `${keyType.lineHeight}px`,
     letterSpacing: keyType.letterSpacing,
     color: textColor,

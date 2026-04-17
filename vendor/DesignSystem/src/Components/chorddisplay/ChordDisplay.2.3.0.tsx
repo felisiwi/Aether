@@ -1,97 +1,146 @@
 import React from "react";
-import { HeldKeys } from "../heldkeys/HeldKeys.1.1.0";
-import {
-  layout,
-  semanticColors,
-  typography,
-  fontFamily,
-  colors,
-  themeTokens,
-} from "../../tokens/design-tokens";
+import InternalKeyInput from "../internalkeyinput/InternalKeyInput.1.0.0";
+import { Tag } from "../tag/Tag.1.0.0";
+import { getPlayerTheme, type ThemeIndex } from "../../tokens/theme-map";
+import { layout, semanticColors } from "../../tokens/design-tokens";
 
-export type ChordDisplayVariant = "local" | "remote";
+export type ChordDisplayVariant = "default" | "themed" | "oscilloscope";
 
+export interface ChordDisplayNote {
+  note: string;
+  partOfChord: boolean;
+}
+
+/**
+ * Chord card: `default` (local orange), `themed` (remote player colour), or `oscilloscope` (solo waveform canvas).
+ * Padding: `Type=Default` / `Themed` — `VariableID:9053:54` → `layout.gap16`. `Oscilloscope` — horizontal `9053:54`, vertical `9053:53`.
+ */
 export interface ChordDisplayProps {
   variant: ChordDisplayVariant;
-  chordName: string;
-  notes: string[];
-  keyName: string;
+  notes?: ChordDisplayNote[];
+  chordName?: string;
+  themeIndex?: ThemeIndex;
+  oscilloscopeRef?: React.RefObject<HTMLCanvasElement | null>;
   className?: string;
   style?: React.CSSProperties;
 }
 
-/** Semantic colour guide: local card = light peach; remote = components primary10. */
-function surfaceBg(v: ChordDisplayVariant): string {
-  if (v === "local") {
-    return semanticColors.backdropSurfaceElevatedSurface;
-  }
-  return themeTokens.purple.primary10;
-}
-
-function borderCol(v: ChordDisplayVariant): string {
-  return v === "local" ? semanticColors.strokeColour : themeTokens.purple.primary50;
-}
-
-function headingCol(v: ChordDisplayVariant): string {
-  return v === "local" ? colors.textHeadingColour : themeTokens.purple.primary50;
-}
-
-const chordType = typography.titleL;
-const keyType = typography.bodyL;
+const CARD_HEIGHT = 180;
 
 export const ChordDisplay: React.FC<ChordDisplayProps> = ({
   variant,
+  notes = [],
   chordName,
-  notes,
-  keyName,
+  themeIndex = 0,
+  oscilloscopeRef,
   className,
   style,
 }) => {
-  const textColor = headingCol(variant);
-  const containerStyle: React.CSSProperties = {
+  const isOsc = variant === "oscilloscope";
+  const themedIdx = themeIndex as ThemeIndex;
+  const theme = getPlayerTheme(themedIdx);
+
+  const borderColor =
+    variant === "themed"
+      ? theme.primary50
+      : semanticColors.strokeColour;
+
+  const backgroundColor = (() => {
+    if (variant === "oscilloscope") {
+      return semanticColors.backdropStaticBlack;
+    }
+    if (variant === "themed") {
+      return theme.primary50;
+    }
+    return semanticColors.backdropSurfaceColouredSurface;
+  })();
+
+  const paddingStyle: React.CSSProperties = isOsc
+    ? {
+        paddingLeft: layout.gap16,
+        paddingRight: layout.gap16,
+        paddingTop: layout.gap8,
+        paddingBottom: layout.gap8,
+      }
+    : {
+        padding: layout.gap16,
+      };
+
+  const shellStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
     alignItems: "stretch",
-    gap: layout.gap16,
-    padding: layout.gap32,
+    justifyContent: "center",
+    boxSizing: "border-box",
+    minWidth: 0,
+    flex: 1,
+    height: CARD_HEIGHT,
+    minHeight: CARD_HEIGHT,
     borderRadius: layout.radiusM,
     borderWidth: layout.strokeM,
     borderStyle: "solid",
-    borderColor: borderCol(variant),
-    boxSizing: "border-box",
-    minWidth: 0,
+    ...paddingStyle,
     ...style,
-    /* Variant surface must win over arbitrary `style` so local stays peach / remote light purple. */
-    background: surfaceBg(variant),
+    borderColor,
+    background: backgroundColor,
   };
 
-  const chordStyle: React.CSSProperties = {
-    fontFamily,
-    fontSize: chordType.fontSize,
-    fontWeight: chordType.fontWeight,
-    lineHeight: `${chordType.lineHeight}px`,
-    fontStretch: `${chordType.fontWidth}%`,
-    letterSpacing: chordType.letterSpacing,
-    color: textColor,
-    textAlign: "center",
+  const noteItems = notes;
+  const hasNotes = noteItems.length > 0;
+  const showTag = Boolean(chordName?.trim());
+
+  const innerStyle: React.CSSProperties = {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 0,
+    minHeight: 0,
+    width: "100%",
   };
 
-  const keyStyle: React.CSSProperties = {
-    fontFamily,
-    fontSize: keyType.fontSize,
-    fontWeight: 400,
-    lineHeight: `${keyType.lineHeight}px`,
-    letterSpacing: keyType.letterSpacing,
-    color: textColor,
-    textAlign: "center",
-    fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
-  };
+  const tagVariant = variant === "themed" ? "themed" : "default";
+  const noteVariant = variant === "themed" ? "themed" : "default";
 
   return (
-    <div className={className} style={containerStyle} role="region" aria-label="Chord display">
-      <HeldKeys notes={notes} variant={variant} />
-      <span style={chordStyle}>{chordName || "—"}</span>
-      <span style={keyStyle}>{keyName || "—"}</span>
+    <div
+      className={className}
+      style={shellStyle}
+      role="region"
+      aria-label="Chord display"
+    >
+      {isOsc ? (
+        <div style={{ flex: 1, minHeight: 0, width: "100%", position: "relative" }}>
+          <canvas
+            ref={oscilloscopeRef}
+            aria-hidden
+            style={{
+              display: "block",
+              width: "100%",
+              height: "100%",
+              verticalAlign: "top",
+            }}
+          />
+        </div>
+      ) : (
+        <div style={innerStyle}>
+          {hasNotes ? (
+            <InternalKeyInput
+              notes={noteItems}
+              variant={noteVariant}
+              themeIndex={themedIdx}
+            />
+          ) : null}
+          {showTag ? (
+            <Tag
+              label={chordName!.trim()}
+              variant={tagVariant}
+              themeIndex={themedIdx}
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };

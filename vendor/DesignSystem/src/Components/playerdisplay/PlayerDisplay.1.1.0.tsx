@@ -2,16 +2,18 @@ import React from "react";
 import PlayerInfo from "../playerinfo/PlayerInfo.1.1.0";
 import ChordDisplay from "../chorddisplay/ChordDisplay.2.3.0";
 import type { ChordDisplayProps } from "../chorddisplay/ChordDisplay.2.3.0";
+import type { ThemeIndex } from "../../tokens/theme-map";
 import { layout } from "../../tokens/design-tokens";
 
 export interface PlayerDisplayProps {
   playerName: string;
-  variant: ChordDisplayProps["variant"];
+  variant: "local" | "remote";
   instrument: string;
   latency: number | null;
   chordName?: string;
   notes?: string[];
-  keyName?: string;
+  /** Remote player theme slot (0–3). Ignored when `variant` is `local`. */
+  themeIndex?: ThemeIndex;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -26,7 +28,7 @@ export const PlayerDisplay: React.FC<PlayerDisplayProps> = ({
   latency,
   chordName = "",
   notes = [],
-  keyName = "",
+  themeIndex = 0,
   className,
   style,
 }) => {
@@ -39,6 +41,14 @@ export const PlayerDisplay: React.FC<PlayerDisplayProps> = ({
     ...style,
   };
 
+  const chordVariant: ChordDisplayProps["variant"] =
+    variant === "local" ? "default" : "themed";
+
+  const chordNotes = notes.map((note) => ({
+    note,
+    partOfChord: true,
+  }));
+
   return (
     <section className={className} style={col} aria-label={`Player ${playerName}`}>
       <PlayerInfo
@@ -48,10 +58,10 @@ export const PlayerDisplay: React.FC<PlayerDisplayProps> = ({
         variant={variant}
       />
       <ChordDisplay
-        variant={variant}
+        variant={chordVariant}
         chordName={chordName}
-        notes={notes}
-        keyName={keyName}
+        notes={chordNotes}
+        themeIndex={themeIndex}
       />
     </section>
   );
