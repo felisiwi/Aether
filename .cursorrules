@@ -1,0 +1,31 @@
+# Aether Agent Rules
+
+## Critical — Never Change
+- WebRTC data channel: ordered: false, maxRetransmits: 0
+- CC11 breath control: always callbackRef, never useState
+- Oscilloscope canvas: height: 180, flexShrink: 0 — do not override
+- localStorage keys: jamlink_user / jamlink_theme — do not rename
+- Git commits: always --no-verify to bypass Husky
+
+## Git Staging Rules
+- NEVER use `git add -A` unless explicitly instructed
+- Always stage only the specific files you changed: `git add path/to/file1 path/to/file2`
+- Before every commit, run `git status` and confirm only intended files are staged
+- If unexpected files appear in `git status`, stop and report them — do not commit
+- Only use `git add -A` when the task explicitly says "stage all changes"
+
+## Token Rules
+- No hardcoded hex values anywhere — all colours from design-tokens.ts
+- No hardcoded px values — all spacing from layout tokens
+- Theme tokens use keys: purple, pink, green, blue (in that order for players 1–4)
+- Import theme map from theme-map.ts, not directly from themeTokens by name
+
+## Vendor Copy Rules
+- DS changes made in vendor/ must be manually cp'd back to DesignSystem source
+- Never run cp commands automatically — always report which files need copying
+- Token file lives at vendor/DesignSystem/src/tokens/design-tokens.ts
+
+## Component Rules
+- Inline styles only — no CSS files, no Tailwind
+- TypeScript strict — zero tsc errors before any commit
+- Follow existing DS component patterns for file structure and exports
