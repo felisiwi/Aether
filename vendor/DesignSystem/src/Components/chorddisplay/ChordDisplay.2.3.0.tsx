@@ -25,15 +25,15 @@ function surfaceBg(v: ChordDisplayVariant): string {
   if (v === "local") {
     return semanticColors.backdropSurfaceElevatedSurface;
   }
-  return themeTokens.components.primary10;
+  return themeTokens.purple.primary10;
 }
 
 function borderCol(v: ChordDisplayVariant): string {
-  return v === "local" ? semanticColors.strokeColour : themeTokens.components.primary50;
+  return v === "local" ? semanticColors.strokeColour : themeTokens.purple.primary50;
 }
 
 function headingCol(v: ChordDisplayVariant): string {
-  return v === "local" ? colors.textHeadingColour : themeTokens.components.primary50;
+  return v === "local" ? colors.textHeadingColour : themeTokens.purple.primary50;
 }
 
 const chordType = typography.titleL;

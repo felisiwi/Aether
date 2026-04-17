@@ -105,7 +105,7 @@ export default function PianoKey({
 
   const borderColor =
     isGhost && !isPressed
-      ? themeTokens.components.primary50
+      ? themeTokens.purple.primary50
       : isBlack
         ? semanticColors.strokeInvertedWeak
         : semanticColors.strokeWeak;
@@ -139,7 +139,7 @@ export default function PianoKey({
     color: isPressed
       ? colors.textPressed
       : isGhost
-        ? themeTokens.components.primary50
+        ? themeTokens.purple.primary50
         : isBlack
       /**
        * VariableID:14886:17771 — inverted-disabled text.

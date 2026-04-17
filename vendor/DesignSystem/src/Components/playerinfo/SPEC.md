@@ -11,7 +11,7 @@ Not a card and not a full player display; it is only the top textual metadata ro
 
 ## Anatomy
 - Root row: horizontal distribution with left text group and right-aligned instrument text.
-- Player name (left): `typography.label`, uppercase transform, color `colors.textHeadingNeutral` (local) or `themeTokens.components.primary50` (remote).
+- Player name (left): `typography.label`, uppercase transform, color `colors.textHeadingNeutral` (local) or `themeTokens.purple.primary50` (remote).
 - Latency text (left, after name): `typography.label`, same color token as player name.
 - Instrument text (right): `typography.label`, same color token as player name, right aligned.
 - Spacing: tokenized horizontal gap between left items (`layout.gap8`) and full-width row layout.
@@ -20,7 +20,7 @@ Not a card and not a full player display; it is only the top textual metadata ro
 | Variant name | Visual difference | Key token changes |
 |-------------|-------------------|-------------------|
 | Local | Neutral heading text | `colors.textHeadingNeutral` |
-| Remote | Purple heading text | `themeTokens.components.primary50` |
+| Remote | Purple heading text | `themeTokens.purple.primary50` |
 
 ## Props
 | Prop | Type | Required | Default | Notes |

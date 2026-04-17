@@ -30,11 +30,11 @@ function separatorChar(sep: HeldKeysSeparator): string {
 }
 
 function noteColor(v: HeldKeysVariant): string {
-  return v === "local" ? colors.textHeadingColour : themeTokens.components.primary50;
+  return v === "local" ? colors.textHeadingColour : themeTokens.purple.primary50;
 }
 
 function sepColor(v: HeldKeysVariant): string {
-  return v === "local" ? colors.textBodyColour : themeTokens.components.primary40;
+  return v === "local" ? colors.textBodyColour : themeTokens.purple.primary40;
 }
 
 /**

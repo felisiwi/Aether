@@ -21,7 +21,7 @@ export interface PlayerInfoProps {
 const labelType = typography.label;
 
 function textColor(v: PlayerInfoVariant): string {
-  return v === "local" ? colors.textHeadingNeutral : themeTokens.components.primary50;
+  return v === "local" ? colors.textHeadingNeutral : themeTokens.purple.primary50;
 }
 
 function formatLatency(latency: number | null): string {

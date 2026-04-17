@@ -47,19 +47,19 @@ export const typography = {
     fontSize: 10,
     lineHeight: 16,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 120  },
   buttonM: {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   buttonS: {
     fontSize: 14,
     lineHeight: 28,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   titleM: {
     fontSize: 24,
@@ -83,13 +83,13 @@ export const typography = {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0.3,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   buttonSActive: {
     fontSize: 14,
     lineHeight: 28,
     letterSpacing: 0.2,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   h6: {
     lineHeight: 24,
@@ -127,7 +127,7 @@ export const semanticColors = {
   strokeDisabled: "#0000001f",
   textFunctionalError: "#EB0000",
   textFunctionalSuccess: "#168500",
-  backdropSurfaceThemedSurface: "#CD3291",
+  backdropSurfaceThemedSurface: "#7031CE",
   backdropSurfaceColouredSurface: "#F04700",
   backdropOpacityAdaptiveShadowsDropshadowMid: "#0000000f",
   backdropOpacityAdaptiveShadowsInnerglow: "#ffffff99",
@@ -135,17 +135,17 @@ export const semanticColors = {
   textFunctionalLink: "#006DCC",
   textFunctionalVisitedLink: "#4400FF",
   semanticStrokeStaticStrokeBlackSolid: "#000000",
-  semanticStrokeStaticStrokeBlackWeak: "#0000001f",
+  semanticStrokeStaticStrokeBlackWeak: "#0000000f",
   semanticStrokeStaticStrokeBlackStrong: "#00000099",
   semanticStrokeStaticStrokeWhiteSolid: "#FFFFFF",
-  semanticStrokeStaticStrokeWhiteWeak: "#ffffff1f",
+  semanticStrokeStaticStrokeWhiteWeak: "#ffffff0f",
   strokeElevatedSurface: "#ffffff99",
-  semanticStrokeStaticStrokeDisabledStatic: "#4D4D4D",
+  semanticStrokeStaticStrokeDisabledStatic: "#CCCCCC",
   backdropOpacityStaticOpacityDarkenedWeak: "#0000000f",
   backdropOpacityStaticOpacityLightenedWeak: "#ffffff0f",
   backdropStaticWhite: "#FFFFFF",
   backdropStaticBlack: "#000000",
-  backdropStaticStaticDisabledSurface: "#808080",
+  backdropStaticStaticDisabledSurface: "#F2F2F2",
   backdropOpacityAdaptiveShadowsDropshadowHigh: "#0000001f",
   buttonStrokeTertiary: "#000000",
   buttonStrokeSecondary: "#FFFFFF",
@@ -209,10 +209,12 @@ export const semanticColors = {
   semanticStrokeStaticStrokeWhiteStrong: "#ffffff99",
   backdropStaticDarkenedWhite: "#F2F2F2",
   backdropStaticLightenedBlack: "#0D0D0D",
-  strokeTheme: "#CD3291",
-  backdropSurfaceThemedElevatedSurface: "#F5D6E9",
-  backdropStaticThemedElevatedSurface: "#F5D6E9",
-  backdropStaticElevatedSurface: "#FDE1D8"
+  strokeTheme: "#7031CE",
+  backdropSurfaceThemedElevatedSurface: "#E2D6F5",
+  backdropStaticThemedElevatedSurface: "#E2D6F5",
+  backdropStaticElevatedSurface: "#FDE1D8",
+  strokeThemePressed: "#C6ADEB",
+  backdropSurfaceThemedSurfacePressed: "#C6ADEB"
 } as const;
 
 /** Spacing gaps, radii, stroke weights (Desktop breakpoint in graph; gaps often identical per mode). */
@@ -274,18 +276,7 @@ export const derivedTokens = {
 
 /** Theme colour ramps from Figma Themes collection. Each key is a mode (e.g. bubbleGum, components). */
 export const themeTokens = {
-  bubbleGum: {
-    primary20: "#EBADD3",
-    primary30: "#E184BD",
-    primary60: "#A42874",
-    primary10: "#F5D6E9",
-    primary70: "#7B1E57",
-    primary40: "#D75BA7",
-    primary50: "#CD3291",
-    primary80: "#52143A",
-    primary90: "#290A1D",
-    primaryInverse50: "#000000"  },
-  components: {
+  purple: {
     primary20: "#C6ADEB",
     primary30: "#A984E1",
     primary60: "#5618B4",
@@ -296,18 +287,29 @@ export const themeTokens = {
     primary80: "#2A0462",
     primary90: "#160A29",
     primaryInverse50: "#000000"  },
-  developedComponents: {
+  pink: {
+    primary20: "#EBADD3",
+    primary30: "#E184BD",
+    primary60: "#A42874",
+    primary10: "#F5D6E9",
+    primary70: "#7B1E57",
+    primary40: "#D75BA7",
+    primary50: "#CD3291",
+    primary80: "#52143A",
+    primary90: "#290A1D",
+    primaryInverse50: "#000000"  },
+  green: {
     primary20: "#68DF89",
     primary30: "#3DD669",
     primary60: "#166A2E",
     primary10: "#92E8AA",
     primary70: "#0F481F",
     primary40: "#27B951",
-    primary50: "#1E8E3E",
+    primary50: "#1C873B",
     primary80: "#0A2911",
     primary90: "#041509",
     primaryInverse50: "#000000"  },
-  prototypes: {
+  blue: {
     primary20: "#7BAFEB",
     primary30: "#4E94E4",
     primary60: "#144986",

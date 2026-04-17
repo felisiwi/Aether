@@ -11,7 +11,7 @@ function getTokens(variant: ChordDisplayVariant, dark: boolean) {
   const emptyColor = dark ? semanticColors.strokeInvertedStrong : colors.textDisabled;
   switch (variant) {
     case "colour": return { borderColor: semanticColors.strokeColour, notesColor: semanticColors.strokeColour, chordColor: colors.textHeadingColour, altColor: dark ? colors.textBodyNeutralDark : colors.textBodyNeutral, emptyColor };
-    case "theme": return { borderColor: themeTokens.components.primary50, notesColor: themeTokens.components.primary50, chordColor: themeTokens.components.primary50, altColor: dark ? colors.textBodyNeutralDark : colors.textBodyNeutral, emptyColor };
+    case "theme": return { borderColor: themeTokens.purple.primary50, notesColor: themeTokens.purple.primary50, chordColor: themeTokens.purple.primary50, altColor: dark ? colors.textBodyNeutralDark : colors.textBodyNeutral, emptyColor };
     default: return { borderColor: dark ? semanticColors.strokeInvertedStrong : semanticColors.strokeMedium, notesColor: dark ? semanticColors.strokeInvertedStrong : colors.textBodyNeutral, chordColor: dark ? semanticColors.strokeInvertedSolid : colors.textHeadingNeutral, altColor: dark ? colors.textBodyNeutralDark : colors.textBodyNeutral, emptyColor };
   }
 }

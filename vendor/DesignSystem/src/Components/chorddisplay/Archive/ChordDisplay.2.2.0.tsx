@@ -23,15 +23,15 @@ export interface ChordDisplayProps {
 function surfaceBg(v: ChordDisplayVariant): string {
   return v === "local"
     ? semanticColors.backdropSurfaceElevatedSurface
-    : themeTokens.components.primary10;
+    : themeTokens.purple.primary10;
 }
 
 function borderCol(v: ChordDisplayVariant): string {
-  return v === "local" ? semanticColors.strokeColour : themeTokens.components.primary50;
+  return v === "local" ? semanticColors.strokeColour : themeTokens.purple.primary50;
 }
 
 function headingCol(v: ChordDisplayVariant): string {
-  return v === "local" ? colors.textHeadingColour : themeTokens.components.primary50;
+  return v === "local" ? colors.textHeadingColour : themeTokens.purple.primary50;
 }
 
 const chordType = typography.titleL;

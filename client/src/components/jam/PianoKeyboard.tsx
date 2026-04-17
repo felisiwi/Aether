@@ -367,7 +367,7 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
                 position: 'absolute',
                 left: k.x,
                 width: BLACK_W,
-                color: ghost ? themeTokens.components.primary50 : pressed ? colors.textPressed : noteLabelBase.color,
+                color: ghost ? themeTokens.purple.primary50 : pressed ? colors.textPressed : noteLabelBase.color,
                 transition: 'color 60ms ease',
               }}
             >
@@ -431,7 +431,7 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
               style={{
                 ...noteLabelBase,
                 width: WHITE_W,
-                color: ghost ? themeTokens.components.primary50 : pressed ? colors.textPressed : noteLabelBase.color,
+                color: ghost ? themeTokens.purple.primary50 : pressed ? colors.textPressed : noteLabelBase.color,
                 transition: 'color 60ms ease',
               }}
             >
