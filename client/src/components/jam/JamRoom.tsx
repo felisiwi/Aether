@@ -133,7 +133,7 @@ function JamRoomParamStackRow({
           variant={variant}
           compact
           isActive={isDragging}
-          innerPanelStyle={isDark ? {
+          panelStyle={isDark ? {
             backgroundColor: semanticColors.backdropOpacityAdaptiveOpacityLightenedMedium,
             borderColor: semanticColors.strokeInvertedMedium,
           } : undefined}
