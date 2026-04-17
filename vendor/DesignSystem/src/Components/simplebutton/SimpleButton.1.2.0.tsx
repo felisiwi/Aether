@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Icon from "../icon/Icon.1.2.0";
 import type { IconName } from "../icon/icon-names";
 import {
@@ -20,6 +20,8 @@ export interface SimpleButtonProps {
   disabled?: boolean;
   /** Ignored when `disabled` is true. */
   state?: SimpleButtonState;
+  /** Use when icon-only (no visible `label`/children) so the button has an accessible name. */
+  ariaLabel?: string;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -89,16 +91,24 @@ export const SimpleButton: React.FC<SimpleButtonProps> = ({
   onClick,
   disabled = false,
   state = "active",
+  ariaLabel,
   className,
   style,
 }) => {
   const content = children ?? label ?? "";
+  const hasVisibleText =
+    typeof content === "string"
+      ? content.length > 0
+      : Boolean(content);
   const tokens = getStateStyle(disabled, state);
+  const [isPressed, setIsPressed] = useState(false);
+  const showPressScale = isPressed && !disabled;
 
   return (
     <button
       type="button"
       className={className}
+      aria-label={ariaLabel}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -117,27 +127,39 @@ export const SimpleButton: React.FC<SimpleButtonProps> = ({
         color: tokens.color,
         cursor: disabled ? "not-allowed" : "pointer",
         boxSizing: "border-box",
+        transform: showPressScale ? "scale(0.92)" : "scale(1)",
+        transition: showPressScale
+          ? "transform 80ms ease-in"
+          : "transform 120ms ease-out",
         ...style,
       }}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
+      onPointerDown={() => {
+        if (!disabled) setIsPressed(true);
+      }}
+      onPointerUp={() => setIsPressed(false)}
+      onPointerCancel={() => setIsPressed(false)}
+      onPointerLeave={() => setIsPressed(false)}
     >
       {showIcon ? <Icon name={iconName} size={32} color={tokens.color} /> : null}
-      <span
-        style={{
-          fontFamily,
-          fontSize: labelType.fontSize,
-          fontWeight: labelType.fontWeight,
-          lineHeight: `${labelType.lineHeight}px`,
-          letterSpacing: labelType.letterSpacing,
-          fontStretch: `${labelType.fontWidth}%`,
-          color: tokens.color,
-          fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {content}
-      </span>
+      {hasVisibleText ? (
+        <span
+          style={{
+            fontFamily,
+            fontSize: labelType.fontSize,
+            fontWeight: labelType.fontWeight,
+            lineHeight: `${labelType.lineHeight}px`,
+            letterSpacing: labelType.letterSpacing,
+            fontStretch: `${labelType.fontWidth}%`,
+            color: tokens.color,
+            fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {content}
+        </span>
+      ) : null}
     </button>
   );
 };
