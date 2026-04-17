@@ -32,6 +32,9 @@ export interface DataWindowProps {
   step?: number;
   /** When true (e.g. linked slider dragging), use active styling together with scroll feedback. */
   isActive?: boolean;
+  /** Merged onto the inner value panel (below optional label). Later keys override built-in panel styles. */
+  panelStyle?: React.CSSProperties;
+  /** Alias for `panelStyle` — same merge target (e.g. KeyOctave display-only overrides). Spread last. */
   innerPanelStyle?: React.CSSProperties;
 }
 
@@ -46,7 +49,7 @@ function getVariantTokens(variant: DataWindowVariant): VariantTokens {
     case "colour":
       return {
         borderColor: semanticColors.strokeColour,
-        labelColor: colors.textHeadingColour,
+        labelColor: colors.textBodyColour,
         innerShadow: `inset 0 1px 2px ${semanticColors.backdropOpacityAdaptiveShadowsInnershadow}`,
       };
     case "theme":
@@ -86,7 +89,8 @@ export const DataWindow: React.FC<DataWindowProps> = ({
   suffix,
   step = 1,
   isActive: isActiveProp = false,
-  innerPanelStyle = undefined,
+  panelStyle: panelStyleProp,
+  innerPanelStyle: innerPanelStyleProp,
 }) => {
   const tokens = getVariantTokens(variant);
   const numericMode = value !== undefined;
@@ -164,7 +168,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     fontSize: typography.label.fontSize,
     lineHeight: `${typography.label.lineHeight}px`,
     letterSpacing: typography.label.letterSpacing,
-    fontWeight: typography.label.fontWeight,
+    fontWeight: 660,
     fontStretch: `${typography.label.fontWidth}%`,
     color: active ? colors.textPressed : colors.textBodyNeutral,
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
@@ -173,10 +177,11 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     userSelect: "none",
   });
 
+  /** Snapshot: Default `VariableID:9006:168` → stroke-medium; Active Variant2 `VariableID:13012:18766` → stroke-colour-pressed. */
   const panelBorderColor = numericMode
     ? isActive
-      ? semanticColors.strokeColour
-      : semanticColors.strokeWeak
+      ? semanticColors.strokeColourPressed
+      : semanticColors.strokeMedium
     : tokens.borderColor;
 
   const wrapperStyle: React.CSSProperties = {
@@ -194,7 +199,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     fontWeight: typography.label.fontWeight,
     fontStretch: `${typography.label.fontWidth}%`,
     color: tokens.labelColor,
-    textTransform: "uppercase",
+    textTransform: "none",
     whiteSpace: "nowrap",
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
     margin: 0,
@@ -210,7 +215,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     paddingLeft: compact ? layout.gap8 : layout.gap16,
     paddingRight: compact ? layout.gap8 : layout.gap16,
     borderRadius: layout.radiusS,
-    borderWidth: layout.strokeS,
+    borderWidth: layout.strokeM,
     borderStyle: "solid",
     borderColor: panelBorderColor,
     backgroundColor:
@@ -218,6 +223,8 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     boxShadow: tokens.innerShadow,
     boxSizing: "border-box",
     minWidth: 0,
+    ...panelStyleProp,
+    ...innerPanelStyleProp,
   };
 
   const valueRowStyle: React.CSSProperties = {
@@ -234,7 +241,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
       {label && <span style={labelStyle}>{label}</span>}
       <div
         ref={numericMode ? wheelContainerRef : undefined}
-        style={{ ...panelStyle, ...innerPanelStyle }}
+        style={panelStyle}
       >
         {numericMode && (
           <div style={valueRowStyle}>

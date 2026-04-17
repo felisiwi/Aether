@@ -47,19 +47,19 @@ export const typography = {
     fontSize: 10,
     lineHeight: 16,
     letterSpacing: 0,
-    fontWeight: 660,
+    fontWeight: 600,
     fontWidth: 120  },
   buttonM: {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0,
-    fontWeight: 660,
+    fontWeight: 600,
     fontWidth: 108  },
   buttonS: {
     fontSize: 14,
     lineHeight: 28,
     letterSpacing: 0,
-    fontWeight: 660,
+    fontWeight: 600,
     fontWidth: 108  },
   titleM: {
     fontSize: 24,
@@ -83,13 +83,13 @@ export const typography = {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0.3,
-    fontWeight: 660,
+    fontWeight: 600,
     fontWidth: 108  },
   buttonSActive: {
     fontSize: 14,
     lineHeight: 28,
     letterSpacing: 0.2,
-    fontWeight: 660,
+    fontWeight: 600,
     fontWidth: 108  },
   h6: {
     lineHeight: 24,
@@ -127,7 +127,7 @@ export const semanticColors = {
   strokeDisabled: "#0000001f",
   textFunctionalError: "#EB0000",
   textFunctionalSuccess: "#168500",
-  backdropSurfaceThemedSurface: "#7031CE",
+  backdropSurfaceThemedSurface: "#CD3291",
   backdropSurfaceColouredSurface: "#F04700",
   backdropOpacityAdaptiveShadowsDropshadowMid: "#0000000f",
   backdropOpacityAdaptiveShadowsInnerglow: "#ffffff99",
@@ -135,17 +135,17 @@ export const semanticColors = {
   textFunctionalLink: "#006DCC",
   textFunctionalVisitedLink: "#4400FF",
   semanticStrokeStaticStrokeBlackSolid: "#000000",
-  semanticStrokeStaticStrokeBlackWeak: "#0000000f",
+  semanticStrokeStaticStrokeBlackWeak: "#0000001f",
   semanticStrokeStaticStrokeBlackStrong: "#00000099",
   semanticStrokeStaticStrokeWhiteSolid: "#FFFFFF",
-  semanticStrokeStaticStrokeWhiteWeak: "#ffffff0f",
+  semanticStrokeStaticStrokeWhiteWeak: "#ffffff1f",
   strokeElevatedSurface: "#ffffff99",
-  semanticStrokeStaticStrokeDisabledStatic: "#CCCCCC",
+  semanticStrokeStaticStrokeDisabledStatic: "#4D4D4D",
   backdropOpacityStaticOpacityDarkenedWeak: "#0000000f",
   backdropOpacityStaticOpacityLightenedWeak: "#ffffff0f",
   backdropStaticWhite: "#FFFFFF",
   backdropStaticBlack: "#000000",
-  backdropStaticStaticDisabledSurface: "#F2F2F2",
+  backdropStaticStaticDisabledSurface: "#808080",
   backdropOpacityAdaptiveShadowsDropshadowHigh: "#0000001f",
   buttonStrokeTertiary: "#000000",
   buttonStrokeSecondary: "#FFFFFF",
@@ -209,12 +209,10 @@ export const semanticColors = {
   semanticStrokeStaticStrokeWhiteStrong: "#ffffff99",
   backdropStaticDarkenedWhite: "#F2F2F2",
   backdropStaticLightenedBlack: "#0D0D0D",
-  strokeTheme: "#7031CE",
-  backdropSurfaceThemedElevatedSurface: "#E2D6F5",
-  backdropStaticThemedElevatedSurface: "#E2D6F5",
-  backdropStaticElevatedSurface: "#FDE1D8",
-  strokeThemePressed: "#C6ADEB",
-  backdropSurfaceThemedSurfacePressed: "#C6ADEB"
+  strokeTheme: "#CD3291",
+  backdropSurfaceThemedElevatedSurface: "#F5D6E9",
+  backdropStaticThemedElevatedSurface: "#F5D6E9",
+  backdropStaticElevatedSurface: "#FDE1D8"
 } as const;
 
 /** Spacing gaps, radii, stroke weights (Desktop breakpoint in graph; gaps often identical per mode). */
@@ -274,7 +272,7 @@ export const derivedTokens = {
     paddingButton: "paddingSubtle * 2"  }
 } as const;
 
-/** Theme colour ramps from Figma Themes collection. Each key is a mode (e.g. bubbleGum, components). */
+/** Theme colour ramps from Figma Themes collection. Each key is a mode (purple, pink, green, blue). */
 export const themeTokens = {
   purple: {
     primary20: "#C6ADEB",
@@ -305,7 +303,7 @@ export const themeTokens = {
     primary10: "#92E8AA",
     primary70: "#0F481F",
     primary40: "#27B951",
-    primary50: "#1C873B",
+    primary50: "#1E8E3E",
     primary80: "#0A2911",
     primary90: "#041509",
     primaryInverse50: "#000000"  },

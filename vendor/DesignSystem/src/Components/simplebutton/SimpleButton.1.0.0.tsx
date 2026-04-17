@@ -19,7 +19,8 @@ export interface SimpleButtonProps {
   style?: React.CSSProperties;
 }
 
-const btnType = typography.buttonM;
+/** REST snapshot: label 10 / 16, ExtraBold 660 — Text Variable/Label. */
+const labelType = typography.label;
 
 export const SimpleButton: React.FC<SimpleButtonProps> = ({
   children,
@@ -38,50 +39,74 @@ export const SimpleButton: React.FC<SimpleButtonProps> = ({
   let background: string;
   let color: string;
   let borderColor: string;
+  let borderWidthPx: number;
+  let paddingBottom: number = layout.gap4;
+  const paddingTop = layout.gap4;
+  const paddingX = layout.gap8;
 
-  if (disabled) {
-    background =
-      variant === "solid"
-        ? semanticColors.backdropStatesDisabledSurface
-        : "transparent";
+  if (variant === "solid") {
+    if (disabled) {
+      background = semanticColors.backdropStatesDisabledSurface;
+      color = colors.textDisabled;
+      borderColor = semanticColors.strokeDisabled;
+      borderWidthPx = 0;
+    } else if (pressed) {
+      background = semanticColors.backdropSurfaceColouredSurface;
+      color = colors.textPressed;
+      borderColor = semanticColors.strokeColourPressed;
+      borderWidthPx = layout.strokeM;
+      paddingBottom = layout.gap2;
+    } else if (hover) {
+      background = semanticColors.backdropSurfaceColouredSurface;
+      color = colors.textHeadingNeutral;
+      borderColor = semanticColors.strokeColourPressed;
+      borderWidthPx = layout.strokeM;
+      paddingBottom = layout.gap2;
+    } else {
+      background = semanticColors.backdropInvertedBackground;
+      color = semanticColors.buttonTextButtonText;
+      borderColor = "transparent";
+      borderWidthPx = 0;
+    }
+  } else if (disabled) {
+    background = "transparent";
     color = semanticColors.buttonTextDisabled;
     borderColor = semanticColors.strokeDisabled;
+    borderWidthPx = layout.strokeS;
   } else if (pressed) {
-    background =
-      variant === "solid"
-        ? semanticColors.buttonSurfaceSmallbuttonPressed
-        : semanticColors.backdropOpacityAdaptiveOpacityDarkenedWeak;
+    background = semanticColors.backdropOpacityAdaptiveOpacityDarkenedWeak;
     color = semanticColors.buttonTextButtonText;
     borderColor = semanticColors.buttonStrokeSubtleColour;
+    borderWidthPx = layout.strokeS;
   } else if (hover) {
-    background =
-      variant === "solid"
-        ? semanticColors.buttonSurfaceSmallbuttonHover
-        : semanticColors.buttonSurfaceHoverTertiary;
+    background = semanticColors.buttonSurfaceHoverTertiary;
     color = colors.textHeadingNeutral;
     borderColor = semanticColors.strokeMedium;
+    borderWidthPx = layout.strokeS;
   } else {
-    background =
-      variant === "solid"
-        ? semanticColors.buttonSurfaceSmallbuttonDefault
-        : "transparent";
+    background = "transparent";
     color = colors.textHeadingNeutral;
     borderColor = semanticColors.strokeMedium;
+    borderWidthPx = layout.strokeS;
   }
 
   const buttonStyle: React.CSSProperties = {
     fontFamily,
-    fontSize: btnType.fontSize,
-    fontWeight: btnType.fontWeight,
-    lineHeight: `${btnType.lineHeight}px`,
-    letterSpacing: btnType.letterSpacing,
-    fontStretch: `${btnType.fontWidth}%`,
-    paddingLeft: layout.paddingSubtle,
-    paddingRight: layout.paddingSubtle,
-    paddingTop: layout.gap8,
-    paddingBottom: layout.gap8,
+    fontSize: labelType.fontSize,
+    fontWeight: 660,
+    lineHeight: `${labelType.lineHeight}px`,
+    letterSpacing: labelType.letterSpacing,
+    fontStretch: `${labelType.fontWidth}%`,
+    fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+    paddingLeft: paddingX,
+    paddingRight: paddingX,
+    paddingTop,
+    paddingBottom,
     borderRadius: layout.radiusS,
-    border: `${layout.strokeS}px solid ${borderColor}`,
+    border:
+      borderWidthPx > 0
+        ? `${borderWidthPx}px solid ${borderColor}`
+        : "none",
     background,
     color,
     cursor: disabled ? "not-allowed" : "pointer",

@@ -5,112 +5,67 @@ import {
   colors,
   semanticColors,
   layout,
+  themeTokens,
 } from "../../tokens/design-tokens";
 
-export type TagType = "default" | "success";
-export type TagState = "default" | "active" | "inactive";
+const THEME_KEYS = ["purple", "pink", "green", "blue"] as const;
 
 export interface TagProps {
-  children: string;
-  type?: TagType;
-  state?: TagState;
+  label: string;
+  variant?: "default" | "themed";
+  themeIndex?: 0 | 1 | 2 | 3;
   className?: string;
   style?: React.CSSProperties;
 }
 
-const label = typography.label;
-
-interface VariantStyle {
-  backgroundColor: string;
-  backgroundOpacity?: number;
-  borderColor: string;
-  borderOpacity?: number;
-  textColor: string;
-  textOpacity?: number;
-}
-
-function getVariantStyle(type: TagType, state: TagState): VariantStyle {
-  if (state === "inactive") {
-    return {
-      backgroundColor: semanticColors.backdropStatesDisabledSurface,
-      borderColor: "transparent",
-      textColor: colors.textDisabled,
-    };
-  }
-
-  if (type === "success") {
-    if (state === "active") {
-      return {
-        backgroundColor: semanticColors.backdropFunctionalSuccessSurface,
-        borderColor: "transparent",
-        textColor: semanticColors.buttonTextButtonText,
-      };
-    }
-    return {
-      backgroundColor: "transparent",
-      borderColor: semanticColors.strokeSuccess,
-      textColor: semanticColors.textFunctionalSuccess,
-    };
-  }
-
-  // type === "default"
-  if (state === "active") {
-    return {
-      backgroundColor: semanticColors.backdropSurfaceElevatedSurface,
-      borderColor: "transparent",
-      textColor: colors.textHeadingColour,
-    };
-  }
-  return {
-    backgroundColor: "transparent",
-    borderColor: semanticColors.strokeSolid,
-    textColor: colors.textLabel,
-  };
-}
+const labelType = typography.label;
 
 export const Tag: React.FC<TagProps> = ({
-  children,
-  type = "default",
-  state = "active",
+  label,
+  variant = "default",
+  themeIndex = 0,
   className,
   style,
 }) => {
-  const v = getVariantStyle(type, state);
-
-  const containerStyle: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingLeft: layout.gap4,
-    paddingRight: layout.gap4,
-    paddingTop: layout.gap2,
-    paddingBottom: layout.gap2,
-    borderRadius: layout.radiusXs,
-    borderWidth: layout.strokeS,
-    borderStyle: "solid",
-    borderColor: v.borderColor,
-    backgroundColor: v.backgroundColor,
-    boxSizing: "border-box",
-    ...style,
-  };
+  const themeKey = THEME_KEYS[themeIndex ?? 0];
+  const textColor =
+    variant === "themed"
+      ? themeTokens[themeKey].primary60
+      : colors.textBodyNeutral;
 
   const textStyle: React.CSSProperties = {
     fontFamily,
-    fontSize: label.fontSize,
-    lineHeight: `${label.lineHeight}px`,
-    letterSpacing: label.letterSpacing,
-    fontWeight: label.fontWeight,
-    fontStretch: `${label.fontWidth}%`,
-    color: v.textColor,
-    whiteSpace: "nowrap",
+    fontSize: labelType.fontSize,
+    fontWeight: 660,
+    lineHeight: `${labelType.lineHeight}px`,
+    letterSpacing: labelType.letterSpacing,
+    fontStretch: `${labelType.fontWidth}%`,
+    color: textColor,
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
+    whiteSpace: "nowrap",
   };
 
   return (
-    <span className={className} style={containerStyle}>
-      <span style={textStyle}>{children}</span>
-    </span>
+    <div
+      className={className}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: layout.gap4,
+        paddingBottom: layout.gap4,
+        paddingLeft: layout.gap8,
+        paddingRight: layout.gap8,
+        borderRadius: layout.radiusS,
+        background: semanticColors.backdropStaticWhite,
+        boxSizing: "border-box",
+        ...style,
+      }}
+    >
+      <span style={textStyle}>{label}</span>
+    </div>
   );
 };
 
+Tag.displayName = "Tag";
 export default Tag;
