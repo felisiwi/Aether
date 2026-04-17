@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
-import { semanticColors, layout } from "../../tokens/design-tokens";
+import { semanticColors, layout, themeTokens } from "../../tokens/design-tokens";
 
 export type HandleSliderVariant = "default" | "colour" | "theme";
 
@@ -17,41 +17,54 @@ export interface HandleSliderProps {
   disabled?: boolean;
   /** Called when the user begins dragging the thumb (pointer down on track). */
   onDragStart?: () => void;
-  /** Called when the drag ends (pointer up / cancel). */
+  /** Called when the user releases the pointer or drag ends. */
   onDragEnd?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
 
-const TRACK_HEIGHT = layout.gap4;
+/** REST snapshot: track (ActiveBar) height 2px — Layout/gap-2. */
+const TRACK_HEIGHT = layout.gap2;
 const THUMB_SIZE = layout.gap16;
+const THUMB_WIDTH_PX = 16;
+const THUMB_HEIGHT_PX = 16;
 
-interface VariantTokens {
-  trackBg: string;
-  thumbBorder: string;
+function trackBackground(
+  variant: HandleSliderVariant,
+  darkMode: boolean,
+  isDragging: boolean,
+): string {
+  if (isDragging) {
+    if (variant === "theme") {
+      return semanticColors.backdropStaticThemedElevatedSurface;
+    }
+    return semanticColors.backdropSurfaceElevatedSurface;
+  }
+  return darkMode
+    ? semanticColors.backdropOpacityAdaptiveOpacityLightenedMedium
+    : semanticColors.backdropOpacityAdaptiveOpacityDarkenedMedium;
 }
 
-function getTokens(variant: HandleSliderVariant, dark: boolean): VariantTokens {
-  const trackBg = dark
-    ? semanticColors.backdropOpacityAdaptiveOpacityLightenedWeak
-    : semanticColors.backdropStatesDisabledSurface;
-
+function fillAndThumbColor(
+  variant: HandleSliderVariant,
+  darkMode: boolean,
+  isDragging: boolean,
+): string {
+  if (isDragging) {
+    if (variant === "theme") {
+      return themeTokens.purple.primary20;
+    }
+    return semanticColors.wrapperColourPressed;
+  }
   switch (variant) {
     case "colour":
-      return {
-        trackBg,
-        thumbBorder: semanticColors.strokeColour,
-      };
+      return semanticColors.strokeColour;
     case "theme":
-      return {
-        trackBg,
-        thumbBorder: semanticColors.backdropSurfaceThemedSurface,
-      };
+      return semanticColors.backdropSurfaceThemedSurface;
     default:
-      return {
-        trackBg,
-        thumbBorder: semanticColors.strokeColour,
-      };
+      return darkMode
+        ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
+        : semanticColors.backdropInvertedBackground;
   }
 }
 
@@ -68,19 +81,10 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const tokens = getTokens(variant, darkMode);
   const clamped = Math.max(0, Math.min(1, value));
 
-  const neutralStroke = darkMode
-    ? semanticColors.strokeInvertedMedium
-    : semanticColors.strokeSolid;
-  const trackFillColor = isDragging
-    ? semanticColors.wrapperColourPressed
-    : neutralStroke;
-  const thumbBorderColor = isDragging ? tokens.thumbBorder : neutralStroke;
-  const thumbFillColor = isDragging
-    ? semanticColors.wrapperColourPressed
-    : semanticColors.strokeSolid;
+  const trackBg = trackBackground(variant, darkMode, isDragging);
+  const accent = fillAndThumbColor(variant, darkMode, isDragging);
 
   const resolve = useCallback(
     (clientX: number) => {
@@ -102,21 +106,17 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       resolve(e.clientX);
     },
-    [disabled, resolve, onDragStart],
+    [disabled, onDragStart, resolve],
   );
 
   const handlePointerUp = useCallback(() => {
-    setIsDragging((was) => {
-      if (was) onDragEnd?.();
-      return false;
-    });
+    setIsDragging(false);
+    onDragEnd?.();
   }, [onDragEnd]);
 
   const handlePointerCancel = useCallback(() => {
-    setIsDragging((was) => {
-      if (was) onDragEnd?.();
-      return false;
-    });
+    setIsDragging(false);
+    onDragEnd?.();
   }, [onDragEnd]);
 
   const handlePointerMove = useCallback(
@@ -143,7 +143,7 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
     flex: 1,
     height: TRACK_HEIGHT,
     borderRadius: layout.radiusRound,
-    backgroundColor: tokens.trackBg,
+    backgroundColor: trackBg,
     overflow: "visible",
   };
 
@@ -154,7 +154,7 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
     height: "100%",
     width: `${clamped * 100}%`,
     borderRadius: layout.radiusRound,
-    backgroundColor: trackFillColor,
+    backgroundColor: accent,
     pointerEvents: "none",
   };
 
@@ -162,14 +162,13 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
     position: "absolute",
     top: "50%",
     left: `${clamped * 100}%`,
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: layout.radiusXs,
-    backgroundColor: thumbFillColor,
-    border: `${layout.strokeL}px solid ${thumbBorderColor}`,
+    width: THUMB_WIDTH_PX,
+    height: THUMB_HEIGHT_PX,
+    borderRadius: layout.radiusNone,
+    backgroundColor: accent,
+    border: "none",
     transform: "translate(-50%, -50%)",
     boxSizing: "border-box",
-    boxShadow: `0 1px 3px ${semanticColors.backdropOpacityAdaptiveShadowsDropshadowMid}`,
     pointerEvents: "none",
   };
 

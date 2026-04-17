@@ -7,7 +7,7 @@ import {
 } from '@ds/tokens/design-tokens'
 import BasicButton from '../components/BasicButton'
 import { ThemeWheel } from '@ds/Components/themewheel/ThemeWheel.1.0.0'
-import { Tag } from '@ds/Components/tag/Tag.1.0.0'
+import { Tag } from '../components/Tag'
 import LobbyGrid from '../components/jam/LobbyGrid'
 import { useTheme } from '../contexts/ThemeContext'
 import type { InstrumentMode } from '../lib/midi'

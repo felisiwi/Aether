@@ -14,7 +14,7 @@ import {
   fontFamily,
 } from '@ds/tokens/design-tokens'
 import BasicButton from '../BasicButton'
-import { Tag } from '@ds/Components/tag/Tag.1.0.0'
+import { Tag } from '../Tag'
 import Icon from '@ds/Components/icon/Icon.1.1.0'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { TransportType } from '../../lib/webrtc'

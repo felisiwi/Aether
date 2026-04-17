@@ -5,7 +5,7 @@ import {
   typography,
   fontFamily,
 } from '@ds/tokens/design-tokens'
-import { Tag } from '@ds/Components/tag/Tag.1.0.0'
+import { Tag } from '../Tag'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { InstrumentMode } from '../../lib/midi'
 
