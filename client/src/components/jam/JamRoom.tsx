@@ -723,7 +723,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             justifyContent: 'space-between',
             minHeight: 0,
             overflow: 'hidden',
-            paddingBottom: layout.gap48,
           }}
         >
           <div style={{ position: 'relative', flexShrink: 0, ...horizontalPad }}>
@@ -760,7 +759,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             />
           </div>
 
-          <div style={{ ...horizontalPad, width: '100%', boxSizing: 'border-box' }}>
+          <div style={{ ...horizontalPad, alignSelf: 'stretch' }}>
             <EffectsBoard
               waveformIndex={Math.max(0, WAVEFORM_IDS.indexOf(waveform))}
               onWaveformChange={(i) => handleWaveformChange(WAVEFORM_IDS[i] as WaveformId)}
@@ -814,8 +813,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           {(localMode === 'keyboard' || localMode === 'nanokey') && (
             <div
               style={{
-                width: '100%',
-                boxSizing: 'border-box',
+                alignSelf: 'stretch',
                 paddingBottom: layout.gap48,
                 ...horizontalPad,
               }}
