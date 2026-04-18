@@ -721,7 +721,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
-            overflow: 'hidden',
+            height: '100%',
+            overflow: 'visible',
           }}
         >
           <div
