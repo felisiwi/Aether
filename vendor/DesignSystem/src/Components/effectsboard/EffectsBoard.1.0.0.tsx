@@ -402,7 +402,9 @@ export const EffectsBoard: React.FC<EffectsBoardProps> = ({
     display: "flex",
     flexDirection: "row",
     alignItems: "stretch",
+    justifyContent: "space-between",
     gap: SECTION_GAP,
+    width: "100%",
     minWidth: SCROLL_CONTENT_MIN_WIDTH,
     minHeight: ROW_HEIGHT,
   };
