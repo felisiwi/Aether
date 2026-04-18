@@ -412,17 +412,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       setLocalNotes([])
     }, [synth])
 
-    const handleOctaveChange = useCallback(
-      (v: number) => {
-        if (localMode === 'keyboard' || localMode === 'nanokey') {
-          pianoRef.current?.setOctaveShift(v)
-        } else {
-          setWindOctaveShift(v)
-        }
-      },
-      [localMode],
-    )
-
     useEffect(() => {
       if (localMode !== 'wind') return
       const down = (e: KeyboardEvent) => {
@@ -860,10 +849,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <InstrumentInterface
                     octave={3 + pianoOctaveShift}
-                    onOctaveChange={(n) => {
-                      pianoRef.current?.setOctaveShift(n - 3)
-                      handleOctaveChange(n - 3)
-                    }}
                     octaveSpan={3}
                     pressedNotes={localNotes.map(midiNoteToName)}
                     variant="Keyboard"
