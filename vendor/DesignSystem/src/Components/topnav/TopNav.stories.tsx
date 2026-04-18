@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { TopNav } from "./TopNav.1.1.0";
+import { TopNav } from "./TopNav.1.2.0";
 
 const meta: Meta<typeof TopNav> = {
   component: TopNav,

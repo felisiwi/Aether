@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { ThemeWheel } from "../themewheel/ThemeWheel.1.0.0";
-import type { ThemeWheelTheme } from "../themewheel/ThemeWheel.1.0.0";
-import BasicButton from "../basicbutton/BasicButton.1.2.0";
+import { ThemeWheel } from "../../themewheel/ThemeWheel.1.0.0";
+import type { ThemeWheelTheme } from "../../themewheel/ThemeWheel.1.0.0";
+import BasicButton from "../../basicbutton/BasicButton.1.2.0";
 import {
   layout,
   semanticColors,
   typography,
   fontFamily,
-} from "../../tokens/design-tokens";
-import logoUrl from "../../assets/aetherlogo.svg";
+} from "../../../tokens/design-tokens";
+import logoUrl from "../../../assets/aetherlogo.svg";
 
 export interface TopNavProps {
   /** Primary navigation — returns to lobby / session list. */

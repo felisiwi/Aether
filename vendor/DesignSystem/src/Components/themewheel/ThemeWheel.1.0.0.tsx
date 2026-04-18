@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useRef } from "react";
+import { animate, motion, useMotionValue } from "framer-motion";
 import { semanticColors, layout } from "../../tokens/design-tokens";
 
 export type ThemeWheelTheme = "light" | "dark" | "colour";
@@ -12,12 +12,8 @@ const CYCLE = {
   colour: "light",
 } as const satisfies Record<ThemeWheelTheme, ThemeWheelTheme>;
 
-/** Rotation (deg) so the active segment sits at 12 o'clock. */
-function themeRotationDeg(theme: ThemeWheelTheme, variant: "three" | "two"): number {
-  if (variant === "two") {
-    if (theme === "colour") return 0;
-    return theme === "light" ? 0 : 180;
-  }
+/** Rotation (deg) so the active segment sits at 12 o'clock (three-segment wheel only). */
+function themeRotationDeg(theme: ThemeWheelTheme): number {
   switch (theme) {
     case "light":
       return 0;
@@ -70,11 +66,12 @@ const A1 = A0 + (2 * Math.PI) / 3;
 const A2 = A1 + (2 * Math.PI) / 3;
 const A3 = A2 + (2 * Math.PI) / 3;
 
-// Two-theme: light = upper semicircle (-π→0), dark = lower (0→π)
-const TWO_LIGHT_A0 = -Math.PI;
-const TWO_LIGHT_A1 = 0;
-const TWO_DARK_A0 = 0;
-const TWO_DARK_A1 = Math.PI;
+// Two-theme: vertical split — light (white) LEFT, dark (black) RIGHT at 0° rotation.
+// Left semicircle: θ from π/2 → 3π/2; right semicircle: θ from −π/2 → π/2.
+const TWO_LIGHT_A0 = Math.PI / 2;
+const TWO_LIGHT_A1 = (3 * Math.PI) / 2;
+const TWO_DARK_A0 = -Math.PI / 2;
+const TWO_DARK_A1 = Math.PI / 2;
 
 const springTransition = {
   type: "spring" as const,
@@ -86,6 +83,17 @@ const outerTransition = {
   duration: 0.22,
   ease: [0.33, 1, 0.68, 1] as const,
 };
+
+/** Two-segment wheel: 400ms ease-in-out, 180° clockwise per click; theme updates after the turn. */
+const twoClickTransition = {
+  duration: 0.4,
+  ease: [0.42, 0, 0.58, 1] as const,
+};
+
+function twoThemeBaseDeg(theme: ThemeWheelTheme): number {
+  if (theme === "light" || theme === "colour") return 0;
+  return 180;
+}
 
 export const ThemeWheel: React.FC<ThemeWheelProps> = ({
   theme = "light",
@@ -102,18 +110,41 @@ export const ThemeWheel: React.FC<ThemeWheelProps> = ({
   const wedgeColour = semanticColors.buttonSurfacePrimary;
   const wedgeLight = semanticColors.backdropStaticWhite;
 
-  const rotationDeg = themeRotationDeg(theme, variant);
+  const rotationDeg = themeRotationDeg(theme);
   const interactive = !disabled && Boolean(onThemeChange);
+
+  const rotationTwo = useMotionValue(twoThemeBaseDeg(theme));
+  const twoAnimating = useRef(false);
+
+  useEffect(() => {
+    if (variant !== "two") return;
+    rotationTwo.set(twoThemeBaseDeg(theme));
+  }, [theme, variant, rotationTwo]);
 
   const handleWheelClick = () => {
     if (!interactive || !onThemeChange) return;
+
     if (variant === "two") {
-      const t = theme === "colour" ? "light" : theme;
-      onThemeChange(t === "light" ? "dark" : "light");
-    } else {
-      onThemeChange(CYCLE[theme]);
+      if (twoAnimating.current) return;
+      twoAnimating.current = true;
+      const start = ((rotationTwo.get() % 360) + 360) % 360;
+      const fromTheme = theme === "colour" ? "light" : theme;
+      animate(rotationTwo, start + 180, twoClickTransition)
+        .then(() => {
+          onThemeChange(fromTheme === "light" ? "dark" : "light");
+        })
+        .finally(() => {
+          twoAnimating.current = false;
+        });
+      return;
     }
+
+    onThemeChange(CYCLE[theme]);
   };
+
+  const svgAnimate =
+    variant === "two" ? undefined : { rotate: rotationDeg };
+  const svgTransition = variant === "two" ? undefined : springTransition;
 
   return (
     <motion.div
@@ -129,11 +160,12 @@ export const ThemeWheel: React.FC<ThemeWheelProps> = ({
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         initial={false}
-        animate={{ rotate: rotationDeg }}
-        transition={springTransition}
+        animate={svgAnimate}
+        transition={svgTransition}
         style={{
           transformOrigin: `${CX}px ${CY}px`,
           display: "block",
+          ...(variant === "two" ? { rotate: rotationTwo } : {}),
         }}
       >
         <title>Theme wheel</title>
@@ -181,3 +213,4 @@ export const ThemeWheel: React.FC<ThemeWheelProps> = ({
 };
 
 ThemeWheel.displayName = "ThemeWheel";
+export default ThemeWheel;
