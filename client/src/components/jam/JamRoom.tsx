@@ -723,7 +723,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             justifyContent: 'space-between',
             minHeight: 0,
             overflow: 'hidden',
-            paddingBottom: layout.paddingWrapperVertical,
+            paddingBottom: layout.gap48,
           }}
         >
           <div style={{ position: 'relative', flexShrink: 0, ...horizontalPad }}>
@@ -760,7 +760,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             />
           </div>
 
-          <div style={horizontalPad}>
+          <div style={{ ...horizontalPad, width: '100%', boxSizing: 'border-box' }}>
             <EffectsBoard
               waveformIndex={Math.max(0, WAVEFORM_IDS.indexOf(waveform))}
               onWaveformChange={(i) => handleWaveformChange(WAVEFORM_IDS[i] as WaveformId)}
@@ -814,8 +814,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           {(localMode === 'keyboard' || localMode === 'nanokey') && (
             <div
               style={{
-                flexShrink: 0,
-                paddingBottom: layout.gap16,
+                width: '100%',
+                boxSizing: 'border-box',
+                paddingBottom: layout.gap48,
                 ...horizontalPad,
               }}
             >
@@ -846,7 +847,15 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                   onOctaveUp={() => pianoRef.current?.setOctaveShift(pianoOctaveShift + 1)}
                   onOctaveDown={() => pianoRef.current?.setOctaveShift(pianoOctaveShift - 1)}
                 />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    alignSelf: 'stretch',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                  }}
+                >
                   <InstrumentInterface
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
