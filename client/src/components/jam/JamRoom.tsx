@@ -366,7 +366,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (activeMap.size === 0) return
 
       const newMap = new Map<number, number>()
-      let lastNew: number | null = null
       for (const [rawNote, oldShifted] of activeMap) {
         const newShifted = rawNote + transpose + windOctaveShift * 12
         if (newShifted < 0 || newShifted > 127) continue
@@ -376,10 +375,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           sendMidi({ type: 'noteOn', note: newShifted, velocity: 127, cc: 0, value: 0, channel: 1, timestamp: Date.now() })
         }
         newMap.set(rawNote, newShifted)
-        lastNew = newShifted
       }
       windActiveNotesRef.current = newMap
-      if (lastNew !== null) setCurrentNote(lastNew)
     }, [transpose, windOctaveShift, localMode, synth, sendMidi])
 
     const prevKbTransposeRef = useRef(transpose)
@@ -396,7 +393,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (activeMap.size === 0 || totalDelta === 0) return
 
       const newMap = new Map<number, number>()
-      let lastNew: number | null = null
       for (const [pianoNote, oldFinal] of activeMap) {
         const newFinal = oldFinal + totalDelta
         if (newFinal < 0 || newFinal > 127) continue
@@ -406,20 +402,14 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           sendMidi({ type: 'noteOn', note: newFinal, velocity: 127, cc: 0, value: 0, channel: 1, timestamp: Date.now() })
         }
         newMap.set(pianoNote, newFinal)
-        lastNew = newFinal
       }
       keyboardActiveNotesRef.current = newMap
-      if (lastNew !== null) setCurrentNote(lastNew)
     }, [transpose, pianoOctaveShift, localMode, synth, sendMidi])
-
-    const [currentNote, setCurrentNote] = useState<number | null>(null)
-    const [remoteCurrentNote, setRemoteCurrentNote] = useState<number | null>(null)
 
     const handleComputerKeyboardCapsLockOff = useCallback(() => {
       synth?.panicAllNotesOff()
       keyboardActiveNotesRef.current.clear()
       setLocalNotes([])
-      setCurrentNote(null)
     }, [synth])
 
     const handleOctaveChange = useCallback(
@@ -516,11 +506,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           sendMidi(shifted)
           if (event.type === 'noteOn') {
             synth.noteOn(note)
-            setCurrentNote(note)
             setLocalNotes((prev) => prev.includes(note) ? prev : [...prev, note])
           } else {
             synth.noteOff(note)
-            setCurrentNote((prev) => (prev === note ? null : prev))
             setLocalNotes((prev) => prev.filter(n => n !== note))
           }
         } else if (event.type === 'cc') {
@@ -539,7 +527,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         if (!remoteSynth || !syncRemote) return
         if (event.type === 'noteOn') {
           remoteSynth.noteOn(event.note)
-          setRemoteCurrentNote(event.note)
           setRemoteNotes((prev) => {
             const next = new Set(prev)
             next.add(event.note)
@@ -556,7 +543,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           }
         } else if (event.type === 'noteOff') {
           remoteSynth.noteOff(event.note)
-          setRemoteCurrentNote((prev) => (prev === event.note ? null : prev))
           setRemoteNotes((prev) => {
             const next = new Set(prev)
             next.delete(event.note)
@@ -592,9 +578,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const chordCardMainLine = useMemo(() => {
       if (chordResult?.primary) return chordResult.primary
-      if (currentNote !== null) return midiNoteToName(currentNote)
       return null
-    }, [chordResult, currentNote])
+    }, [chordResult])
 
     const remoteNotesArray = useMemo(
       () => [...remoteNotes].sort((a, b) => a - b),
@@ -606,19 +591,17 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     )
     const remoteChordMainLine = useMemo(() => {
       if (remoteChordResult?.primary) return remoteChordResult.primary
-      if (remoteCurrentNote !== null) return midiNoteToName(remoteCurrentNote)
       return null
-    }, [remoteChordResult, remoteCurrentNote])
-    const localChordNotes: ChordDisplayNote[] = useMemo(
-      () =>
-        localNotes.map((midiNote) => {
-          const noteName = midiNoteToName(midiNote)
-          const pc = pitchClassName(midiNote)
-          const isInChord = chordResult?.noteNames?.includes(pc) ?? false
-          return { note: noteName, partOfChord: isInChord }
-        }),
-      [localNotes, chordResult],
-    )
+    }, [remoteChordResult])
+    const localChordNotes: ChordDisplayNote[] = useMemo(() => {
+      const hasChord = Boolean(chordResult?.primary)
+      return localNotes.map((midiNote) => {
+        const noteName = midiNoteToName(midiNote)
+        const pc = pitchClassName(midiNote)
+        const isInChord = hasChord && (chordResult?.noteNames?.includes(pc) ?? false)
+        return { note: noteName, partOfChord: isInChord }
+      })
+    }, [localNotes, chordResult])
 
     const remoteChordNotes: ChordDisplayNote[] = useMemo(
       () =>
@@ -712,7 +695,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const topNavDefaultTheme = mode === 'dark' ? 'dark' : 'light'
 
-    const horizontalPad = { paddingLeft: layout.gap96, paddingRight: layout.gap96 }
+    const horizontalPad = { paddingLeft: layout.gap48, paddingRight: layout.gap48 }
 
     return (
       <div
@@ -748,8 +731,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'flex-start',
-            gap: layout.gap16,
+            justifyContent: 'space-between',
             minHeight: 0,
             overflow: 'hidden',
             paddingBottom: layout.paddingWrapperVertical,
@@ -845,8 +827,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               style={{
                 flexShrink: 0,
                 paddingBottom: layout.gap16,
-                paddingLeft: layout.gap96,
-                paddingRight: layout.gap96,
+                ...horizontalPad,
               }}
             >
               <div style={{ display: 'none' }}>
