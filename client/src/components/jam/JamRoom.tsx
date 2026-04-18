@@ -7,31 +7,23 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { CSSProperties } from 'react'
 import {
-  colors,
   semanticColors,
   layout,
-  typography,
   fontFamily,
 } from '@ds/tokens/design-tokens'
-import { HandleSlider } from '@ds/Components/handleslider/HandleSlider.1.0.0'
-import { DataWindow } from '@ds/Components/datawindow/DataWindow.1.0.0'
-import {
-  SoundWaveController,
-  type WaveformId,
-} from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
+import type { WaveformId } from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
+import type { ButtonRowOption } from '@ds/Components/buttonrow/ButtonRow.1.0.0'
 import { TopNav } from '@ds/Components/topnav/TopNav.1.2.0'
-import { Dashboard } from '@ds/Components/dashboard/Dashboard.1.1.0'
-import { VolumeController } from '@ds/Components/volumecontroller/VolumeController.1.0.0'
-import { VerticalControl } from '@ds/Components/verticalcontrol/VerticalControl.1.0.0'
+import { JamBoard } from '@ds/Components/jamboard/JamBoard.1.0.0'
+import type { ChordDisplayNote } from '@ds/Components/chorddisplay/ChordDisplay.2.3.0'
+import { EffectsBoard } from '@ds/Components/effectsboard/EffectsBoard.1.0.0'
+import { KeyOctaveController } from '@ds/Components/keyoctavecontroller/KeyOctaveController.1.0.0'
 import { InstrumentInterface } from '@ds/Components/instrumentinterface/InstrumentInterface.1.1.0'
 import BasicButton from '../BasicButton'
 import PianoKeyboard from './PianoKeyboard'
-import DebugPanel from './DebugPanel'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { PianoKeyboardHandle } from './PianoKeyboard'
-import type { DebugPanelHandle } from './DebugPanel'
 import type { MidiEvent, InstrumentMode } from '../../lib/midi'
 import type { Synth } from '../../lib/synth'
 import { detectChord } from '../../lib/chords'
@@ -60,6 +52,19 @@ function midiNoteToName(note: number): string {
   return `${NOTE_NAMES[idx]}${octave}`
 }
 
+function pitchClassName(note: number): string {
+  return NOTE_NAMES[((note % 12) + 12) % 12]
+}
+
+const WAVEFORM_IDS = ['sine', 'triangle', 'sawtooth', 'square'] as const
+
+const waveformOptions: ButtonRowOption[] = [
+  { icon: 'waveform-sine', label: 'Sine' },
+  { icon: 'waveform-triangle', label: 'Triangle' },
+  { icon: 'waveform-sawtooth', label: 'Sawtooth' },
+  { icon: 'waveform-square', label: 'Square' },
+]
+
 export interface JamRoomHandle {
   handleLocalMidi: (event: MidiEvent) => void
   handleRemoteMidi: (event: MidiEvent) => void
@@ -82,91 +87,22 @@ export interface JamRoomProps {
   onLeave: () => void
 }
 
-interface JamRoomParamStackRowProps {
-  labelStyle: CSSProperties
-  label: string
-  value: number
-  suffix: string
-  sliderNorm: number
-  onSlider: (n: number) => void
-  variant?: 'default' | 'colour' | 'theme'
-  min?: number
-  max?: number
-  step?: number
-  onDataValueChange?: (v: number) => void
-  isDark: boolean
-}
-
-function JamRoomParamStackRow({
-  labelStyle,
-  label,
-  value,
-  suffix,
-  sliderNorm,
-  onSlider,
-  variant = 'default',
-  min = 0,
-  max = 100,
-  step = 1,
-  onDataValueChange,
-  isDark,
-}: JamRoomParamStackRowProps) {
-  const [isDragging, setIsDragging] = useState(false)
-  const span = max - min || 1
-  const handleDataWindow =
-    onDataValueChange ??
-    ((v: number) => {
-      const clamped = Math.min(max, Math.max(min, v))
-      onSlider((clamped - min) / span)
-    })
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
-      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap4 }}>
-        <span style={labelStyle}>{label}</span>
-        <DataWindow
-          value={value}
-          suffix={suffix}
-          min={min}
-          max={max}
-          step={step}
-          onChange={handleDataWindow}
-          variant={variant}
-          compact
-          isActive={isDragging}
-          panelStyle={isDark ? {
-            backgroundColor: semanticColors.backdropOpacityAdaptiveOpacityLightenedMedium,
-            borderColor: semanticColors.strokeInvertedMedium,
-          } : undefined}
-        />
-      </div>
-      <HandleSlider
-        value={Math.max(0, Math.min(1, sliderNorm))}
-        onChange={onSlider}
-        variant={variant}
-        darkMode={isDark}
-        onDragStart={() => setIsDragging(true)}
-        onDragEnd={() => setIsDragging(false)}
-      />
-    </div>
-  )
-}
-
 const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
   function JamRoomComponent(
     {
-      localUser,
+      localUser: _localUser,
       remoteUser,
       localMode,
       synth,
       remoteSynth,
       sendPatchState,
       connectionState,
-      transportType,
+      transportType: _transportType,
       sendMidi,
-      rtt,
-      oneWay,
-      jitter,
-      samplesRef,
+      rtt: _rtt,
+      oneWay: _oneWay,
+      jitter: _jitter,
+      samplesRef: _samplesRef,
       onLeave,
     },
     ref,
@@ -174,23 +110,20 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const { theme, mode, setThemeMode } = useTheme()
     const pianoRef = useRef<PianoKeyboardHandle>(null)
     const [pianoOctaveShift, setPianoOctaveShift] = useState(0)
-    const debugRef = useRef<DebugPanelHandle>(null)
+    const pianoOctaveShiftRef = useRef(pianoOctaveShift)
+    pianoOctaveShiftRef.current = pianoOctaveShift
+
     const pulseRef = useRef<HTMLDivElement>(null)
     const oscilloscopeRef = useRef<HTMLCanvasElement>(null)
-    const scopeWrapperRef = useRef<HTMLDivElement>(null)
-    const envelopeContentRef = useRef<HTMLDivElement>(null)
     const [remoteNotes, setRemoteNotes] = useState<Set<number>>(new Set())
     const [localNotes, setLocalNotes] = useState<number[]>([])
 
-    // Waveform — lifted so toolbar + DebugPanel stay in sync
     const [waveform, setWaveform] = useState<WaveformId>('sine')
 
-    // Sound controls
     const [attack, setAttack] = useState(0)
     const [release, setRelease] = useState(20)
     const [brightness, setBrightness] = useState(20000)
 
-    // Delay + Reverb controls
     const [delayTime, setDelayTime] = useState(0)
     const [delayFeedback, setDelayFeedback] = useState(0)
     const [reverbMix, setReverbMix] = useState(0)
@@ -325,15 +258,24 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       [synth, schedulePatchSend],
     )
 
-    // Transpose offset (semitones) — applied to audio/WebRTC in both modes
+    const filterK = useMemo(() => {
+      const k = brightness / 1000
+      return Math.min(16, Math.max(0, Math.round(k * 10) / 10))
+    }, [brightness])
+
+    const handleFilterK = useCallback(
+      (k: number) => {
+        handleBrightness(Math.round(k * 1000))
+      },
+      [handleBrightness],
+    )
+
     const [transpose, setTranspose] = useState(DEFAULT_TRANSPOSE)
     const transposeRef = useRef(transpose)
     transposeRef.current = transpose
 
-    // Remote sync toggle
     const [syncRemote, setSyncRemote] = useState(true)
 
-    // Session recording
     const recorderRef = useRef<SessionRecorder | null>(null)
     const [isRecording, setIsRecording] = useState(false)
     const [recTime, setRecTime] = useState(0)
@@ -361,7 +303,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       SessionRecorder.download(blob)
     }, [])
 
-    // Expression lock — when true, keyboard keys are audible without breath (CC11)
     const [expressionLocked, setExpressionLocked] = useState(false)
     const toggleExpressionLock = useCallback(() => {
       setExpressionLocked((prev) => {
@@ -371,14 +312,12 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       })
     }, [synth])
 
-    // Wind octave shift (arrow keys, only active in wind mode)
     const [windOctaveShift, setWindOctaveShift] = useState(0)
     const windOctaveShiftRef = useRef(windOctaveShift)
     windOctaveShiftRef.current = windOctaveShift
     const windActiveNotesRef = useRef<Map<number, number>>(new Map())
     const keyboardActiveNotesRef = useRef<Map<number, number>>(new Map())
 
-    // Glide held notes when transpose or octave changes mid-hold (wind)
     useEffect(() => {
       if (localMode !== 'wind' || !synth) return
       const activeMap = windActiveNotesRef.current
@@ -401,7 +340,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (lastNew !== null) setCurrentNote(lastNew)
     }, [transpose, windOctaveShift, localMode, synth, sendMidi])
 
-    // Glide held notes when transpose or octave changes mid-hold (keyboard)
     const prevKbTransposeRef = useRef(transpose)
     const prevKbOctaveRef = useRef(pianoOctaveShift)
     useEffect(() => {
@@ -432,7 +370,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (lastNew !== null) setCurrentNote(lastNew)
     }, [transpose, pianoOctaveShift, localMode, synth, sendMidi])
 
-    // Current note display
     const [currentNote, setCurrentNote] = useState<number | null>(null)
     const [remoteCurrentNote, setRemoteCurrentNote] = useState<number | null>(null)
 
@@ -458,41 +395,50 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (localMode !== 'wind') return
       const down = (e: KeyboardEvent) => {
         if (e.repeat) return
-        if (e.code === 'ArrowUp') {
+        if (e.code === 'ArrowLeft') {
           e.preventDefault()
-          if (e.shiftKey) {
-            setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
-          } else {
-            setWindOctaveShift((v) => Math.min(v + 1, 3))
-          }
+          setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
+        } else if (e.code === 'ArrowRight') {
+          e.preventDefault()
+          setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
+        } else if (e.code === 'ArrowUp') {
+          e.preventDefault()
+          setWindOctaveShift((v) => Math.min(v + 1, 3))
         } else if (e.code === 'ArrowDown') {
           e.preventDefault()
-          if (e.shiftKey) {
-            setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
-          } else {
-            setWindOctaveShift((v) => Math.max(v - 1, -3))
-          }
+          setWindOctaveShift((v) => Math.max(v - 1, -3))
         }
       }
       window.addEventListener('keydown', down)
       return () => window.removeEventListener('keydown', down)
     }, [localMode])
 
-    // Keyboard mode: Shift+Arrow for transpose (octave is handled inside PianoKeyboard via Arrow)
     useEffect(() => {
-      if (localMode !== 'keyboard') return
+      if (localMode !== 'keyboard' && localMode !== 'nanokey') return
       const down = (e: KeyboardEvent) => {
-        if (e.repeat || !e.shiftKey) return
-        if (e.code === 'ArrowUp') {
-          e.preventDefault()
+        if (e.repeat) return
+        if (
+          e.code !== 'ArrowUp'
+          && e.code !== 'ArrowDown'
+          && e.code !== 'ArrowLeft'
+          && e.code !== 'ArrowRight'
+        ) {
+          return
+        }
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.code === 'ArrowLeft') {
+          pianoRef.current?.setOctaveShift(pianoOctaveShiftRef.current - 1)
+        } else if (e.code === 'ArrowRight') {
+          pianoRef.current?.setOctaveShift(pianoOctaveShiftRef.current + 1)
+        } else if (e.code === 'ArrowUp') {
           setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
         } else if (e.code === 'ArrowDown') {
-          e.preventDefault()
           setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
         }
       }
-      window.addEventListener('keydown', down)
-      return () => window.removeEventListener('keydown', down)
+      window.addEventListener('keydown', down, true)
+      return () => window.removeEventListener('keydown', down, true)
     }, [localMode])
 
     const handleLocalMidi = useCallback(
@@ -540,9 +486,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           sendMidi(event)
           if (!expressionLocked) {
             synth.setCC(event.cc, event.value)
-          }
-          if (event.cc === 11) {
-            debugRef.current?.pushCC11(event.value, synth.expressionValue)
           }
         }
       },
@@ -600,16 +543,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const isSolo = remoteUser === null
 
-    const isDark = theme.mode === 'dark'
-
     const chordResult: ChordResult | null = useMemo(
       () => detectChord(localNotes),
-      [localNotes],
-    )
-
-    const chordCardNotesLine = useMemo(
-      () =>
-        localNotes.length > 0 ? localNotes.map(midiNoteToName).join(' + ') : null,
       [localNotes],
     )
 
@@ -619,16 +554,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       return null
     }, [chordResult, currentNote])
 
-    const chordCardAltLine = useMemo(() => {
-      if (chordResult === null) return null
-      const root = chordResult.primary.match(/^[A-G][#b]?/)?.[0] ?? ''
-      const text =
-        root && chordResult.alternative
-          ? `${root} ${chordResult.alternative}`
-          : chordResult.alternative
-      return text.length > 0 ? text : null
-    }, [chordResult])
-
     const remoteNotesArray = useMemo(
       () => [...remoteNotes].sort((a, b) => a - b),
       [remoteNotes],
@@ -637,25 +562,30 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       () => detectChord(remoteNotesArray),
       [remoteNotesArray],
     )
-    const remoteChordNotesLine = useMemo(
-      () =>
-        remoteNotesArray.length > 0 ? remoteNotesArray.map(midiNoteToName).join(' + ') : null,
-      [remoteNotesArray],
-    )
     const remoteChordMainLine = useMemo(() => {
       if (remoteChordResult?.primary) return remoteChordResult.primary
       if (remoteCurrentNote !== null) return midiNoteToName(remoteCurrentNote)
       return null
     }, [remoteChordResult, remoteCurrentNote])
-    const remoteChordAltLine = useMemo(() => {
-      if (remoteChordResult === null) return null
-      const root = remoteChordResult.primary.match(/^[A-G][#b]?/)?.[0] ?? ''
-      const text =
-        root && remoteChordResult.alternative
-          ? `${root} ${remoteChordResult.alternative}`
-          : remoteChordResult.alternative
-      return text && text.length > 0 ? text : null
-    }, [remoteChordResult])
+    const localChordNotes: ChordDisplayNote[] = useMemo(
+      () =>
+        localNotes.map((midiNote) => {
+          const noteName = midiNoteToName(midiNote)
+          const pc = pitchClassName(midiNote)
+          const isInChord = chordResult?.noteNames?.includes(pc) ?? false
+          return { note: noteName, partOfChord: isInChord }
+        }),
+      [localNotes, chordResult],
+    )
+
+    const remoteChordNotes: ChordDisplayNote[] = useMemo(
+      () =>
+        Array.from(remoteNotes).map((midiNote) => {
+          const noteName = midiNoteToName(midiNote)
+          return { note: noteName, partOfChord: false }
+        }),
+      [remoteNotes],
+    )
 
     const [remoteVolume, setRemoteVolume] = useState(1)
 
@@ -669,7 +599,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       }
     }, [])
 
-    // Oscilloscope draw loop — always paint canvas (idle line without analyser / notes; waveform when available)
     useEffect(() => {
       const canvas = oscilloscopeRef.current
       if (!canvas) return
@@ -739,92 +668,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       return () => cancelAnimationFrame(rafId)
     }, [synth, localNotes.length])
 
-    // ── Shared layout tokens ──────────────────────────────────────
-    const sectionGap = layout.gap32
-    const panelBg = isDark
-      ? semanticColors.backdropOpacityAdaptiveOpacityLightenedWeak
-      : semanticColors.backdropOpacityStaticOpacityDarkenedWeak
-    const dividerBg = isDark
-      ? semanticColors.strokeInvertedWeak
-      : semanticColors.strokeWeak
-    const headingColor = theme.textHeading
-    const bodyColor = theme.textBody
-    const weakStroke = theme.strokeWeak
-
-    const labelText: React.CSSProperties = {
-      fontFamily: FONT,
-      fontSize: typography.label.fontSize,
-      fontWeight: typography.label.fontWeight,
-      lineHeight: `${typography.label.lineHeight}px`,
-      letterSpacing: typography.label.letterSpacing,
-      fontStretch: `${typography.label.fontWidth}%`,
-      fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
-      fontVariationSettings: "'wdth' 120",
-    }
-    const sectionHeader = (title: string) => (
-      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: layout.gap8 }}>
-        <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>{title}</span>
-        <div style={{ height: layout.strokeS, background: dividerBg }} />
-      </div>
-    )
-
-    const paramLabelStyle: CSSProperties = {
-      ...labelText,
-      color: colors.textHeadingNeutral,
-      height: typography.label.lineHeight,
-    }
-
-    const paramStack = (
-      label: string,
-      value: number,
-      suffix: string,
-      sliderNorm: number,
-      onSlider: (n: number) => void,
-      variant: 'default' | 'colour' | 'theme' = 'default',
-      min = 0,
-      max = 100,
-      step = 1,
-      onDataValueChange?: (v: number) => void,
-    ) => (
-      <JamRoomParamStackRow
-        labelStyle={paramLabelStyle}
-        label={label}
-        value={value}
-        suffix={suffix}
-        sliderNorm={sliderNorm}
-        onSlider={onSlider}
-        variant={variant}
-        min={min}
-        max={max}
-        step={step}
-        onDataValueChange={onDataValueChange}
-        isDark={isDark}
-      />
-    )
-
     const topNavDefaultTheme = mode === 'dark' ? 'dark' : 'light'
 
-    const localPlayerProps = {
-      playerName: 'YOU',
-      variant: 'local' as const,
-      instrument: localMode === 'wind' ? 'Aerophone Mini' : localMode === 'nanokey' ? 'nanoKEY2' : 'Piano',
-      latency: rtt ?? 0,
-      chordName: chordCardMainLine ?? '',
-      notes: chordCardNotesLine ? chordCardNotesLine.split(' + ') : [],
-      keyName: chordCardAltLine ?? '',
-    }
-
-    const remotePlayerProps = isSolo
-      ? null
-      : {
-          playerName: (remoteUser ?? '').toUpperCase(),
-          variant: 'remote' as const,
-          instrument: 'Piano',
-          latency: rtt ?? 0,
-          chordName: remoteChordMainLine ?? '',
-          notes: remoteChordNotesLine ? remoteChordNotesLine.split(' + ') : [],
-          keyName: remoteChordAltLine ?? '',
-        }
+    const horizontalPad = { paddingLeft: layout.gap96, paddingRight: layout.gap96 }
 
     return (
       <div
@@ -856,9 +702,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           />
         </div>
 
-        {/* DO NOT re-add nav or back button here — layout is intentionally nav-free */}
-        {/* Layout: wordmark row → player area (SOUND + cards + remote) → four-section row (Instrument / Envelope / Effects / Octave & key) → keyboard */}
-        {/* ── Middle content (no flex-grow — avoids empty gap above keyboard) ───────────────────────────────────────── */}
         <div
           style={{
             flex: 1,
@@ -871,223 +714,144 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             paddingBottom: layout.paddingWrapperVertical,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, minHeight: 0 }}>
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              {!isSolo && (
-                <div
-                  ref={pulseRef}
-                  style={{
-                    position: 'absolute',
-                    width: 24,
-                    height: 24,
-                    borderRadius: layout.radiusRound,
-                    background: semanticColors.buttonSurfacePrimary,
-                    opacity: 0,
-                    pointerEvents: 'none',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 2,
-                  }}
-                />
-              )}
-              <Dashboard localPlayer={localPlayerProps} remotePlayer={remotePlayerProps} />
-            </div>
+          <div style={{ position: 'relative', flexShrink: 0, ...horizontalPad }}>
+            {!isSolo && (
+              <div
+                ref={pulseRef}
+                style={{
+                  position: 'absolute',
+                  width: 24,
+                  height: 24,
+                  borderRadius: layout.radiusRound,
+                  background: semanticColors.buttonSurfacePrimary,
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 2,
+                }}
+              />
+            )}
+            <JamBoard
+              variant={isSolo ? 'solo' : 'duo'}
+              localNotes={localChordNotes}
+              localChordName={chordCardMainLine ?? ''}
+              oscilloscopeRef={oscilloscopeRef}
+              remoteNotes={remoteChordNotes}
+              remoteChordName={remoteChordMainLine ?? ''}
+              remoteThemeIndex={0}
+              masterVolume={Math.round(volume * 100)}
+              onMasterVolumeChange={(v) => handleVolume(v / 100)}
+              remoteVolume={Math.round(remoteVolume * 100)}
+              onRemoteVolumeChange={(v) => setRemoteVolume(v / 100)}
+            />
+          </div>
 
-            {/* ── Control surface row ────────────────────────────── */}
+          <div style={horizontalPad}>
+            <EffectsBoard
+              waveformIndex={Math.max(0, WAVEFORM_IDS.indexOf(waveform))}
+              onWaveformChange={(i) => handleWaveformChange(WAVEFORM_IDS[i] as WaveformId)}
+              waveformOptions={waveformOptions}
+              filter={filterK}
+              onFilterChange={handleFilterK}
+              drive={0}
+              onDriveChange={() => {}}
+              reverb={Math.round(reverbMix * 100)}
+              onReverbChange={(v) => handleReverbMix(v / 100)}
+              glide={0}
+              onGlideChange={() => {}}
+              attack={Math.round(attack)}
+              onAttackChange={handleAttack}
+              sustain={65}
+              onSustainChange={() => {}}
+              release={Math.round(release)}
+              onReleaseChange={handleRelease}
+              decay={0}
+              onDecayChange={() => {}}
+              chorusMix={0}
+              onChorusMixChange={() => {}}
+              chorusDepth={0}
+              onChorusDepthChange={() => {}}
+              pitchRate={0}
+              onPitchRateChange={() => {}}
+              pitchDepth={0}
+              onPitchDepthChange={() => {}}
+              delayTime={Math.round(delayTime)}
+              onDelayTimeChange={(v) => handleDelayTime(v)}
+              feedback={Math.round(delayFeedback * 100)}
+              onFeedbackChange={(v) => handleDelayFeedback(v / 100)}
+            />
+          </div>
+
+          {localMode === 'wind' && (
+            <div style={horizontalPad}>
+              <BasicButton
+                variant="primary"
+                colourFill
+                size="small"
+                latching
+                state={!expressionLocked ? 'pressed' : 'active'}
+                onClick={toggleExpressionLock}
+              >
+                Breath Control
+              </BasicButton>
+            </div>
+          )}
+
+          {(localMode === 'keyboard' || localMode === 'nanokey') && (
             <div
               style={{
-                display: 'flex',
-                gap: sectionGap,
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-                minHeight: 0,
+                flexShrink: 0,
+                paddingBottom: layout.gap16,
                 paddingLeft: layout.gap96,
                 paddingRight: layout.gap96,
               }}
             >
-              {/* INSTRUMENT — DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: layout.gap8,
-                }}
-              >
-                <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>Oscilloscope</span>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    gap: layout.gap16,
-                    alignSelf: 'flex-start',
-                    flex: '0 1 auto',
-                  }}
-                >
-                  <SoundWaveController
-                    selectedWaveform={waveform}
-                    onWaveformChange={handleWaveformChange}
-                  />
-                  {/* DO NOT add flex:1 or alignSelf:stretch here — oscilloscope must be fixed height */}
-                  <canvas
-                    ref={oscilloscopeRef}
-                    style={{
-                      display: 'block',
-                      flex: '1 1 auto',
-                      height: 180,
-                      flexShrink: 0,
-                      borderRadius: layout.radiusS,
-                      background: theme.surfaceCard,
-                      border: `${layout.strokeM}px solid ${weakStroke}`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* CENTRE — parameter columns */}
-              <div style={{ display: 'flex', flex: '1 1 280px', gap: sectionGap, alignItems: 'flex-start', minWidth: 0 }}>
-                <div style={{ width: 136, display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16 }}>
-                    {paramStack('Attack', Math.round(attack), 'ms', attack / 500, (n) => handleAttack(Math.round(n * 100) * 5), 'default', 0, 500, 5)}
-                    {paramStack('Release', Math.round(release), 'ms', (release - 10) / 490, (n) => handleRelease(Math.round((n * 490 + 10) / 5) * 5), 'default', 10, 500, 5)}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, flex: '1 1 auto', minWidth: 0 }}>
-                  <div style={{ display: 'flex', gap: layout.gap32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
-                      {(() => {
-                        const filterInK = brightness >= 1000
-                        const dwValue = filterInK
-                          ? Math.round((brightness / 1000) * 10) / 10
-                          : brightness
-                        const dwMin = filterInK ? 0.5 : 500
-                        const dwMax = filterInK ? 20 : 20000
-                        const dwStep = filterInK ? 0.1 : 100
-                        return paramStack(
-                          'Filter',
-                          dwValue,
-                          filterInK ? 'K' : 'Hz',
-                          (brightness - 500) / 19500,
-                          (n) => handleBrightness(Math.round((n * 19500 + 500) / 100) * 100),
-                          'colour',
-                          dwMin,
-                          dwMax,
-                          dwStep,
-                          (v) =>
-                            filterInK
-                              ? handleBrightness(Math.round((v * 1000) / 100) * 100)
-                              : handleBrightness(Math.round((v - 500) / 100) * 100 + 500),
-                        )
-                      })()}
-                      {paramStack('Delay', Math.round(delayTime), 'ms', delayTime / 1000, (n) => handleDelayTime(Math.round(n * 100) * 10), 'default', 0, 1000, 10)}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: layout.gap16, width: 136 }}>
-                      {paramStack('Feedback', Math.round(delayFeedback * 100), '%', delayFeedback / 0.8, (n) => handleDelayFeedback(Math.round(n * 0.8 * 20) / 20), 'default', 0, 80, 5)}
-                      {paramStack('Reverb', Math.round(reverbMix * 100), '%', reverbMix, (n) => handleReverbMix(Math.round(n * 20) / 20), 'default', 0, 100, 5)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT — OCTAVE & KEY */}
-              <div style={{ width: 196, display: 'flex', flexDirection: 'column', gap: layout.gap16, alignSelf: 'stretch', flexShrink: 0 }}>
-                <VerticalControl
-                  title="Key"
-                  value={TRANSPOSE_KEY[transpose] ?? 'C'}
-                  onUp={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
-                  onDown={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
+              <div style={{ display: 'none' }}>
+                <PianoKeyboard
+                  ref={pianoRef}
+                  onCapsLockOff={handleComputerKeyboardCapsLockOff}
+                  onMidiEvent={handleLocalMidi}
+                  remoteActiveNotes={remoteNotes}
+                  onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
+                  transpose={transpose}
                 />
-
-                {localMode === 'wind' && (
-                  <BasicButton
-                    variant="primary"
-                    colourFill
-                    size="small"
-                    latching
-                    state={!expressionLocked ? 'pressed' : 'active'}
-                    onClick={toggleExpressionLock}
-                  >
-                    Breath Control
-                  </BasicButton>
-                )}
               </div>
-
-              {/* FAR RIGHT — volumes + VU */}
               <div
                 style={{
                   display: 'flex',
                   flexDirection: 'row',
-                  gap: layout.gap24,
-                  alignItems: 'flex-start',
-                  flexShrink: 0,
+                  alignItems: 'flex-end',
+                  gap: layout.gap16,
+                  minWidth: 0,
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: layout.gap8,
-                  }}
-                >
-                  <span style={{ ...labelText, color: bodyColor, textTransform: 'uppercase' as const }}>Volume</span>
-                  <VolumeController
-                    variant="local"
-                    value={volume * 100}
-                    onChange={(v) => handleVolume(v / 100)}
+                <KeyOctaveController
+                  keyValue={TRANSPOSE_KEY[transpose] ?? 'C'}
+                  octaveValue={String(pianoOctaveShift)}
+                  onKeyUp={() => setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))}
+                  onKeyDown={() => setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))}
+                  onOctaveUp={() => pianoRef.current?.setOctaveShift(pianoOctaveShift + 1)}
+                  onOctaveDown={() => pianoRef.current?.setOctaveShift(pianoOctaveShift - 1)}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <InstrumentInterface
+                    octave={3 + pianoOctaveShift}
+                    onOctaveChange={(n) => {
+                      pianoRef.current?.setOctaveShift(n - 3)
+                      handleOctaveChange(n - 3)
+                    }}
+                    octaveSpan={3}
+                    pressedNotes={localNotes.map(midiNoteToName)}
+                    variant="Keyboard"
+                    style={{ background: 'transparent' }}
                   />
                 </div>
-                {!isSolo && (
-                  <VolumeController
-                    variant="remote"
-                    value={remoteVolume * 100}
-                    onChange={(v) => setRemoteVolume(v / 100)}
-                  />
-                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
-
-        {/* ── Bottom piano keyboard ────────────────────────────────── */}
-        {(localMode === 'keyboard' || localMode === 'nanokey') && (
-          <div style={{ flexShrink: 0, paddingBottom: layout.gap16, paddingLeft: layout.gap96, paddingRight: layout.gap96 }}>
-            {/* Hidden PianoKeyboard keeps window keyboard event listeners alive */}
-            <div style={{ display: 'none' }}>
-              <PianoKeyboard
-                ref={pianoRef}
-                onCapsLockOff={handleComputerKeyboardCapsLockOff}
-                onMidiEvent={handleLocalMidi}
-                remoteActiveNotes={remoteNotes}
-                onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
-                transpose={transpose}
-              />
-            </div>
-            <InstrumentInterface
-              octave={3 + pianoOctaveShift}
-              onOctaveChange={(n) => {
-                pianoRef.current?.setOctaveShift(n - 3)
-                handleOctaveChange(n - 3)
-              }}
-              octaveSpan={3}
-              pressedNotes={localNotes.map(midiNoteToName)}
-              variant="Keyboard"
-              style={{ background: 'transparent' }}
-            />
-          </div>
-        )}
-
-        <DebugPanel
-          ref={debugRef}
-          rtt={rtt}
-          oneWay={oneWay}
-          jitter={jitter}
-          samplesRef={samplesRef}
-          transportType={transportType}
-          synth={synth}
-          waveform={waveform as OscillatorType}
-          onWaveformChange={handleWaveformChange as (w: OscillatorType) => void}
-        />
       </div>
     )
   },
