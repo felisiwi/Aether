@@ -122,6 +122,10 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const [attack, setAttack] = useState(0)
     const [release, setRelease] = useState(20)
+    const [sustain, setSustain] = useState(65)
+    const [envelopeDecay, setEnvelopeDecay] = useState(0)
+    const [chorusMix, setChorusMix] = useState(0)
+    const [chorusDepth, setChorusDepth] = useState(0)
     const [brightness, setBrightness] = useState(20000)
 
     const [delayTime, setDelayTime] = useState(0)
@@ -193,6 +197,15 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       sendPatchStateRef.current(buildPatchMessage())
     }, [connectionState, remoteUser, buildPatchMessage])
 
+    useEffect(() => {
+      if (!synth) return
+      synth.setSustain(sustain)
+      synth.setEnvelopeDecay(envelopeDecay)
+      // EffectsBoard CHORUS_MIX is 0–10 (not 0–100); map to setChorusMix pct.
+      synth.setChorusMix(chorusMix * 10)
+      synth.setChorusDepth(chorusDepth)
+    }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth])
+
     const handleWaveformChange = useCallback(
       (w: WaveformId) => {
         setWaveform(w)
@@ -208,6 +221,34 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         schedulePatchSend()
       },
       [synth, schedulePatchSend],
+    )
+    const handleSustain = useCallback(
+      (pct: number) => {
+        setSustain(pct)
+        schedulePatchSend()
+      },
+      [schedulePatchSend],
+    )
+    const handleEnvelopeDecay = useCallback(
+      (ms: number) => {
+        setEnvelopeDecay(ms)
+        schedulePatchSend()
+      },
+      [schedulePatchSend],
+    )
+    const handleChorusMix = useCallback(
+      (v: number) => {
+        setChorusMix(v)
+        schedulePatchSend()
+      },
+      [schedulePatchSend],
+    )
+    const handleChorusDepth = useCallback(
+      (ms: number) => {
+        setChorusDepth(ms)
+        schedulePatchSend()
+      },
+      [schedulePatchSend],
     )
     const handleRelease = useCallback(
       (ms: number) => {
@@ -763,16 +804,16 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               onGlideChange={() => {}}
               attack={Math.round(attack)}
               onAttackChange={handleAttack}
-              sustain={65}
-              onSustainChange={() => {}}
+              sustain={sustain}
+              onSustainChange={handleSustain}
               release={Math.round(release)}
               onReleaseChange={handleRelease}
-              decay={0}
-              onDecayChange={() => {}}
-              chorusMix={0}
-              onChorusMixChange={() => {}}
-              chorusDepth={0}
-              onChorusDepthChange={() => {}}
+              decay={envelopeDecay}
+              onDecayChange={handleEnvelopeDecay}
+              chorusMix={chorusMix}
+              onChorusMixChange={handleChorusMix}
+              chorusDepth={chorusDepth}
+              onChorusDepthChange={handleChorusDepth}
               pitchRate={0}
               onPitchRateChange={() => {}}
               pitchDepth={0}

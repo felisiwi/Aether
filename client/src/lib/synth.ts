@@ -55,6 +55,15 @@ export class Synth {
   private _delayTime = 0
   private _delayFeedback = 0
   private _reverbMix = 0
+  private sustainLevel = 0.65
+  /** Envelope decay (seconds), distinct from echo {@link setDelayTime}. */
+  private envelopeDecay = 0
+  private chorusDelay: DelayNode | null = null
+  private chorusLfo: OscillatorNode | null = null
+  private chorusLfoGain: GainNode | null = null
+  private chorusSendGain: GainNode | null = null
+  private _chorusMix = 0
+  private _chorusDepth = 0
 
   constructor(audioCtx: AudioContext | null, mode: 'keyboard' | 'wind' = 'keyboard') {
     this.ctx = audioCtx
@@ -95,6 +104,27 @@ export class Synth {
       this.convolverNode.connect(this.wetGain)
       this.dryGain.connect(this.masterGain)
       this.wetGain.connect(this.masterGain)
+
+      // Chorus send — taps from delayNode (third fan-out), modulated delay, into masterGain
+      this.chorusDelay = audioCtx.createDelay(0.05)
+      this.chorusDelay.delayTime.value = 0.02
+
+      this.chorusLfo = audioCtx.createOscillator()
+      this.chorusLfo.type = 'sine'
+      this.chorusLfo.frequency.value = 0.5
+      this.chorusLfoGain = audioCtx.createGain()
+      this.chorusLfoGain.gain.value = 0
+
+      this.chorusSendGain = audioCtx.createGain()
+      this.chorusSendGain.gain.value = 0
+
+      this.chorusLfo.connect(this.chorusLfoGain)
+      this.chorusLfoGain.connect(this.chorusDelay.delayTime)
+      this.chorusLfo.start()
+
+      this.delayNode.connect(this.chorusDelay)
+      this.chorusDelay.connect(this.chorusSendGain)
+      this.chorusSendGain.connect(this.masterGain)
     }
   }
 
@@ -121,14 +151,20 @@ export class Synth {
 
     const gain = this.ctx.createGain()
 
+    const now = this.ctx.currentTime
+    const peak = this.currentExpression
+    const sustain = peak * this.sustainLevel
+
     if (this.attackTime > 0) {
-      gain.gain.setValueAtTime(0, this.ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(
-        this.currentExpression,
-        this.ctx.currentTime + this.attackTime,
-      )
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(peak, now + this.attackTime)
     } else {
-      gain.gain.value = this.currentExpression
+      gain.gain.setValueAtTime(peak, now)
+    }
+
+    if (this.envelopeDecay > 0) {
+      const decayStart = now + this.attackTime
+      gain.gain.setTargetAtTime(sustain, decayStart, this.envelopeDecay / 3)
     }
 
     osc.connect(gain)
@@ -175,6 +211,7 @@ export class Synth {
 
     if (cc === 11) {
       this.currentExpression = this.mapExpression(value)
+      // Sets raw gain on held notes — overwrites scheduled ADSR; same as pre-ADSR behaviour.
       for (const active of this.activeNotes.values()) {
         active.gain.gain.value = this.currentExpression
       }
@@ -202,6 +239,11 @@ export class Synth {
     this.dryGain?.disconnect()
     this.wetGain?.disconnect()
     this.convolverNode?.disconnect()
+    this.chorusLfo?.stop()
+    this.chorusLfo?.disconnect()
+    this.chorusLfoGain?.disconnect()
+    this.chorusDelay?.disconnect()
+    this.chorusSendGain?.disconnect()
     this.analyserNode?.disconnect()
     this.masterGain?.disconnect()
     this.filterNode = null
@@ -210,6 +252,10 @@ export class Synth {
     this.dryGain = null
     this.wetGain = null
     this.convolverNode = null
+    this.chorusLfo = null
+    this.chorusLfoGain = null
+    this.chorusDelay = null
+    this.chorusSendGain = null
     this.analyserNode = null
     this.masterGain = null
   }
@@ -242,7 +288,7 @@ export class Synth {
     return this.analyserNode
   }
 
-  /** Bypass CC11 mapping — set expression gain directly (0–1). */
+  /** Bypass CC11 mapping — set expression gain directly (0–1). Overwrites scheduled ADSR on held notes. */
   setExpressionDirect(value: number): void {
     this.currentExpression = Math.max(0, Math.min(1, value))
     for (const active of this.activeNotes.values()) {
@@ -293,6 +339,32 @@ export class Synth {
     }
     if (this.wetGain) {
       this.wetGain.gain.value = this._reverbMix
+    }
+  }
+
+  /** Envelope decay (not echo delay). */
+  setEnvelopeDecay(ms: number): void {
+    this.envelopeDecay = Math.max(0, Math.min(500, ms)) / 1000
+  }
+
+  /** Sustain level; `pct` is 0–100 from UI. */
+  setSustain(pct: number): void {
+    this.sustainLevel = Math.max(0, Math.min(100, pct)) / 100
+  }
+
+  /** Chorus wet send; `pct` is 0–100 from UI. */
+  setChorusMix(pct: number): void {
+    this._chorusMix = Math.max(0, Math.min(100, pct)) / 100
+    if (this.chorusSendGain) {
+      this.chorusSendGain.gain.value = this._chorusMix * 0.5
+    }
+  }
+
+  /** Modulation depth; `ms` is 0–100 from UI, capped at 10 ms in the DSP. */
+  setChorusDepth(ms: number): void {
+    this._chorusDepth = Math.max(0, Math.min(10, ms)) / 1000
+    if (this.chorusLfoGain) {
+      this.chorusLfoGain.gain.value = this._chorusDepth
     }
   }
 
