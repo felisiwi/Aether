@@ -48,9 +48,9 @@ const BLACK_KEY_HEIGHT = 89;
 /** White key default surface — no semantic token yet. TODO: white-key-surface token. */
 const WHITE_KEY_DEFAULT_BG = '#E6E6E6';
 
-/** Instrument variant — tile heights; widths flex with `flex: 1` / `minWidth: gap32`. */
-const INSTR_WHITE_H = layout.gap96;
-const INSTR_BLACK_SZ = layout.gap48;
+/** Instrument variant — Figma h-[96px] naturals, h-[48px] accidentals; width flexes in OctaveSection. */
+const INSTR_NATURAL_H = 96;
+const INSTR_ACCIDENTAL_H = 48;
 
 const pad14 = layout.gap8 + layout.gap4 + layout.gap2;
 
@@ -140,13 +140,17 @@ export default function PianoKey({
   );
 }
 
+/** Static grey for instrument note labels — Figma text/static/static-grey; no semantic token yet. */
+// TODO: add semantic token when DS maps static-grey from Figma.
+const INSTR_NOTE_GREY = '#808080';
+
 function InstrumentKeyTile({
   note,
   shortcutLabel,
   isPressed,
   isBlack,
 }: Pick<PianoKeyProps, 'note' | 'shortcutLabel' | 'isPressed' | 'isBlack'>) {
-  const h = isBlack ? INSTR_BLACK_SZ : INSTR_WHITE_H;
+  const h = isBlack ? INSTR_ACCIDENTAL_H : INSTR_NATURAL_H;
 
   let background: string;
   if (isPressed) {
@@ -154,7 +158,7 @@ function InstrumentKeyTile({
   } else if (isBlack) {
     background = semanticColors.backdropStaticLightenedBlack;
   } else {
-    background = semanticColors.backdropStaticDarkenedWhite;
+    background = semanticColors.backdropStaticWhite;
   }
 
   const borderCol = semanticColors.strokeMedium;
@@ -169,23 +173,21 @@ function InstrumentKeyTile({
     color: isPressed
       ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
       : isBlack
-        ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
-        : colors.textBodyNeutral,
+        ? semanticColors.backdropStaticWhite
+        : semanticColors.backdropStaticBlack,
   };
 
   const noteStyle: React.CSSProperties = {
     fontFamily,
     fontSize: typography.label.fontSize,
-    fontWeight: typography.label.fontWeight,
+    fontWeight: 660,
     lineHeight: `${typography.label.lineHeight}px`,
     letterSpacing: typography.label.letterSpacing,
     fontStretch: `${typography.label.fontWidth}%`,
     textAlign: 'center',
     color: isPressed
       ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
-      : isBlack
-        ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
-        : colors.textBodyNeutral,
+      : INSTR_NOTE_GREY,
   };
 
   const containerStyle: React.CSSProperties = {
