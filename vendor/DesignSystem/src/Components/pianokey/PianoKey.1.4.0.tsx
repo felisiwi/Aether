@@ -9,67 +9,33 @@ import {
 } from '../../tokens/design-tokens';
 
 /**
- * PianoKey v1.2.0 — Figma "Frame 954" (14886:17770), Variables-Figma-file.
+ * PianoKey v1.4.0 — Figma "Frame 954" (14886:17770), Variables-Figma-file.
  * REST snapshot: Frame-954--cEvsxKUutB8c3TbI3RHk0n-14886-17770.json
  *
- * A single piano key for a laptop-keyboard-mapped piano interface.
- * Renders ONLY the keyboard shortcut label inside the key body (bottom-aligned).
+ * `variant="default"`: tall piano keys; shortcut-only inside the key body (bottom-aligned).
  *
- * Note labels are NOT rendered by this component for either key type:
- *   - Black key note labels (e.g. "F#3") float ABOVE the keyboard in a shared row
- *     (Figma Frame 952 — separate horizontal row above the key row).
- *   - White key note labels (e.g. "G3") sit BELOW the keyboard in a shared row
- *     (Figma Frame 951 — separate horizontal row below the key row).
- * The parent keyboard container owns both label rows, positioned absolutely.
- * The `note` prop is kept for aria-label accessibility only.
+ * `variant="instrument"`: flat keyboard-cap tiles (Figma PianoKey COMPONENT_SET 14938:17062) —
+ * shortcut + note stacked, full `layout.radiusS` corners.
  *
- * White key:  32×142 px · padding 16 all sides  · bg #E6E6E6 (default) / orange (pressed)
- * Black key:  32×89 px  · padding 8 all sides     · bg #1A1A1A (default) / orange (pressed)
- * Both keys:  bottom corners rounded (layout.radiusXs = 4 px) · 1 px border
- *             shortcut label bottom-aligned (Figma primaryAxisAlignItems: MAX)
- *
- * Display-only — state is driven by isPressed prop. The parent (JamLink app) owns
- * event handling; no focus, button, or click semantics here.
- *
- * Bound variables resolved (DESIGN-TOKENS-FOR-COMPONENTS.md §Colour resolution):
- *   VariableID:9277:1271   → semanticColors.backdropSurfaceColouredSurface (#F04700) — pressed fill
- *   VariableID:13097:12508 → semanticColors.strokeWeak                     (#0000000f) — white key border
- *   VariableID:13097:12509 → semanticColors.strokeInvertedWeak             (#ffffff0f) — black key border
- *   VariableID:9272:2228   → colors.textDisabled                           (#0000001f) — white key shortcut (default)
- *   VariableID:13406:44547 → colors.textPressed                            (#FF8152)  — shortcut when pressed
- *   VariableID:14886:17771 → semanticColors.strokeInvertedMedium           (#ffffff1f) — black key shortcut (default)
- *   VariableID:2010:197    → layout.radiusXs                               (4 px)     — bottom corner radius
- *   VariableID:9053:54     → layout.gap16                                  (16 px)    — white key padding (all sides)
- *   VariableID:9053:53     → layout.gap8                                   (8 px)     — black key padding (all sides)
- *
- * White key default background (#E6E6E6) has no matching semantic token — hardcoded from
- * snapshot raw color. TODO: add a "white-key-surface" token for instrument UI.
- *
- * Black key default background uses semanticColors.backdropStatesHoverSurface (#1A1A1A)
- * — same resolved hex as snapshot raw color.
- *
- * v1.3.0 archived at Archive/PianoKey.1.3.0.tsx
- * v1.2.0 archived at Archive/PianoKey.1.2.0.tsx
- * v1.1.0 archived at Archive/PianoKey.1.1.0.tsx
- * v1.0.0 archived at Archive/PianoKey.1.0.0.tsx
+ * Display-only — state is driven by isPressed prop.
  */
 export interface PianoKeyProps {
   /**
    * Musical note name, e.g. "G3" or "F#3".
-   * NOT rendered inside the key — used only in aria-label.
-   * The parent keyboard container renders note labels:
-   *   - above the key row for black keys (Figma Frame 952)
-   *   - below the key row for white keys (Figma Frame 951)
+   * For `variant="default"`: aria only (labels live in parent rows).
+   * For `variant="instrument"`: rendered inside the tile below the shortcut.
    */
   note: string;
-  /** Keyboard shortcut letter, e.g. "B" or "H". Rendered at the bottom of the key. */
+  /** Keyboard shortcut letter, e.g. "B" or "H". */
   shortcutLabel: string;
   /** Whether the key is currently being pressed. */
   isPressed: boolean;
-  /** Whether this is a black (sharp/flat) key. Affects size, colours, and padding. */
+  /** Whether this is a black (sharp/flat) key. */
   isBlack: boolean;
   /** Remote peer is holding this note (local key idle). */
   isGhost?: boolean;
+  /** `default` = tall piano key. `instrument` = laptop keyboard cap tile (JamRoom Keyboard mode). */
+  variant?: 'default' | 'instrument';
 }
 
 // White key: 16 px padding each side + 16 px label content area = 48 px total (Figma HUG)
@@ -82,13 +48,32 @@ const BLACK_KEY_HEIGHT = 89;
 /** White key default surface — no semantic token yet. TODO: white-key-surface token. */
 const WHITE_KEY_DEFAULT_BG = '#E6E6E6';
 
+/** Instrument variant — white tile height; black tile is square `layout.gap48`. */
+const INSTR_WHITE_W = layout.gap48;
+const INSTR_WHITE_H = layout.gap96;
+const INSTR_BLACK_SZ = layout.gap48;
+
+const pad14 = layout.gap8 + layout.gap4 + layout.gap2;
+
 export default function PianoKey({
   note,
   shortcutLabel,
   isPressed,
   isBlack,
   isGhost = false,
+  variant = 'default',
 }: PianoKeyProps) {
+  if (variant === 'instrument') {
+    return (
+      <InstrumentKeyTile
+        note={note}
+        shortcutLabel={shortcutLabel}
+        isPressed={isPressed}
+        isBlack={isBlack}
+      />
+    );
+  }
+
   const width = isBlack ? BLACK_KEY_WIDTH : WHITE_KEY_WIDTH;
   const height = isBlack ? BLACK_KEY_HEIGHT : WHITE_KEY_HEIGHT;
   const paddingH = layout.gap8;
@@ -136,19 +121,13 @@ export default function PianoKey({
     lineHeight: '18px',
     letterSpacing: typography.bodyS.letterSpacing,
     textAlign: 'center',
-    color: isPressed
-      ? colors.textPressed
-      : isGhost
-        ? themeTokens.purple.primary50
+    color: isGhost
+      ? themeTokens.purple.primary50
+      : isPressed
+        ? colors.textPressed
         : isBlack
-      /**
-       * VariableID:14886:17771 — inverted-disabled text.
-       * Not yet in design-tokens.ts; resolved hex #ffffff1f matches
-       * semanticColors.strokeInvertedMedium.
-       * TODO: export inverted-disabled text token.
-       */
-      ? semanticColors.strokeInvertedMedium
-      : colors.textDisabled,
+          ? semanticColors.strokeInvertedMedium
+          : colors.textDisabled,
   };
 
   return (
@@ -158,6 +137,82 @@ export default function PianoKey({
       role="img"
     >
       <span style={shortcutLabelStyle}>{shortcutLabel}</span>
+    </div>
+  );
+}
+
+function InstrumentKeyTile({
+  note,
+  shortcutLabel,
+  isPressed,
+  isBlack,
+}: Pick<PianoKeyProps, 'note' | 'shortcutLabel' | 'isPressed' | 'isBlack'>) {
+  const w = isBlack ? INSTR_BLACK_SZ : INSTR_WHITE_W;
+  const h = isBlack ? INSTR_BLACK_SZ : INSTR_WHITE_H;
+
+  let background: string;
+  if (isPressed) {
+    background = semanticColors.backdropSurfaceColouredSurface;
+  } else if (isBlack) {
+    background = semanticColors.backdropStaticLightenedBlack;
+  } else {
+    background = semanticColors.backdropStaticDarkenedWhite;
+  }
+
+  const borderCol = semanticColors.strokeMedium;
+
+  const shortcutStyle: React.CSSProperties = {
+    fontFamily,
+    fontSize: typography.bodyS.fontSize,
+    fontWeight: 400,
+    lineHeight: `${typography.bodyS.lineHeight}px`,
+    letterSpacing: typography.bodyS.letterSpacing,
+    textAlign: 'center',
+    color: isPressed
+      ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
+      : isBlack
+        ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
+        : colors.textBodyNeutral,
+  };
+
+  const noteStyle: React.CSSProperties = {
+    fontFamily,
+    fontSize: typography.label.fontSize,
+    fontWeight: typography.label.fontWeight,
+    lineHeight: `${typography.label.lineHeight}px`,
+    letterSpacing: typography.label.letterSpacing,
+    fontStretch: `${typography.label.fontWidth}%`,
+    textAlign: 'center',
+    color: isPressed
+      ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
+      : isBlack
+        ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
+        : colors.textBodyNeutral,
+  };
+
+  const containerStyle: React.CSSProperties = {
+    width: w,
+    height: h,
+    paddingLeft: layout.gap8,
+    paddingRight: layout.gap8,
+    paddingTop: isBlack ? layout.gap4 : pad14,
+    paddingBottom: isBlack ? layout.gap4 : pad14,
+    background,
+    border: `${layout.strokeS}px solid ${borderCol}`,
+    borderRadius: layout.radiusS,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: layout.gap4,
+    boxSizing: 'border-box',
+    userSelect: 'none',
+  };
+
+  return (
+    <div style={containerStyle} aria-label={`${note} — ${shortcutLabel}`} role="img">
+      <span style={shortcutStyle}>{shortcutLabel}</span>
+      <span style={noteStyle}>{note}</span>
     </div>
   );
 }
