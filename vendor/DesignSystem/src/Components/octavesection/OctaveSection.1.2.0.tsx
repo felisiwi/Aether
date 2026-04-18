@@ -76,7 +76,8 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
           flexDirection: "column",
           alignItems: "stretch",
           gap: layout.gap8,
-          width: 356,
+          flex: 1,
+          minWidth: 0,
           ...style,
         }}
         role="group"
@@ -87,7 +88,8 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
-            gap: layout.gap4,
+            justifyContent: "space-between",
+            width: "100%",
             paddingLeft: layout.gap24,
             paddingRight: layout.gap24,
           }}
@@ -106,7 +108,10 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             isBlack
             variant="instrument"
           />
-          <div style={{ width: layout.gap48 }} aria-hidden />
+          <div
+            style={{ width: layout.gap48, flexShrink: 0 }}
+            aria-hidden
+          />
           <PianoKey
             note={`F#${octave}`}
             shortcutLabel={blackShortcuts[2] ?? ""}
@@ -134,8 +139,8 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
-            gap: layout.gap4,
+            justifyContent: "space-between",
+            width: "100%",
           }}
         >
           {WHITES.map((w, i) => {

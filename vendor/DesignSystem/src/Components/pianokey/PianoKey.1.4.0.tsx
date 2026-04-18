@@ -48,8 +48,7 @@ const BLACK_KEY_HEIGHT = 89;
 /** White key default surface — no semantic token yet. TODO: white-key-surface token. */
 const WHITE_KEY_DEFAULT_BG = '#E6E6E6';
 
-/** Instrument variant — white tile height; black tile is square `layout.gap48`. */
-const INSTR_WHITE_W = layout.gap48;
+/** Instrument variant — tile heights; widths flex with `flex: 1` / `minWidth: gap32`. */
 const INSTR_WHITE_H = layout.gap96;
 const INSTR_BLACK_SZ = layout.gap48;
 
@@ -147,7 +146,6 @@ function InstrumentKeyTile({
   isPressed,
   isBlack,
 }: Pick<PianoKeyProps, 'note' | 'shortcutLabel' | 'isPressed' | 'isBlack'>) {
-  const w = isBlack ? INSTR_BLACK_SZ : INSTR_WHITE_W;
   const h = isBlack ? INSTR_BLACK_SZ : INSTR_WHITE_H;
 
   let background: string;
@@ -191,7 +189,8 @@ function InstrumentKeyTile({
   };
 
   const containerStyle: React.CSSProperties = {
-    width: w,
+    flex: 1,
+    minWidth: layout.gap32,
     height: h,
     paddingLeft: layout.gap8,
     paddingRight: layout.gap8,

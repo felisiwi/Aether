@@ -36,10 +36,11 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
   const root: React.CSSProperties = {
     display: "flex",
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: layout.gap16,
+    alignItems: "stretch",
+    justifyContent: "space-between",
+    gap: layout.gap4,
     width: "100%",
+    minWidth: 1088,
     padding: layout.gap16,
     background: semanticColors.backdropNautralBackground,
     borderRadius: layout.radiusM,
@@ -50,11 +51,11 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
   const keysRow: React.CSSProperties = {
     display: "flex",
     flexDirection: "row",
-    alignItems: "flex-end",
-    gap: layout.gap8,
+    alignItems: "stretch",
+    gap: layout.gap4,
     width: "100%",
     minWidth: 0,
-    justifyContent: "center",
+    justifyContent: "space-between",
   };
 
   return (
