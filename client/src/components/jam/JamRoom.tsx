@@ -21,7 +21,7 @@ import {
   SoundWaveController,
   type WaveformId,
 } from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
-import { TopNav } from '@ds/Components/topnav/TopNav.1.1.0'
+import { TopNav } from '@ds/Components/topnav/TopNav.1.2.0'
 import { Dashboard } from '@ds/Components/dashboard/Dashboard.1.1.0'
 import { VolumeController } from '@ds/Components/volumecontroller/VolumeController.1.0.0'
 import { VerticalControl } from '@ds/Components/verticalcontrol/VerticalControl.1.0.0'
@@ -852,7 +852,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             key={mode}
             onBackToLobby={onLeave}
             defaultTheme={topNavDefaultTheme}
-            onThemeChange={(t) => setThemeMode(t)}
+            onThemeChange={(t: 'light' | 'dark') => setThemeMode(t)}
           />
         </div>
 
