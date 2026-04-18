@@ -198,6 +198,8 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
         borderRadius: layout.radiusRound,
         backgroundColor: trackBg,
         overflow: "visible",
+        marginTop: THUMB_HEIGHT_V / 2,
+        marginBottom: THUMB_HEIGHT_V / 2,
       }
     : {
         position: "relative",

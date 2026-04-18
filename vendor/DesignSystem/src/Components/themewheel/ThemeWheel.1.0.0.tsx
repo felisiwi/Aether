@@ -118,6 +118,7 @@ export const ThemeWheel: React.FC<ThemeWheelProps> = ({
 
   useEffect(() => {
     if (variant !== "two") return;
+    if (twoAnimating.current) return; // don't interrupt in-progress animation
     rotationTwo.set(twoThemeBaseDeg(theme));
   }, [theme, variant, rotationTwo]);
 
@@ -131,9 +132,7 @@ export const ThemeWheel: React.FC<ThemeWheelProps> = ({
       const fromTheme = theme === "colour" ? "light" : theme;
       const nextTheme = fromTheme === "light" ? "dark" : "light";
       onThemeChange(nextTheme);
-      void Promise.resolve(
-        animate(rotationTwo, start + 180, twoClickTransition),
-      ).finally(() => {
+      animate(rotationTwo, start + 180, twoClickTransition).then(() => {
         twoAnimating.current = false;
       });
       return;
