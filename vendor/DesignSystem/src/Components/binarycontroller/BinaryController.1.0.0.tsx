@@ -7,6 +7,7 @@ import {
 } from "../../tokens/design-tokens";
 import { DataWindow } from "../datawindow/DataWindow.1.0.0";
 import BasicButton from "../basicbutton/BasicButton.1.2.0";
+import type { IconName } from "../icon/icon-names";
 
 /**
  * BinaryController v1.0.0 — Figma `15414:267797`.
@@ -23,6 +24,8 @@ export interface BinaryControllerProps {
   value: string;
   onUp: () => void;
   onDown: () => void;
+  upIcon?: IconName;
+  downIcon?: IconName;
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -38,6 +41,8 @@ export const BinaryController: React.FC<BinaryControllerProps> = ({
   value,
   onUp,
   onDown,
+  upIcon = "chevron-up" as IconName,
+  downIcon = "chevron-down" as IconName,
   disabled = false,
   className,
   style,
@@ -122,7 +127,7 @@ export const BinaryController: React.FC<BinaryControllerProps> = ({
           colourFill={false}
           showText={false}
           showIcon
-          iconName="chevron-up"
+          iconName={upIcon}
           disabled={disabled}
           aria-label={`Increase ${title}`}
           onClick={onUp}
@@ -137,7 +142,7 @@ export const BinaryController: React.FC<BinaryControllerProps> = ({
           colourFill={false}
           showText={false}
           showIcon
-          iconName="chevron-down"
+          iconName={downIcon}
           disabled={disabled}
           aria-label={`Decrease ${title}`}
           onClick={onDown}

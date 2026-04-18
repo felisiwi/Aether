@@ -57,6 +57,8 @@ export const KeyOctaveController: React.FC<KeyOctaveControllerProps> = ({
         value={octaveValue}
         onUp={onOctaveUp}
         onDown={onOctaveDown}
+        upIcon="chevron-right"
+        downIcon="chevron-left"
       />
     </div>
   );

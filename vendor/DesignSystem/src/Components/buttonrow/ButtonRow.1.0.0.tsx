@@ -61,6 +61,7 @@ export const ButtonRow: React.FC<ButtonRowProps> = ({
         flexDirection: "column",
         alignItems: "stretch",
         gap: layout.gap4,
+        width: 60,
         ...style,
       }}
       role="group"
@@ -73,6 +74,7 @@ export const ButtonRow: React.FC<ButtonRowProps> = ({
           ariaLabel={opt.label}
           state={index === activeIndex ? "active" : "default"}
           onClick={() => onChange(index)}
+          style={{ width: "100%" }}
         />
       ))}
       <p style={captionStyle}>{caption}</p>

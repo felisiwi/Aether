@@ -3,7 +3,6 @@ import {
   typography,
   fontFamily,
   colors,
-  semanticColors,
   layout,
 } from "../../tokens/design-tokens";
 import { getPlayerTheme, type ThemeIndex } from "../../tokens/theme-map";
@@ -67,7 +66,6 @@ export const DataController: React.FC<DataControllerProps> = ({
     letterSpacing: labelType.letterSpacing,
     fontStretch: `${labelType.fontWidth}%`,
     color: labelColor,
-    textTransform: "uppercase",
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
     margin: 0,
     padding: 0,
@@ -80,7 +78,7 @@ export const DataController: React.FC<DataControllerProps> = ({
     width: CONTROLLER_WIDTH,
     boxSizing: "border-box",
     gap: STACK_GAP,
-    background: semanticColors.backdropSurfaceTransparentSurfaceLight,
+    background: "transparent",
     ...style,
   };
 

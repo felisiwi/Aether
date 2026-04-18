@@ -84,7 +84,7 @@ const outerTransition = {
   ease: [0.33, 1, 0.68, 1] as const,
 };
 
-/** Two-segment wheel: 400ms ease-in-out, 180° clockwise per click; theme updates after the turn. */
+/** Two-segment wheel: 400ms ease-in-out, 180° clockwise per click; theme updates at click start. */
 const twoClickTransition = {
   duration: 0.4,
   ease: [0.42, 0, 0.58, 1] as const,
@@ -129,13 +129,13 @@ export const ThemeWheel: React.FC<ThemeWheelProps> = ({
       twoAnimating.current = true;
       const start = ((rotationTwo.get() % 360) + 360) % 360;
       const fromTheme = theme === "colour" ? "light" : theme;
-      animate(rotationTwo, start + 180, twoClickTransition)
-        .then(() => {
-          onThemeChange(fromTheme === "light" ? "dark" : "light");
-        })
-        .finally(() => {
-          twoAnimating.current = false;
-        });
+      const nextTheme = fromTheme === "light" ? "dark" : "light";
+      onThemeChange(nextTheme);
+      void Promise.resolve(
+        animate(rotationTwo, start + 180, twoClickTransition),
+      ).finally(() => {
+        twoAnimating.current = false;
+      });
       return;
     }
 

@@ -44,6 +44,8 @@ const TRACK_HEIGHT = layout.gap2;
 const THUMB_SIZE = layout.gap16;
 const THUMB_WIDTH_PX = 16;
 const THUMB_HEIGHT_PX = 16;
+const THUMB_WIDTH_V = 16;
+const THUMB_HEIGHT_V = 32;
 
 function themeKey(index: ThemeIndex | undefined) {
   return THEME_KEYS[index ?? 0];
@@ -112,8 +114,6 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
 
   const trackBg = trackBackground(variant, darkMode, isDragging);
   const accent = fillAndThumbColor(variant, darkMode, isDragging, themeIndex);
-  const themedIdleDim =
-    variant === "theme" && !isDragging && !visualActive;
 
   const resolve = useCallback(
     (clientX: number, clientY: number) => {
@@ -217,7 +217,7 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
         height: `${clamped * 100}%`,
         borderRadius: layout.radiusRound,
         backgroundColor: accent,
-        opacity: themedIdleDim ? 0.5 : 1,
+        opacity: 1,
         pointerEvents: "none",
       }
     : {
@@ -228,7 +228,7 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
         width: `${clamped * 100}%`,
         borderRadius: layout.radiusRound,
         backgroundColor: accent,
-        opacity: themedIdleDim ? 0.5 : 1,
+        opacity: 1,
         pointerEvents: "none",
       };
 
@@ -236,14 +236,14 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
     ? {
         position: "absolute",
         left: "50%",
-        bottom: `calc(${clamped * 100}% - ${THUMB_HEIGHT_PX / 2}px)`,
-        width: THUMB_WIDTH_PX,
-        height: THUMB_HEIGHT_PX,
+        bottom: `calc(${clamped * 100}% - ${THUMB_HEIGHT_V / 2}px)`,
+        width: THUMB_WIDTH_V,
+        height: THUMB_HEIGHT_V,
         borderRadius: layout.radiusNone,
         backgroundColor: accent,
         border: "none",
         transform: "translateX(-50%)",
-        opacity: themedIdleDim ? 0.5 : 1,
+        opacity: 1,
         boxSizing: "border-box",
         pointerEvents: "none",
       }
@@ -257,7 +257,7 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
         backgroundColor: accent,
         border: "none",
         transform: "translate(-50%, -50%)",
-        opacity: themedIdleDim ? 0.5 : 1,
+        opacity: 1,
         boxSizing: "border-box",
         pointerEvents: "none",
       };

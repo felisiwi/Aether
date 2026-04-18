@@ -89,7 +89,7 @@ export const SliderController: React.FC<SliderControllerProps> = ({
       bumpWheelActive();
       const { value: v, min: lo, max: hi, step: st, onChange: oc, roundToStep: r } =
         interactionRef.current;
-      const dir = e.deltaY > 0 ? -1 : 1;
+      const dir = e.deltaY > 0 ? 1 : -1;
       const raw = v + dir * st;
       const snapped = r(Math.max(lo, Math.min(hi, raw)));
       if (snapped !== v) oc(snapped);
