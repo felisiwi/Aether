@@ -737,7 +737,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           }}
         >
           <TopNav
-            key={mode}
             onBackToLobby={onLeave}
             defaultTheme={topNavDefaultTheme}
             onThemeChange={(t: 'light' | 'dark') => setThemeMode(t)}
