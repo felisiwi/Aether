@@ -1,11 +1,13 @@
 import React from "react";
-import PianoKey from "../pianokey/PianoKey.1.5.1";
+import PianoKey from "../pianokey/PianoKey.1.4.0";
 import { layout } from "../../tokens/design-tokens";
 
 export interface OctaveSectionProps {
   octave: number;
   pressedNotes?: string[];
   variant?: "Piano" | "Keyboard";
+  /** Which keyboard shortcut group (0–2) for `Keyboard` variant; omit for `Piano`. */
+  keyboardGroup?: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -28,6 +30,20 @@ const BLACKS: { letter: string; shortcut: string; afterWhiteIndex: number }[] = 
   { letter: "A#", shortcut: "G", afterWhiteIndex: 5 },
 ];
 
+/** Per-octave white-key shortcuts (C3, C4, C5 groups) — matches PianoKeyboard / CODE_LABELS. */
+const WHITES_GROUP: Record<number, string[]> = {
+  0: ["Z", "X", "C", "V", "B", "N", "M"],
+  1: [",", ".", "-", "Q", "W", "E", "R"],
+  2: ["T", "Y", "U", "I", "O", "P", "Å"],
+};
+
+/** C# D# F# G# A# order per octave group. */
+const BLACKS_GROUP: Record<number, string[]> = {
+  0: ["S", "D", "H", "J", "G"],
+  1: ["L", "Ö", "2", "3", "4"],
+  2: ["6", "7", "9", "0", "+"],
+};
+
 function norm(s: string): string {
   return s.replace(/\s+/g, "").toLowerCase();
 }
@@ -36,11 +52,20 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
   octave,
   pressedNotes = [],
   variant = "Piano",
+  keyboardGroup,
   className,
   style,
 }) => {
   const pressed = new Set(pressedNotes.map(norm));
-  const pianoKeyVariant = variant === "Keyboard" ? "instrument" : "default";
+
+  const whiteShortcuts =
+    keyboardGroup !== undefined
+      ? WHITES_GROUP[keyboardGroup] ?? ["", "", "", "", "", "", ""]
+      : ["", "", "", "", "", "", ""];
+  const blackShortcuts =
+    keyboardGroup !== undefined
+      ? BLACKS_GROUP[keyboardGroup] ?? ["", "", "", "", ""]
+      : ["", "", "", "", ""];
 
   if (variant === "Keyboard") {
     return (
@@ -69,39 +94,34 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
         >
           <PianoKey
             note={`C#${octave}`}
-            shortcutLabel="S"
+            shortcutLabel={blackShortcuts[0] ?? ""}
             isPressed={pressed.has(norm(`C#${octave}`))}
             isBlack
-            variant={pianoKeyVariant}
           />
           <PianoKey
             note={`D#${octave}`}
-            shortcutLabel="D"
+            shortcutLabel={blackShortcuts[1] ?? ""}
             isPressed={pressed.has(norm(`D#${octave}`))}
             isBlack
-            variant={pianoKeyVariant}
           />
           <div style={{ width: layout.gap48 }} aria-hidden />
           <PianoKey
             note={`F#${octave}`}
-            shortcutLabel="H"
+            shortcutLabel={blackShortcuts[2] ?? ""}
             isPressed={pressed.has(norm(`F#${octave}`))}
             isBlack
-            variant={pianoKeyVariant}
           />
           <PianoKey
             note={`G#${octave}`}
-            shortcutLabel="J"
+            shortcutLabel={blackShortcuts[3] ?? ""}
             isPressed={pressed.has(norm(`G#${octave}`))}
             isBlack
-            variant={pianoKeyVariant}
           />
           <PianoKey
             note={`A#${octave}`}
-            shortcutLabel="G"
+            shortcutLabel={blackShortcuts[4] ?? ""}
             isPressed={pressed.has(norm(`A#${octave}`))}
             isBlack
-            variant={pianoKeyVariant}
           />
         </div>
         <div
@@ -113,16 +133,15 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             gap: layout.gap4,
           }}
         >
-          {WHITES.map((w) => {
+          {WHITES.map((w, i) => {
             const note = `${w.letter}${octave}`;
             return (
               <PianoKey
                 key={note}
                 note={note}
-                shortcutLabel={w.shortcut}
+                shortcutLabel={whiteShortcuts[i] ?? ""}
                 isPressed={pressed.has(norm(note))}
                 isBlack={false}
-                variant={pianoKeyVariant}
               />
             );
           })}
@@ -156,7 +175,6 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             shortcutLabel={w.shortcut}
             isPressed={pressed.has(norm(note))}
             isBlack={false}
-            variant={pianoKeyVariant}
           />
         );
       })}
@@ -177,7 +195,6 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               shortcutLabel={b.shortcut}
               isPressed={pressed.has(norm(note))}
               isBlack
-              variant={pianoKeyVariant}
             />
           </div>
         );

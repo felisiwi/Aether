@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { InstrumentInterface } from "./InstrumentInterface.1.1.0";
 
@@ -13,11 +13,9 @@ type Story = StoryObj<typeof InstrumentInterface>;
 
 export const PianoKeys: Story = {
   render: function R() {
-    const [oct, setOct] = useState(3);
     return (
       <InstrumentInterface
-        octave={oct}
-        onOctaveChange={setOct}
+        octave={3}
         variant="Piano"
         octaveSpan={2}
         pressedNotes={[]}
@@ -28,11 +26,9 @@ export const PianoKeys: Story = {
 
 export const InstrumentKeyboardCaps: Story = {
   render: function R() {
-    const [oct, setOct] = useState(3);
     return (
       <InstrumentInterface
-        octave={oct}
-        onOctaveChange={setOct}
+        octave={3}
         variant="Keyboard"
         octaveSpan={2}
         pressedNotes={["C#4", "F4"]}
