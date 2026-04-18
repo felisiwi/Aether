@@ -35,7 +35,7 @@ const ENV_SUSTAIN = { min: 0, max: 100, step: 1, suffix: "%" as const };
 const ENV_RELEASE = { min: 10, max: 500, step: 5, suffix: "ms" as const };
 const ENV_DECAY = { min: 0, max: 500, step: 5, suffix: "ms" as const };
 
-const CHORUS_MIX = { min: 0, max: 10, step: 0.1, suffix: "Hz" as const };
+const CHORUS_MIX = { min: 0, max: 100, step: 1, suffix: "%" as const };
 const CHORUS_DEPTH = { min: 0, max: 100, step: 1, suffix: "ms" as const };
 
 const LFO_RATE = { min: 0, max: 20, step: 0.1, suffix: "Hz" as const };

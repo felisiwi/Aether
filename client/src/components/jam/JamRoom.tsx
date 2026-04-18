@@ -126,6 +126,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [envelopeDecay, setEnvelopeDecay] = useState(0)
     const [chorusMix, setChorusMix] = useState(0)
     const [chorusDepth, setChorusDepth] = useState(0)
+    const [pitchRate, setPitchRate] = useState(0)
+    const [pitchDepth, setPitchDepth] = useState(0)
     const [brightness, setBrightness] = useState(20000)
 
     const [delayTime, setDelayTime] = useState(0)
@@ -201,8 +203,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (!synth) return
       synth.setSustain(sustain)
       synth.setEnvelopeDecay(envelopeDecay)
-      // EffectsBoard CHORUS_MIX is 0–10 (not 0–100); map to setChorusMix pct.
-      synth.setChorusMix(chorusMix * 10)
+      synth.setChorusMix(chorusMix)
       synth.setChorusDepth(chorusDepth)
     }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth])
 
@@ -814,10 +815,10 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               onChorusMixChange={handleChorusMix}
               chorusDepth={chorusDepth}
               onChorusDepthChange={handleChorusDepth}
-              pitchRate={0}
-              onPitchRateChange={() => {}}
-              pitchDepth={0}
-              onPitchDepthChange={() => {}}
+              pitchRate={pitchRate}
+              onPitchRateChange={setPitchRate}
+              pitchDepth={pitchDepth}
+              onPitchDepthChange={setPitchDepth}
               delayTime={Math.round(delayTime)}
               onDelayTimeChange={(v) => handleDelayTime(v)}
               feedback={Math.round(delayFeedback * 100)}
