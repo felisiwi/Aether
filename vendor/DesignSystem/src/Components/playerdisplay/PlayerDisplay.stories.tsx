@@ -18,7 +18,6 @@ export const Local: Story = {
     variant: "local",
     chordName: "Cmaj",
     notes: ["C", "E", "G"],
-    keyName: "C Major",
     latency: 42,
   },
 };
@@ -30,7 +29,6 @@ export const Remote: Story = {
     variant: "remote",
     chordName: "Dm7",
     notes: ["D", "F", "A", "C"],
-    keyName: "D minor 7",
     latency: 120,
   },
 };

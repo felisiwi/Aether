@@ -10,6 +10,10 @@ export interface OctaveSectionProps {
   keyboardGroup?: number;
   /** Semitone transpose offset; physical key labels show the note that actually sounds. */
   noteOffset?: number;
+  /** Mouse/touch down on a key tile (Keyboard variant only). */
+  onNoteOn?: (note: string) => void;
+  /** Mouse/touch release or leave (Keyboard variant only). */
+  onNoteOff?: (note: string) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -87,6 +91,8 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
   variant = "Piano",
   keyboardGroup,
   noteOffset = 0,
+  onNoteOn,
+  onNoteOff,
   className,
   style,
 }) => {
@@ -102,6 +108,9 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
       : ["", "", "", "", ""];
 
   if (variant === "Keyboard") {
+    const keyboardNote = (blackIndex: 0 | 1 | 2 | 3 | 4) =>
+      transposedNoteName(octave, BLACK_SEMITONES_FROM_C[blackIndex], noteOffset);
+
     return (
       <div
         className={className}
@@ -130,52 +139,122 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             style={{ width: layout.gap24, alignSelf: "stretch" }}
             aria-hidden
           />
-          <PianoKey
-            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[0], noteOffset)}
-            shortcutLabel={blackShortcuts[0] ?? ""}
-            isPressed={pressed.has(
-              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[0], noteOffset)),
-            )}
-            isBlack
-            variant="instrument"
-          />
-          <PianoKey
-            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[1], noteOffset)}
-            shortcutLabel={blackShortcuts[1] ?? ""}
-            isPressed={pressed.has(
-              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[1], noteOffset)),
-            )}
-            isBlack
-            variant="instrument"
-          />
+          <div
+            key={`black-0-${octave}`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onNoteOn?.(keyboardNote(0));
+            }}
+            onPointerUp={() => onNoteOff?.(keyboardNote(0))}
+            onPointerLeave={() => onNoteOff?.(keyboardNote(0))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              touchAction: "none",
+              cursor: "pointer",
+            }}
+          >
+            <PianoKey
+              note={keyboardNote(0)}
+              shortcutLabel={blackShortcuts[0] ?? ""}
+              isPressed={pressed.has(norm(keyboardNote(0)))}
+              isBlack
+              variant="instrument"
+            />
+          </div>
+          <div
+            key={`black-1-${octave}`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onNoteOn?.(keyboardNote(1));
+            }}
+            onPointerUp={() => onNoteOff?.(keyboardNote(1))}
+            onPointerLeave={() => onNoteOff?.(keyboardNote(1))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              touchAction: "none",
+              cursor: "pointer",
+            }}
+          >
+            <PianoKey
+              note={keyboardNote(1)}
+              shortcutLabel={blackShortcuts[1] ?? ""}
+              isPressed={pressed.has(norm(keyboardNote(1)))}
+              isBlack
+              variant="instrument"
+            />
+          </div>
           <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
-          <PianoKey
-            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[2], noteOffset)}
-            shortcutLabel={blackShortcuts[2] ?? ""}
-            isPressed={pressed.has(
-              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[2], noteOffset)),
-            )}
-            isBlack
-            variant="instrument"
-          />
-          <PianoKey
-            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[3], noteOffset)}
-            shortcutLabel={blackShortcuts[3] ?? ""}
-            isPressed={pressed.has(
-              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[3], noteOffset)),
-            )}
-            isBlack
-            variant="instrument"
-          />
-          <PianoKey
-            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[4], noteOffset)}
-            shortcutLabel={blackShortcuts[4] ?? ""}
-            isPressed={pressed.has(
-              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[4], noteOffset)),
-            )}
-            isBlack
-            variant="instrument"
-          />
+          <div
+            key={`black-2-${octave}`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onNoteOn?.(keyboardNote(2));
+            }}
+            onPointerUp={() => onNoteOff?.(keyboardNote(2))}
+            onPointerLeave={() => onNoteOff?.(keyboardNote(2))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              touchAction: "none",
+              cursor: "pointer",
+            }}
+          >
+            <PianoKey
+              note={keyboardNote(2)}
+              shortcutLabel={blackShortcuts[2] ?? ""}
+              isPressed={pressed.has(norm(keyboardNote(2)))}
+              isBlack
+              variant="instrument"
+            />
+          </div>
+          <div
+            key={`black-3-${octave}`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onNoteOn?.(keyboardNote(3));
+            }}
+            onPointerUp={() => onNoteOff?.(keyboardNote(3))}
+            onPointerLeave={() => onNoteOff?.(keyboardNote(3))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              touchAction: "none",
+              cursor: "pointer",
+            }}
+          >
+            <PianoKey
+              note={keyboardNote(3)}
+              shortcutLabel={blackShortcuts[3] ?? ""}
+              isPressed={pressed.has(norm(keyboardNote(3)))}
+              isBlack
+              variant="instrument"
+            />
+          </div>
+          <div
+            key={`black-4-${octave}`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onNoteOn?.(keyboardNote(4));
+            }}
+            onPointerUp={() => onNoteOff?.(keyboardNote(4))}
+            onPointerLeave={() => onNoteOff?.(keyboardNote(4))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              touchAction: "none",
+              cursor: "pointer",
+            }}
+          >
+            <PianoKey
+              note={keyboardNote(4)}
+              shortcutLabel={blackShortcuts[4] ?? ""}
+              isPressed={pressed.has(norm(keyboardNote(4)))}
+              isBlack
+              variant="instrument"
+            />
+          </div>
           <div
             style={{ width: layout.gap24, alignSelf: "stretch" }}
             aria-hidden
@@ -195,14 +274,29 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             const baseSemitone = WHITE_SEMITONES_FROM_C[i];
             const note = transposedNoteName(octave, baseSemitone, noteOffset);
             return (
-              <PianoKey
+              <div
                 key={`${w.letter}${octave}`}
-                note={note}
-                shortcutLabel={whiteShortcuts[i] ?? ""}
-                isPressed={pressed.has(norm(note))}
-                isBlack={false}
-                variant="instrument"
-              />
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  onNoteOn?.(note);
+                }}
+                onPointerUp={() => onNoteOff?.(note)}
+                onPointerLeave={() => onNoteOff?.(note)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  touchAction: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <PianoKey
+                  note={note}
+                  shortcutLabel={whiteShortcuts[i] ?? ""}
+                  isPressed={pressed.has(norm(note))}
+                  isBlack={false}
+                  variant="instrument"
+                />
+              </div>
             );
           })}
         </div>

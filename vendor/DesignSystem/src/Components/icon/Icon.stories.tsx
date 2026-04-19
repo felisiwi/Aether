@@ -43,7 +43,6 @@ export const Fill: Story = {
 
 export const CustomIconFill: Story = {
   args: { name: 'play', size: 24, weight: 'fill' },
-  description: 'Custom media icons also support weight; same selector as Phosphor.',
 };
 
 export const RegularVsFill: Story = {

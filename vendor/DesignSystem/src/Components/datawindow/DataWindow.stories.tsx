@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { DataWindow } from "./DataWindow.1.0.0";
+import {
+  typography,
+  fontFamily,
+  colors,
+  layout,
+  semanticColors,
+} from "../../tokens/design-tokens";
 
 const meta: Meta<typeof DataWindow> = {
   title: "Components/DataWindow",
@@ -15,7 +22,7 @@ const meta: Meta<typeof DataWindow> = {
   },
   args: {
     variant: "default",
-    label: "Chord",
+    label: "Attack",
     compact: false,
   },
 };
@@ -23,55 +30,61 @@ const meta: Meta<typeof DataWindow> = {
 export default meta;
 type Story = StoryObj<typeof DataWindow>;
 
-const sampleText: React.CSSProperties = {
-  fontFamily: "Mona Sans, system-ui, sans-serif",
-  fontSize: 24,
-  fontWeight: 660,
-  fontStretch: "120%",
-  letterSpacing: -0.5,
-  lineHeight: "32px",
-  color: "#000",
+const valueText: React.CSSProperties = {
+  fontFamily,
+  fontSize: typography.titleM.fontSize,
+  fontWeight: typography.titleM.fontWeight,
+  lineHeight: `${typography.titleM.lineHeight}px`,
+  fontStretch: `${typography.titleM.fontWidth}%`,
+  letterSpacing: typography.titleM.letterSpacing,
+  color: colors.textHeadingNeutral,
   margin: 0,
 };
 
-const sampleSubtext: React.CSSProperties = {
-  fontFamily: "Mona Sans, system-ui, sans-serif",
-  fontSize: 13,
-  lineHeight: "20px",
-  color: "#00000099",
+const subText: React.CSSProperties = {
+  fontFamily,
+  fontSize: typography.bodyS.fontSize,
+  lineHeight: `${typography.bodyS.lineHeight}px`,
+  color: colors.textBodyNeutral,
   margin: 0,
 };
 
 export const Default: Story = {
   args: {
-    children: <p style={sampleText}>Cmaj7</p>,
+    children: <p style={valueText}>12 ms</p>,
   },
 };
 
 export const Colour: Story = {
   args: {
     variant: "colour",
-    label: "Your Chord",
-    children: <p style={sampleText}>Am9</p>,
+    label: "Filter cutoff",
+    children: <p style={valueText}>2.4 kHz</p>,
   },
 };
 
 export const Theme: Story = {
   args: {
     variant: "theme",
-    label: "Their Chord",
-    children: <p style={sampleText}>Dm7</p>,
+    label: "Resonance",
+    children: <p style={valueText}>0.62</p>,
   },
 };
 
 export const Compact: Story = {
   args: {
     variant: "colour",
-    label: "Latency",
+    label: "Gain",
     compact: true,
     children: (
-      <span style={{ ...sampleText, fontSize: 16, lineHeight: "24px" }}>
-        42 ms
+      <span
+        style={{
+          ...valueText,
+          fontSize: typography.titleS.fontSize,
+          lineHeight: `${typography.titleS.lineHeight}px`,
+        }}
+      >
+        0.75
       </span>
     ),
   },
@@ -80,11 +93,11 @@ export const Compact: Story = {
 export const WithMultipleLines: Story = {
   args: {
     variant: "colour",
-    label: "Chord",
+    label: "Envelope",
     children: (
       <div>
-        <p style={sampleText}>Cmaj7</p>
-        <p style={sampleSubtext}>C E G B</p>
+        <p style={valueText}>240 ms</p>
+        <p style={subText}>Release stage</p>
       </div>
     ),
   },
@@ -92,23 +105,23 @@ export const WithMultipleLines: Story = {
 
 export const AllVariants: Story = {
   render: () => (
-    <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-      <div style={{ width: 160 }}>
-        <DataWindow variant="default" label="Chord">
-          <p style={sampleText}>Cmaj7</p>
-          <p style={sampleSubtext}>C E G B</p>
+    <div style={{ display: "flex", gap: layout.gap24, alignItems: "flex-start" }}>
+      <div style={{ width: layout.gap160 }}>
+        <DataWindow variant="default" label="Attack">
+          <p style={valueText}>8 ms</p>
+          <p style={subText}>Note on</p>
         </DataWindow>
       </div>
-      <div style={{ width: 160 }}>
-        <DataWindow variant="colour" label="Your Chord">
-          <p style={sampleText}>Am9</p>
-          <p style={sampleSubtext}>A C E G B</p>
+      <div style={{ width: layout.gap160 }}>
+        <DataWindow variant="colour" label="Decay">
+          <p style={valueText}>120 ms</p>
+          <p style={subText}>Shape A</p>
         </DataWindow>
       </div>
-      <div style={{ width: 160 }}>
-        <DataWindow variant="theme" label="Their Chord">
-          <p style={sampleText}>Dm7</p>
-          <p style={sampleSubtext}>D F A C</p>
+      <div style={{ width: layout.gap160 }}>
+        <DataWindow variant="theme" label="Sustain">
+          <p style={valueText}>−8 dB</p>
+          <p style={subText}>Level</p>
         </DataWindow>
       </div>
     </div>
@@ -117,19 +130,37 @@ export const AllVariants: Story = {
 
 export const CompactRow: Story = {
   render: () => (
-    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: layout.gap16, alignItems: "flex-start" }}>
       <DataWindow variant="colour" label="Latency" compact>
-        <span style={{ ...sampleText, fontSize: 16, lineHeight: "24px" }}>
+        <span
+          style={{
+            ...valueText,
+            fontSize: typography.titleS.fontSize,
+            lineHeight: `${typography.titleS.lineHeight}px`,
+          }}
+        >
           42 ms
         </span>
       </DataWindow>
       <DataWindow variant="colour" label="Waveform" compact>
-        <span style={{ ...sampleText, fontSize: 16, lineHeight: "24px" }}>
+        <span
+          style={{
+            ...valueText,
+            fontSize: typography.titleS.fontSize,
+            lineHeight: `${typography.titleS.lineHeight}px`,
+          }}
+        >
           Sawtooth
         </span>
       </DataWindow>
       <DataWindow variant="colour" label="Gain" compact>
-        <span style={{ ...sampleText, fontSize: 16, lineHeight: "24px" }}>
+        <span
+          style={{
+            ...valueText,
+            fontSize: typography.titleS.fontSize,
+            lineHeight: `${typography.titleS.lineHeight}px`,
+          }}
+        >
           0.75
         </span>
       </DataWindow>
@@ -142,29 +173,35 @@ export const DarkBackground: Story = {
     <div
       style={{
         display: "flex",
-        gap: 24,
+        gap: layout.gap24,
         alignItems: "flex-start",
-        backgroundColor: "#1A1A1A",
-        padding: 24,
-        borderRadius: 16,
+        background: semanticColors.backdropInvertedBackground,
+        padding: layout.gap24,
+        borderRadius: layout.radiusM,
       }}
     >
-      <div style={{ width: 160 }}>
-        <DataWindow variant="default" label="Chord">
-          <p style={{ ...sampleText, color: "#fff" }}>Cmaj7</p>
-          <p style={{ ...sampleSubtext, color: "#ffffff99" }}>C E G B</p>
+      <div style={{ width: layout.gap160 }}>
+        <DataWindow variant="default" label="LFO rate">
+          <p style={{ ...valueText, color: semanticColors.backdropStaticWhite }}>3.2 Hz</p>
+          <p style={{ ...subText, color: semanticColors.backdropOpacityAdaptiveOpacityLightenedStrong }}>
+            Slow sweep
+          </p>
         </DataWindow>
       </div>
-      <div style={{ width: 160 }}>
-        <DataWindow variant="colour" label="Your Chord">
-          <p style={{ ...sampleText, color: "#fff" }}>Am9</p>
-          <p style={{ ...sampleSubtext, color: "#ffffff99" }}>A C E G B</p>
+      <div style={{ width: layout.gap160 }}>
+        <DataWindow variant="colour" label="Drive">
+          <p style={{ ...valueText, color: semanticColors.backdropStaticWhite }}>18%</p>
+          <p style={{ ...subText, color: semanticColors.backdropOpacityAdaptiveOpacityLightenedStrong }}>
+            Saturation
+          </p>
         </DataWindow>
       </div>
-      <div style={{ width: 160 }}>
-        <DataWindow variant="theme" label="Their Chord">
-          <p style={{ ...sampleText, color: "#fff" }}>Dm7</p>
-          <p style={{ ...sampleSubtext, color: "#ffffff99" }}>D F A C</p>
+      <div style={{ width: layout.gap160 }}>
+        <DataWindow variant="theme" label="Pan">
+          <p style={{ ...valueText, color: semanticColors.backdropStaticWhite }}>−0.12</p>
+          <p style={{ ...subText, color: semanticColors.backdropOpacityAdaptiveOpacityLightenedStrong }}>
+            Stereo
+          </p>
         </DataWindow>
       </div>
     </div>

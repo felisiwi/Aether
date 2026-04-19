@@ -20,7 +20,7 @@ export interface ChordDisplayProps {
   style?: React.CSSProperties;
 }
 
-/** Semantic colour guide: local card = light peach; remote = components primary10. */
+/** Semantic colour guide: local card = light peach; remote = purple primary10. */
 function surfaceBg(v: ChordDisplayVariant): string {
   if (v === "local") {
     return semanticColors.backdropSurfaceElevatedSurface;

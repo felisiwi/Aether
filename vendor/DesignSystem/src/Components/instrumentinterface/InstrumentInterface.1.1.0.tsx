@@ -13,6 +13,10 @@ export interface InstrumentInterfaceProps {
   variant?: "Piano" | "Keyboard";
   /** Semitone transpose offset passed to each octave (physical keys show sounded note). */
   noteOffset?: number;
+  /** Mouse/touch down on a key tile (Keyboard variant). */
+  onNoteOn?: (note: string) => void;
+  /** Mouse/touch release or leave after a key press (Keyboard variant). */
+  onNoteOff?: (note: string) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -29,6 +33,8 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
   pressedNotes,
   variant = "Piano",
   noteOffset,
+  onNoteOn,
+  onNoteOff,
   className,
   style,
 }) => {
@@ -75,6 +81,8 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
             variant={variant}
             keyboardGroup={variant === "Keyboard" ? i : undefined}
             noteOffset={noteOffset}
+            onNoteOn={onNoteOn}
+            onNoteOff={onNoteOff}
           />
         ))}
       </div>

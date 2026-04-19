@@ -14,8 +14,6 @@ export interface PaginationIndicatorProps {
   page?: PaginationPage;
   state?: PaginationIndicatorState;
   darkMode?: boolean;
-  /** Called when user selects a dot (first = Light, second = Dark, third = Colour). */
-  onPageChange?: (page: PaginationPage) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -30,7 +28,6 @@ export const PaginationIndicator: React.FC<PaginationIndicatorProps> = ({
   page = "first",
   state = "default",
   darkMode = false,
-  onPageChange,
   className,
   style,
 }) => {
@@ -47,13 +44,11 @@ export const PaginationIndicator: React.FC<PaginationIndicatorProps> = ({
   };
 
   const disabled = state === "disabled";
-  const interactive = Boolean(onPageChange) && !disabled;
 
   return (
     <div
       className={className}
-      role="tablist"
-      aria-label="Theme page"
+      role="presentation"
       style={{
         display: "flex",
         flexDirection: "row",
@@ -67,28 +62,20 @@ export const PaginationIndicator: React.FC<PaginationIndicatorProps> = ({
       {order.map((p) => {
         const active = p === page;
         return (
-          <motion.button
+          <motion.div
             key={p}
-            type="button"
-            role="tab"
-            aria-selected={active}
             layout
             initial={false}
             animate={{
               width: active ? PILL_W : NARROW_W,
             }}
             transition={transition}
-            disabled={disabled || !onPageChange}
-            onClick={() => interactive && onPageChange?.(p)}
             style={{
               height: DOT_H,
               borderRadius: layout.radiusRound,
               backgroundColor: active ? activeFill : passiveBase,
               opacity: disabled ? 0.45 : active ? 1 : 0.6,
               flexShrink: 0,
-              border: "none",
-              padding: 0,
-              cursor: interactive ? "pointer" : "default",
             }}
           />
         );

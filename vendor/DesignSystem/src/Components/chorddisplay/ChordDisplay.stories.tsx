@@ -1,41 +1,64 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React from "react";
+import React, { useRef } from "react";
 import { ChordDisplay } from "./ChordDisplay.2.3.0";
 
 const meta: Meta<typeof ChordDisplay> = {
   title: "Components/ChordDisplay",
   component: ChordDisplay,
   argTypes: {
-    variant: { control: { type: "radio" }, options: ["local", "remote"] },
-  },
-  args: {
-    notes: ["C", "E", "G"],
-    chordName: "Cmaj",
-    keyName: "C Major",
-    variant: "local",
+    variant: {
+      control: { type: "radio" },
+      options: ["default", "themed", "oscilloscope"],
+    },
   },
 };
 
 export default meta;
 type Story = StoryObj<typeof ChordDisplay>;
 
-export const Local: Story = {};
+const majNotes = [
+  { note: "C3", partOfChord: true },
+  { note: "E3", partOfChord: true },
+  { note: "G3", partOfChord: true },
+];
 
-export const Remote: Story = {
+export const Default: Story = {
   args: {
-    variant: "remote",
-    chordName: "Dm7",
-    notes: ["D", "F", "A", "C"],
-    keyName: "D minor 7",
+    variant: "default",
+    notes: majNotes,
+    chordName: "Cmaj",
+  },
+};
+
+export const Themed: Story = {
+  args: {
+    variant: "themed",
+    themeIndex: 0,
+    notes: [
+      { note: "D3", partOfChord: true },
+      { note: "F#3", partOfChord: true },
+      { note: "A3", partOfChord: true },
+    ],
+    chordName: "Dmaj",
   },
 };
 
 export const Empty: Story = {
   args: {
+    variant: "default",
     notes: [],
     chordName: "",
-    keyName: "",
-    variant: "local",
+  },
+};
+
+export const Oscilloscope: Story = {
+  render: function OscStory() {
+    const ref = useRef<HTMLCanvasElement>(null);
+    return (
+      <div style={{ width: 400 }}>
+        <ChordDisplay variant="oscilloscope" oscilloscopeRef={ref} />
+      </div>
+    );
   },
 };
 
@@ -43,16 +66,25 @@ export const SideBySide: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 24 }}>
       <ChordDisplay
-        variant="local"
-        chordName="Cmaj"
-        notes={["C", "E", "G"]}
-        keyName="C Major"
+        variant="default"
+        chordName="Cmaj7"
+        notes={[
+          { note: "C3", partOfChord: true },
+          { note: "E3", partOfChord: true },
+          { note: "G3", partOfChord: true },
+          { note: "B3", partOfChord: true },
+        ]}
       />
       <ChordDisplay
-        variant="remote"
+        variant="themed"
+        themeIndex={1}
         chordName="Fmaj7"
-        notes={["F", "A", "C", "E"]}
-        keyName="F Major 7"
+        notes={[
+          { note: "F3", partOfChord: true },
+          { note: "A3", partOfChord: true },
+          { note: "C4", partOfChord: true },
+          { note: "E4", partOfChord: true },
+        ]}
       />
     </div>
   ),

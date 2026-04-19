@@ -168,7 +168,10 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
       e.preventDefault();
       e.stopPropagation();
       const step = e.shiftKey ? 0.05 : 0.01;
-      const delta = isVertical ? -e.deltaY : e.deltaY;
+      const absX = Math.abs(e.deltaX);
+      const absY = Math.abs(e.deltaY);
+      const dominant = absX > absY ? e.deltaX : e.deltaY;
+      const delta = isVertical ? -dominant : dominant;
       const next =
         delta > 0
           ? Math.max(0, clamped - step)

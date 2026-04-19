@@ -26,7 +26,6 @@ export const BothPlayers: Story = {
             instrument: "Piano",
             chordName: "Cmaj",
             notes: ["C", "E", "G"],
-            keyName: "C Major",
             latency: 22,
           }}
           remotePlayer={
@@ -37,7 +36,6 @@ export const BothPlayers: Story = {
                   instrument: "Piano",
                   chordName: "Fmaj7",
                   notes: ["F", "A", "C", "E"],
-                  keyName: "F Major 7",
                   latency: 88,
                 }
               : null

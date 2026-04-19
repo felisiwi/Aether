@@ -6,8 +6,7 @@ import {
   semanticColors,
   themeTokens,
 } from "../../tokens/design-tokens";
-
-const THEME_KEYS = ["purple", "pink", "green", "blue"] as const;
+import { THEME_KEYS } from "../../tokens/theme-map";
 
 export interface NoteProps {
   note: string;

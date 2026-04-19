@@ -2,10 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useEffect, useRef } from "react";
 import { PlayerDashboard } from "./PlayerDashboard.1.0.0";
 import { PlayerHeader } from "../playerheader/PlayerHeader.1.0.0";
-import { ChordDisplay } from "../chorddisplay/ChordDisplay.1.0.0";
+import { ChordDisplay } from "../chorddisplay/ChordDisplay.2.3.0";
 import { VUBar } from "../vubar/VUBar.1.0.0";
 import type { VUBarHandle } from "../vubar/VUBar.1.0.0";
-import { LatencyIndicator } from "../latencyindicator/LatencyIndicator.1.0.0";
+import { LatencyIndicator } from "../latencyindicator/LatencyIndicator.1.1.0";
+import { semanticColors } from "../../tokens/design-tokens";
 
 const meta: Meta<typeof PlayerDashboard> = {
   title: "Components/PlayerDashboard",
@@ -65,10 +66,14 @@ export const FullJamLayout: Story = {
       </PlayerDashboard>
 
       <ChordDisplay
-        notes={["C4", "E4", "G4", "B4"]}
+        variant="default"
         chordName="Cmaj7"
-        altName="C major seventh"
-        variant="colour"
+        notes={[
+          { note: "C", partOfChord: true },
+          { note: "E", partOfChord: true },
+          { note: "G", partOfChord: true },
+          { note: "B", partOfChord: true },
+        ]}
       />
 
       <PlayerDashboard variant="theme" align="right">
@@ -87,7 +92,7 @@ export const DarkBackground: Story = {
         alignItems: "center",
         justifyContent: "center",
         gap: 32,
-        backgroundColor: "#1A1A1A",
+        backgroundColor: semanticColors.backdropInvertedBackground,
         padding: 24,
         borderRadius: 16,
       }}
@@ -98,11 +103,15 @@ export const DarkBackground: Story = {
       </PlayerDashboard>
 
       <ChordDisplay
-        notes={["A3", "C4", "E4", "G4", "B4"]}
+        variant="default"
         chordName="Am9"
-        altName="A minor ninth"
-        variant="colour"
-        darkMode
+        notes={[
+          { note: "A", partOfChord: true },
+          { note: "C", partOfChord: true },
+          { note: "E", partOfChord: true },
+          { note: "G", partOfChord: true },
+          { note: "B", partOfChord: true },
+        ]}
       />
 
       <PlayerDashboard variant="theme" align="right" darkMode>
