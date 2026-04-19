@@ -38,13 +38,14 @@ export interface JamBoardProps {
 const volumePlaceholderStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "row",
-  alignItems: "center",
+  alignItems: "stretch",
   justifyContent: "center",
   gap: layout.gap16,
   paddingTop: layout.gap8,
   paddingBottom: layout.gap8,
   flexShrink: 0,
   boxSizing: "border-box",
+  height: ROW_HEIGHT,
 };
 
 const growChordStyle: React.CSSProperties = {

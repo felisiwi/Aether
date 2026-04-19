@@ -94,7 +94,7 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     gap: 0,
     minHeight: 0,
     width: "100%",
@@ -125,13 +125,24 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
         </div>
       ) : (
         <div style={innerStyle}>
-          {hasNotes ? (
-            <InternalKeyInput
-              notes={noteItems}
-              variant={noteVariant}
-              themeIndex={themedIdx}
-            />
-          ) : null}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              minHeight: 0,
+            }}
+          >
+            {hasNotes ? (
+              <InternalKeyInput
+                notes={noteItems}
+                variant={noteVariant}
+                themeIndex={themedIdx}
+              />
+            ) : null}
+          </div>
           {showTag ? (
             <Tag
               label={chordName!.trim()}
