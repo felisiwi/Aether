@@ -35,15 +35,15 @@ const BLACKS: { letter: string; shortcut: string; afterWhiteIndex: number }[] = 
 /** Per-octave white-key shortcuts (C3, C4, C5 groups) — matches PianoKeyboard / CODE_LABELS. */
 const WHITES_GROUP: Record<number, string[]> = {
   0: ["Z", "X", "C", "V", "B", "N", "M"],
-  1: [",", ".", "-", "Q", "W", "E", "R"],
-  2: ["T", "Y", "U", "I", "O", "P", "Å"],
+  1: [",", ".", "/", "Q", "W", "E", "R"],
+  2: ["T", "Y", "U", "I", "O", "P", "["],
 };
 
 /** C# D# F# G# A# order per octave group. */
 const BLACKS_GROUP: Record<number, string[]> = {
-  0: ["S", "D", "H", "J", "G"],
-  1: ["L", "Ö", "2", "3", "4"],
-  2: ["6", "7", "9", "0", "+"],
+  0: ["S", "D", "G", "H", "J"],
+  1: ["L", ";", "2", "3", "4"],
+  2: ["6", "7", "9", "0", "-"],
 };
 
 function norm(s: string): string {
