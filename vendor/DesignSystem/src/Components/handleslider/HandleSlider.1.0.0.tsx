@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { semanticColors, layout, themeTokens } from "../../tokens/design-tokens";
 import { THEME_KEYS, type ThemeIndex } from "../../tokens/theme-map";
 
@@ -162,6 +162,57 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
     [disabled, resolve],
   );
 
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (disabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const step = e.shiftKey ? 0.05 : 0.01;
+      const delta = isVertical ? -e.deltaY : e.deltaY;
+      const next =
+        delta > 0
+          ? Math.max(0, clamped - step)
+          : Math.min(1, clamped + step);
+      onChange(Math.round(next * 1000) / 1000);
+    },
+    [disabled, isVertical, clamped, onChange],
+  );
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (disabled) return;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, [disabled]);
+
+  const hitTargetStyle: React.CSSProperties = isVertical
+    ? {
+        position: "absolute",
+        left: "50%",
+        top: 0,
+        bottom: 0,
+        width: THUMB_WIDTH_V,
+        transform: "translateX(-50%)",
+        background: "transparent",
+        cursor: disabled ? "default" : "pointer",
+        zIndex: 0,
+      }
+    : {
+        position: "absolute",
+        top: "50%",
+        left: 0,
+        right: 0,
+        height: THUMB_HEIGHT_PX,
+        transform: "translateY(-50%)",
+        background: "transparent",
+        cursor: disabled ? "default" : "pointer",
+        zIndex: 0,
+      };
+
   const containerStyle: React.CSSProperties = isVertical
     ? {
         display: "flex",
@@ -307,7 +358,9 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onWheel={handleWheel}
       >
+        <div style={hitTargetStyle} />
         <div style={fillStyle} />
         <div style={thumbStyle} />
       </div>
