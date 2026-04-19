@@ -836,16 +836,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 ...horizontalPad,
               }}
             >
-              <div style={{ display: 'none' }}>
-                <PianoKeyboard
-                  ref={pianoRef}
-                  onCapsLockOff={handleComputerKeyboardCapsLockOff}
-                  onMidiEvent={handleLocalMidi}
-                  remoteActiveNotes={remoteNotes}
-                  onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
-                  transpose={transpose}
-                />
-              </div>
               <div
                 style={{
                   display: 'flex',
@@ -865,6 +855,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 />
                 <div
                   style={{
+                    position: 'relative',
                     flex: 1,
                     minWidth: 0,
                     alignSelf: 'stretch',
@@ -872,13 +863,32 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     alignItems: 'flex-end',
                   }}
                 >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      opacity: 0,
+                      pointerEvents: 'auto',
+                      zIndex: 0,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <PianoKeyboard
+                      ref={pianoRef}
+                      onCapsLockOff={handleComputerKeyboardCapsLockOff}
+                      onMidiEvent={handleLocalMidi}
+                      remoteActiveNotes={remoteNotes}
+                      onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
+                      transpose={transpose}
+                    />
+                  </div>
                   <InstrumentInterface
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
                     pressedNotes={localNotes.map(midiNoteToName)}
                     noteOffset={transpose}
                     variant="Keyboard"
-                    style={{ background: 'transparent' }}
+                    style={{ background: 'transparent', pointerEvents: 'none' }}
                   />
                 </div>
               </div>
