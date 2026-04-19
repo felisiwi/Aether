@@ -157,7 +157,9 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     letterSpacing: valueType.letterSpacing,
     fontWeight: valueType.fontWeight,
     fontStretch: `${valueType.fontWidth}%`,
-    color: active ? colors.textHeadingColour : colors.textHeadingNeutral,
+    color: active
+      ? semanticColors.strokeColourPressed
+      : colors.textHeadingNeutral,
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
     margin: 0,
     padding: 0,
@@ -170,7 +172,9 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     letterSpacing: typography.label.letterSpacing,
     fontWeight: 660,
     fontStretch: `${typography.label.fontWidth}%`,
-    color: active ? colors.textPressed : colors.textBodyNeutral,
+    color: active
+      ? semanticColors.strokeColourPressed
+      : colors.textBodyNeutral,
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",
     margin: 0,
     padding: 0,
@@ -218,8 +222,7 @@ export const DataWindow: React.FC<DataWindowProps> = ({
     borderWidth: layout.strokeM,
     borderStyle: "solid",
     borderColor: panelBorderColor,
-    backgroundColor:
-      semanticColors.backdropOpacityAdaptiveOpacityLightenedWeak,
+    backgroundColor: semanticColors.backdropOpacityAdaptiveOpacityLightenedWeak,
     boxShadow: tokens.innerShadow,
     boxSizing: "border-box",
     minWidth: 0,

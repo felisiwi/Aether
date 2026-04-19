@@ -1,3 +1,4 @@
+import '@ds/tokens/semantic-tokens.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AudioContextProvider } from './contexts/AudioContext'

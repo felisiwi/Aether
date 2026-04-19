@@ -118,6 +118,7 @@ export const DataController: React.FC<DataControllerProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         ariaLabel={`${label} slider`}
+        themeIndex={themeIndex}
       />
     </div>
   );
