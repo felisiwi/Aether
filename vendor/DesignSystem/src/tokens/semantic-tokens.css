@@ -102,6 +102,15 @@
   --ds-backdrop-surface-themed-elevated-surface: #F5D6E9;
   --ds-backdrop-static-themed-elevated-surface: #F5D6E9;
   --ds-backdrop-static-elevated-surface: #FDE1D8;
+  --ds-text-heading-neutral: #000000;
+  --ds-text-body-neutral: #00000099;
+  --ds-text-body-neutral-dark: #ffffff99;
+  --ds-text-heading-colour: #F04700;
+  --ds-text-disabled: #0000001f;
+  --ds-text-body-colour: #A33200;
+  --ds-text-body-colour-dark: #FFA986;
+  --ds-text-pressed: #FF8152;
+  --ds-text-label: #000000;
 }
 
 [data-theme="dark"] {
@@ -205,4 +214,8 @@
   --ds-backdrop-surface-themed-elevated-surface: #290A1D;
   --ds-backdrop-static-themed-elevated-surface: #F5D6E9;
   --ds-backdrop-static-elevated-surface: #FDE1D8;
+  --ds-text-heading-neutral: #FFFFFF;
+  --ds-text-body-neutral: #ffffff99;
+  --ds-text-disabled: #ffffff1f;
+  --ds-text-label: #FFFFFF;
 }

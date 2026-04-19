@@ -98,17 +98,17 @@ export const typography = {
 
 export type TypographyStyle = keyof typeof typography;
 
-/** Text/Practical text colours from Figma. Most keys are Light mode (27:2); `textBodyNeutralDark` / `textBodyColourDark` are Dark mode (27:3) for overlays & dark surfaces. */
+/** Text/Practical text colours from Figma. `textHeadingNeutral`, `textBodyNeutral`, `textDisabled`, `textLabel` are `var(--ds-…)` (see semantic-tokens.css); other keys are static hex. `textBodyNeutralDark` / `textBodyColourDark` are Dark mode (27:3) for overlays & dark surfaces. */
 export const colors = {
-  textHeadingNeutral: "#000000",
-  textBodyNeutral: "#00000099",
+  textHeadingNeutral: "var(--ds-text-heading-neutral)",
+  textBodyNeutral: "var(--ds-text-body-neutral)",
   textBodyNeutralDark: "#ffffff99",
   textHeadingColour: "#F04700",
-  textDisabled: "#0000001f",
+  textDisabled: "var(--ds-text-disabled)",
   textBodyColour: "#A33200",
   textBodyColourDark: "#FFA986",
   textPressed: "#FF8152",
-  textLabel: "#000000"
+  textLabel: "var(--ds-text-label)"
 } as const;
 
 /** Semantic colours as CSS variable references (see semantic-tokens.css). Resolved per [data-theme] on documentElement. */
