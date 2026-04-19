@@ -67,6 +67,7 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
       };
 
   const shellStyle: React.CSSProperties = {
+    position: "relative",
     display: "flex",
     flexDirection: "column",
     alignItems: "stretch",
@@ -94,8 +95,7 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 0,
+    justifyContent: "center",
     minHeight: 0,
     width: "100%",
   };
@@ -124,33 +124,47 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
           />
         </div>
       ) : (
-        <div style={innerStyle}>
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "100%",
-              minHeight: 0,
-            }}
-          >
-            {hasNotes ? (
-              <InternalKeyInput
-                notes={noteItems}
-                variant={noteVariant}
-                themeIndex={themedIdx}
-              />
-            ) : null}
+        <>
+          <div style={innerStyle}>
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                minHeight: 0,
+              }}
+            >
+              {hasNotes ? (
+                <InternalKeyInput
+                  notes={noteItems}
+                  variant={noteVariant}
+                  themeIndex={themedIdx}
+                />
+              ) : null}
+            </div>
           </div>
           {showTag ? (
-            <Tag
-              label={chordName!.trim()}
-              variant={tagVariant}
-              themeIndex={themedIdx}
-            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: layout.gap16,
+                left: 0,
+                right: 0,
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <Tag
+                label={chordName!.trim()}
+                variant={tagVariant}
+                themeIndex={themedIdx}
+              />
+            </div>
           ) : null}
-        </div>
+        </>
       )}
     </div>
   );
