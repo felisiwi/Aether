@@ -790,6 +790,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             flexDirection: 'column',
             minHeight: 0,
             overflow: 'visible',
+            background: semanticColors.backdropNautralBackground,
           }}
         >
           <div
@@ -800,6 +801,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               justifyContent: 'space-between',
               minHeight: 0,
               paddingBottom: layout.gap48,
+              background: semanticColors.backdropNautralBackground,
             }}
           >
           <div style={{ position: 'relative', flexShrink: 0, ...horizontalPad }}>
