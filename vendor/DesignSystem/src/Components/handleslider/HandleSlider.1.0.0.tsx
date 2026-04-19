@@ -137,7 +137,8 @@ export const HandleSlider: React.FC<HandleSliderProps> = ({
       e.preventDefault();
       setIsDragging(true);
       onDragStart?.();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      trackRef.current?.focus();
+      trackRef.current?.setPointerCapture(e.pointerId);
       resolve(e.clientX, e.clientY);
     },
     [disabled, onDragStart, resolve],
