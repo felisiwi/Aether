@@ -664,6 +664,11 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       [remoteNotes],
     )
 
+    const remoteNoteNames = useMemo(
+      () => Array.from(remoteNotes).map(midiNoteToName),
+      [remoteNotes],
+    )
+
     const [remoteVolume, setRemoteVolume] = useState(1)
 
     useEffect(() => {
@@ -929,6 +934,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
                     pressedNotes={localNotes.map(midiNoteToName)}
+                    remoteNotes={remoteNoteNames}
                     noteOffset={transpose}
                     variant="Keyboard"
                     style={{ background: 'transparent' }}
