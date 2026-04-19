@@ -4,12 +4,12 @@ import { layout } from "../../tokens/design-tokens";
 
 export interface OctaveSectionProps {
   octave: number;
-  /** Semitone offset for Keyboard variant tile labels and pressed-state matching. */
-  noteOffset?: number;
   pressedNotes?: string[];
   variant?: "Piano" | "Keyboard";
   /** Which keyboard shortcut group (0–2) for `Keyboard` variant; omit for `Piano`. */
   keyboardGroup?: number;
+  /** Semitone transpose offset; physical key labels show the note that actually sounds. */
+  noteOffset?: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -50,7 +50,7 @@ function norm(s: string): string {
   return s.replace(/\s+/g, "").toLowerCase();
 }
 
-const PC_NAMES = [
+const NOTE_NAMES = [
   "C",
   "C#",
   "D",
@@ -65,46 +65,28 @@ const PC_NAMES = [
   "B",
 ] as const;
 
-const LETTER_PC: Record<string, number> = {
-  C: 0,
-  D: 2,
-  E: 4,
-  F: 5,
-  G: 7,
-  A: 9,
-  B: 11,
-};
+/** Semitones from C within the octave for the 7 white keys (C…B). */
+const WHITE_SEMITONES_FROM_C = [0, 2, 4, 5, 7, 9, 11] as const;
+/** Semitones from C for C#, D#, F#, G#, A# (same order as {@link BLACKS}). */
+const BLACK_SEMITONES_FROM_C = [1, 3, 6, 8, 10] as const;
 
-function parseNoteToMidi(note: string): number {
-  const m = note.trim().match(/^([A-G])(#)?(\d+)$/);
-  if (!m) return 60;
-  const letter = m[1];
-  const sharp = m[2] === "#";
-  const o = Number(m[3]);
-  const pc = sharp ? LETTER_PC[letter]! + 1 : LETTER_PC[letter]!;
-  return (o + 1) * 12 + pc;
-}
-
-function midiToNoteName(midi: number): string {
-  const idx = ((midi % 12) + 12) % 12;
-  const octave = Math.floor(midi / 12) - 1;
-  return `${PC_NAMES[idx]}${octave}`;
-}
-
-/** Label and press target for a physical key after transpose offset. */
-function withNoteOffset(baseNote: string, offset: number): string {
-  if (offset === 0) return baseNote;
-  const midi = parseNoteToMidi(baseNote) + offset;
-  if (midi < 0 || midi > 127) return baseNote;
-  return midiToNoteName(midi);
+function transposedNoteName(
+  octave: number,
+  baseSemitoneFromC: number,
+  noteOffset: number,
+): string {
+  const actualSemitone = baseSemitoneFromC + noteOffset;
+  const actualOctave = octave + Math.floor(actualSemitone / 12);
+  const actualNoteIndex = ((actualSemitone % 12) + 12) % 12;
+  return `${NOTE_NAMES[actualNoteIndex]}${actualOctave}`;
 }
 
 export const OctaveSection: React.FC<OctaveSectionProps> = ({
   octave,
-  noteOffset = 0,
   pressedNotes = [],
   variant = "Piano",
   keyboardGroup,
+  noteOffset = 0,
   className,
   style,
 }) => {
@@ -149,38 +131,48 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             aria-hidden
           />
           <PianoKey
-            note={withNoteOffset(`C#${octave}`, noteOffset)}
+            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[0], noteOffset)}
             shortcutLabel={blackShortcuts[0] ?? ""}
-            isPressed={pressed.has(norm(withNoteOffset(`C#${octave}`, noteOffset)))}
+            isPressed={pressed.has(
+              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[0], noteOffset)),
+            )}
             isBlack
             variant="instrument"
           />
           <PianoKey
-            note={withNoteOffset(`D#${octave}`, noteOffset)}
+            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[1], noteOffset)}
             shortcutLabel={blackShortcuts[1] ?? ""}
-            isPressed={pressed.has(norm(withNoteOffset(`D#${octave}`, noteOffset)))}
+            isPressed={pressed.has(
+              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[1], noteOffset)),
+            )}
             isBlack
             variant="instrument"
           />
           <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
           <PianoKey
-            note={withNoteOffset(`F#${octave}`, noteOffset)}
+            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[2], noteOffset)}
             shortcutLabel={blackShortcuts[2] ?? ""}
-            isPressed={pressed.has(norm(withNoteOffset(`F#${octave}`, noteOffset)))}
+            isPressed={pressed.has(
+              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[2], noteOffset)),
+            )}
             isBlack
             variant="instrument"
           />
           <PianoKey
-            note={withNoteOffset(`G#${octave}`, noteOffset)}
+            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[3], noteOffset)}
             shortcutLabel={blackShortcuts[3] ?? ""}
-            isPressed={pressed.has(norm(withNoteOffset(`G#${octave}`, noteOffset)))}
+            isPressed={pressed.has(
+              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[3], noteOffset)),
+            )}
             isBlack
             variant="instrument"
           />
           <PianoKey
-            note={withNoteOffset(`A#${octave}`, noteOffset)}
+            note={transposedNoteName(octave, BLACK_SEMITONES_FROM_C[4], noteOffset)}
             shortcutLabel={blackShortcuts[4] ?? ""}
-            isPressed={pressed.has(norm(withNoteOffset(`A#${octave}`, noteOffset)))}
+            isPressed={pressed.has(
+              norm(transposedNoteName(octave, BLACK_SEMITONES_FROM_C[4], noteOffset)),
+            )}
             isBlack
             variant="instrument"
           />
@@ -200,11 +192,11 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
           }}
         >
           {WHITES.map((w, i) => {
-            const base = `${w.letter}${octave}`;
-            const note = withNoteOffset(base, noteOffset);
+            const baseSemitone = WHITE_SEMITONES_FROM_C[i];
+            const note = transposedNoteName(octave, baseSemitone, noteOffset);
             return (
               <PianoKey
-                key={base}
+                key={`${w.letter}${octave}`}
                 note={note}
                 shortcutLabel={whiteShortcuts[i] ?? ""}
                 isPressed={pressed.has(norm(note))}
@@ -234,11 +226,12 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
       role="group"
       aria-label={`Piano octave ${octave}`}
     >
-      {WHITES.map((w) => {
-        const note = `${w.letter}${octave}`;
+      {WHITES.map((w, i) => {
+        const baseSemitone = WHITE_SEMITONES_FROM_C[i];
+        const note = transposedNoteName(octave, baseSemitone, noteOffset);
         return (
           <PianoKey
-            key={note}
+            key={`${w.letter}${octave}`}
             note={note}
             shortcutLabel={w.shortcut}
             isPressed={pressed.has(norm(note))}
@@ -246,11 +239,12 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
           />
         );
       })}
-      {BLACKS.map((b) => {
-        const note = `${b.letter}${octave}`;
+      {BLACKS.map((b, i) => {
+        const baseSemitone = BLACK_SEMITONES_FROM_C[i];
+        const note = transposedNoteName(octave, baseSemitone, noteOffset);
         return (
           <div
-            key={note}
+            key={`${b.letter}${octave}`}
             style={{
               position: "absolute",
               left: blackLeft(b.afterWhiteIndex),

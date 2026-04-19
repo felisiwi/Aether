@@ -7,12 +7,12 @@ export interface InstrumentInterfaceProps {
   octave: number;
   /** How many {@link OctaveSection} tiles to show. */
   octaveSpan?: number;
-  /** Semitone offset for keyboard tile labels and pressed matching (e.g. transpose). */
-  noteOffset?: number;
   minOctave?: number;
   maxOctave?: number;
   pressedNotes?: string[];
   variant?: "Piano" | "Keyboard";
+  /** Semitone transpose offset passed to each octave (physical keys show sounded note). */
+  noteOffset?: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -24,11 +24,11 @@ export interface InstrumentInterfaceProps {
 export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
   octave,
   octaveSpan = 2,
-  noteOffset = 0,
   minOctave = 1,
   maxOctave = 7,
   pressedNotes,
   variant = "Piano",
+  noteOffset,
   className,
   style,
 }) => {
@@ -72,9 +72,9 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
             key={clampedStart + i}
             octave={clampedStart + i}
             pressedNotes={pressedNotes}
-            noteOffset={noteOffset}
             variant={variant}
             keyboardGroup={variant === "Keyboard" ? i : undefined}
+            noteOffset={noteOffset}
           />
         ))}
       </div>
