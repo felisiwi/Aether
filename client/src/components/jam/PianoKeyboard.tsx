@@ -47,15 +47,15 @@ const KEY_MAP: Record<string, number> = {
   Digit9: 78, Digit0: 80, Minus: 82,
 }
 
-// e.code → display character (Swedish ISO layout)
+// e.code → display character (MacBook Pro US/English layout)
 const CODE_LABELS: Record<string, string> = {
   KeyZ: 'Z', KeyX: 'X', KeyC: 'C', KeyV: 'V', KeyB: 'B', KeyN: 'N', KeyM: 'M',
-  Comma: ',', Period: '.', Slash: '-',
-  KeyS: 'S', KeyD: 'D', KeyG: 'G', KeyH: 'H', KeyJ: 'J', KeyL: 'L', Semicolon: 'Ö',
+  Comma: ',', Period: '.', Slash: '/',
+  KeyS: 'S', KeyD: 'D', KeyG: 'G', KeyH: 'H', KeyJ: 'J', KeyL: 'L', Semicolon: ';',
   KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyT: 'T', KeyY: 'Y', KeyU: 'U',
-  KeyI: 'I', KeyO: 'O', KeyP: 'P', BracketLeft: 'Å',
+  KeyI: 'I', KeyO: 'O', KeyP: 'P', BracketLeft: '[',
   Digit2: '2', Digit3: '3', Digit4: '4', Digit6: '6', Digit7: '7',
-  Digit9: '9', Digit0: '0', Minus: '+',
+  Digit9: '9', Digit0: '0', Minus: '-',
 }
 
 const KEY_LABELS: Record<number, string> = {}
