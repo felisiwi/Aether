@@ -137,7 +137,6 @@ export function detectChord(notes: number[]): ChordResult | null {
   pitches.sort((a, b) => a - b)
 
   const P = pitches.length
-  const noteNames = pitches.map((pc) => NOTE_NAMES[pc])
 
   let maxTemplateLen = 0
   const raw: ScoredCandidate[] = []
@@ -209,5 +208,7 @@ export function detectChord(notes: number[]): ChordResult | null {
     alternative = best.def.qualityLabel
   }
 
-  return { primary, alternative, noteNames }
+  const chordNoteNames = Array.from(chordPitchClasses(best.root, best.def))
+    .map((pc) => NOTE_NAMES[pc])
+  return { primary, alternative, noteNames: chordNoteNames }
 }
