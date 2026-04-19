@@ -392,8 +392,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       const activeMap = keyboardActiveNotesRef.current
       if (activeMap.size === 0 || totalDelta === 0) return
 
-      const newMap = new Map<number, number>()
-      for (const [pianoNote, oldFinal] of activeMap) {
+      const snapshot = new Map(activeMap)
+      for (const [, oldFinal] of snapshot) {
         const newFinal = oldFinal + totalDelta
         if (newFinal < 0 || newFinal > 127) continue
         synth.updateNotePitch(oldFinal, newFinal)
@@ -401,9 +401,17 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           sendMidi({ type: 'noteOff', note: oldFinal, velocity: 0, cc: 0, value: 0, channel: 1, timestamp: Date.now() })
           sendMidi({ type: 'noteOn', note: newFinal, velocity: 127, cc: 0, value: 0, channel: 1, timestamp: Date.now() })
         }
-        newMap.set(pianoNote, newFinal)
       }
-      keyboardActiveNotesRef.current = newMap
+
+      const semitoneShift = totalDelta
+      for (const [key, oldNote] of [...keyboardActiveNotesRef.current]) {
+        const newNote = oldNote + semitoneShift
+        if (newNote < 0 || newNote > 127) {
+          keyboardActiveNotesRef.current.delete(key)
+        } else {
+          keyboardActiveNotesRef.current.set(key, newNote)
+        }
+      }
     }, [transpose, pianoOctaveShift, localMode, synth, sendMidi])
 
     const handleComputerKeyboardCapsLockOff = useCallback(() => {
@@ -866,6 +874,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
                     pressedNotes={localNotes.map(midiNoteToName)}
+                    noteOffset={transpose}
                     variant="Keyboard"
                     style={{ background: 'transparent' }}
                   />

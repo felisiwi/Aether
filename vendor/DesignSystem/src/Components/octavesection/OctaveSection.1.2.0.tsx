@@ -4,6 +4,8 @@ import { layout } from "../../tokens/design-tokens";
 
 export interface OctaveSectionProps {
   octave: number;
+  /** Semitone offset for Keyboard variant tile labels and pressed-state matching. */
+  noteOffset?: number;
   pressedNotes?: string[];
   variant?: "Piano" | "Keyboard";
   /** Which keyboard shortcut group (0–2) for `Keyboard` variant; omit for `Piano`. */
@@ -48,8 +50,58 @@ function norm(s: string): string {
   return s.replace(/\s+/g, "").toLowerCase();
 }
 
+const PC_NAMES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
+] as const;
+
+const LETTER_PC: Record<string, number> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
+
+function parseNoteToMidi(note: string): number {
+  const m = note.trim().match(/^([A-G])(#)?(\d+)$/);
+  if (!m) return 60;
+  const letter = m[1];
+  const sharp = m[2] === "#";
+  const o = Number(m[3]);
+  const pc = sharp ? LETTER_PC[letter]! + 1 : LETTER_PC[letter]!;
+  return (o + 1) * 12 + pc;
+}
+
+function midiToNoteName(midi: number): string {
+  const idx = ((midi % 12) + 12) % 12;
+  const octave = Math.floor(midi / 12) - 1;
+  return `${PC_NAMES[idx]}${octave}`;
+}
+
+/** Label and press target for a physical key after transpose offset. */
+function withNoteOffset(baseNote: string, offset: number): string {
+  if (offset === 0) return baseNote;
+  const midi = parseNoteToMidi(baseNote) + offset;
+  if (midi < 0 || midi > 127) return baseNote;
+  return midiToNoteName(midi);
+}
+
 export const OctaveSection: React.FC<OctaveSectionProps> = ({
   octave,
+  noteOffset = 0,
   pressedNotes = [],
   variant = "Piano",
   keyboardGroup,
@@ -97,38 +149,38 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
             aria-hidden
           />
           <PianoKey
-            note={`C#${octave}`}
+            note={withNoteOffset(`C#${octave}`, noteOffset)}
             shortcutLabel={blackShortcuts[0] ?? ""}
-            isPressed={pressed.has(norm(`C#${octave}`))}
+            isPressed={pressed.has(norm(withNoteOffset(`C#${octave}`, noteOffset)))}
             isBlack
             variant="instrument"
           />
           <PianoKey
-            note={`D#${octave}`}
+            note={withNoteOffset(`D#${octave}`, noteOffset)}
             shortcutLabel={blackShortcuts[1] ?? ""}
-            isPressed={pressed.has(norm(`D#${octave}`))}
+            isPressed={pressed.has(norm(withNoteOffset(`D#${octave}`, noteOffset)))}
             isBlack
             variant="instrument"
           />
           <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
           <PianoKey
-            note={`F#${octave}`}
+            note={withNoteOffset(`F#${octave}`, noteOffset)}
             shortcutLabel={blackShortcuts[2] ?? ""}
-            isPressed={pressed.has(norm(`F#${octave}`))}
+            isPressed={pressed.has(norm(withNoteOffset(`F#${octave}`, noteOffset)))}
             isBlack
             variant="instrument"
           />
           <PianoKey
-            note={`G#${octave}`}
+            note={withNoteOffset(`G#${octave}`, noteOffset)}
             shortcutLabel={blackShortcuts[3] ?? ""}
-            isPressed={pressed.has(norm(`G#${octave}`))}
+            isPressed={pressed.has(norm(withNoteOffset(`G#${octave}`, noteOffset)))}
             isBlack
             variant="instrument"
           />
           <PianoKey
-            note={`A#${octave}`}
+            note={withNoteOffset(`A#${octave}`, noteOffset)}
             shortcutLabel={blackShortcuts[4] ?? ""}
-            isPressed={pressed.has(norm(`A#${octave}`))}
+            isPressed={pressed.has(norm(withNoteOffset(`A#${octave}`, noteOffset)))}
             isBlack
             variant="instrument"
           />
@@ -148,10 +200,11 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
           }}
         >
           {WHITES.map((w, i) => {
-            const note = `${w.letter}${octave}`;
+            const base = `${w.letter}${octave}`;
+            const note = withNoteOffset(base, noteOffset);
             return (
               <PianoKey
-                key={note}
+                key={base}
                 note={note}
                 shortcutLabel={whiteShortcuts[i] ?? ""}
                 isPressed={pressed.has(norm(note))}
