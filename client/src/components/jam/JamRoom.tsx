@@ -56,6 +56,17 @@ function pitchClassName(note: number): string {
   return NOTE_NAMES[((note % 12) + 12) % 12]
 }
 
+function noteNameToMidi(note: string): number {
+  const NOTE_OFFSETS: Record<string, number> = {
+    C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5,
+    'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11,
+  }
+  const match = note.match(/^([A-G]#?)(-?\d+)$/)
+  if (!match) return -1
+  const midi = (parseInt(match[2], 10) + 1) * 12 + (NOTE_OFFSETS[match[1]] ?? 0)
+  return midi
+}
+
 const WAVEFORM_IDS = ['sine', 'triangle', 'sawtooth', 'square'] as const
 
 const waveformOptions: ButtonRowOption[] = [
@@ -521,6 +532,48 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       [sendMidi, synth, expressionLocked, localMode],
     )
 
+    const noteOn = useCallback(
+      (midi: number) => {
+        if (!synth) return
+        if (midi < 0 || midi > 127) return
+        sendMidi({
+          type: 'noteOn',
+          note: midi,
+          velocity: 100,
+          cc: 0,
+          value: 0,
+          channel: 1,
+          timestamp: Date.now(),
+        })
+        synth.noteOn(midi)
+        setLocalNotes((prev) => (prev.includes(midi) ? prev : [...prev, midi]))
+        if (localMode === 'keyboard' || localMode === 'nanokey') {
+          keyboardActiveNotesRef.current.set(midi, midi)
+        }
+      },
+      [sendMidi, synth, localMode],
+    )
+
+    const noteOff = useCallback(
+      (midi: number) => {
+        if (!synth) return
+        if (midi < 0 || midi > 127) return
+        sendMidi({
+          type: 'noteOff',
+          note: midi,
+          velocity: 0,
+          cc: 0,
+          value: 0,
+          channel: 1,
+          timestamp: Date.now(),
+        })
+        synth.noteOff(midi)
+        setLocalNotes((prev) => prev.filter(n => n !== midi))
+        keyboardActiveNotesRef.current.delete(midi)
+      },
+      [sendMidi, synth],
+    )
+
     const handleRemoteMidi = useCallback(
       (event: MidiEvent) => {
         if (!remoteSynth || !syncRemote) return
@@ -836,6 +889,16 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 ...horizontalPad,
               }}
             >
+              <div style={{ display: 'none' }}>
+                <PianoKeyboard
+                  ref={pianoRef}
+                  onCapsLockOff={handleComputerKeyboardCapsLockOff}
+                  onMidiEvent={handleLocalMidi}
+                  remoteActiveNotes={remoteNotes}
+                  onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
+                  transpose={transpose}
+                />
+              </div>
               <div
                 style={{
                   display: 'flex',
@@ -855,7 +918,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 />
                 <div
                   style={{
-                    position: 'relative',
                     flex: 1,
                     minWidth: 0,
                     alignSelf: 'stretch',
@@ -863,32 +925,21 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     alignItems: 'flex-end',
                   }}
                 >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      opacity: 0,
-                      pointerEvents: 'auto',
-                      zIndex: 0,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <PianoKeyboard
-                      ref={pianoRef}
-                      onCapsLockOff={handleComputerKeyboardCapsLockOff}
-                      onMidiEvent={handleLocalMidi}
-                      remoteActiveNotes={remoteNotes}
-                      onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
-                      transpose={transpose}
-                    />
-                  </div>
                   <InstrumentInterface
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
                     pressedNotes={localNotes.map(midiNoteToName)}
                     noteOffset={transpose}
                     variant="Keyboard"
-                    style={{ background: 'transparent', pointerEvents: 'none' }}
+                    style={{ background: 'transparent' }}
+                    onNoteOn={(note) => {
+                      const midi = noteNameToMidi(note)
+                      if (midi >= 0) noteOn(midi)
+                    }}
+                    onNoteOff={(note) => {
+                      const midi = noteNameToMidi(note)
+                      if (midi >= 0) noteOff(midi)
+                    }}
                   />
                 </div>
               </div>
