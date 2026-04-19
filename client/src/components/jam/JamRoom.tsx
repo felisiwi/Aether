@@ -412,6 +412,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           keyboardActiveNotesRef.current.set(key, newNote)
         }
       }
+
+      setLocalNotes([...keyboardActiveNotesRef.current.values()].filter(n => n >= 0 && n <= 127))
     }, [transpose, pianoOctaveShift, localMode, synth, sendMidi])
 
     const handleComputerKeyboardCapsLockOff = useCallback(() => {
