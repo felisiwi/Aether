@@ -69,6 +69,7 @@ export default function PianoKey({
         shortcutLabel={shortcutLabel}
         isPressed={isPressed}
         isBlack={isBlack}
+        isGhost={isGhost}
       />
     );
   }
@@ -149,8 +150,13 @@ function InstrumentKeyTile({
   shortcutLabel,
   isPressed,
   isBlack,
-}: Pick<PianoKeyProps, 'note' | 'shortcutLabel' | 'isPressed' | 'isBlack'>) {
+  isGhost = false,
+}: Pick<
+  PianoKeyProps,
+  'note' | 'shortcutLabel' | 'isPressed' | 'isBlack' | 'isGhost'
+>) {
   const h = isBlack ? INSTR_ACCIDENTAL_H : INSTR_NATURAL_H;
+  const showGhost = isGhost && !isPressed;
 
   let background: string;
   if (isPressed) {
@@ -161,7 +167,9 @@ function InstrumentKeyTile({
     background = semanticColors.backdropStaticWhite;
   }
 
-  const borderCol = semanticColors.strokeMedium;
+  const borderCol = showGhost
+    ? themeTokens.purple.primary50
+    : semanticColors.strokeMedium;
 
   const shortcutStyle: React.CSSProperties = {
     fontFamily,
@@ -172,9 +180,11 @@ function InstrumentKeyTile({
     textAlign: 'center',
     color: isPressed
       ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
-      : isBlack
-        ? semanticColors.backdropStaticWhite
-        : semanticColors.backdropStaticBlack,
+      : showGhost
+        ? themeTokens.purple.primary50
+        : isBlack
+          ? semanticColors.backdropStaticWhite
+          : semanticColors.backdropStaticBlack,
   };
 
   const noteStyle: React.CSSProperties = {
@@ -187,7 +197,9 @@ function InstrumentKeyTile({
     textAlign: 'center',
     color: isPressed
       ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
-      : INSTR_NOTE_GREY,
+      : showGhost
+        ? themeTokens.purple.primary50
+        : INSTR_NOTE_GREY,
   };
 
   const containerStyle: React.CSSProperties = {

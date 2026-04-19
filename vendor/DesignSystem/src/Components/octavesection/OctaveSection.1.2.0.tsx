@@ -5,6 +5,8 @@ import { layout } from "../../tokens/design-tokens";
 export interface OctaveSectionProps {
   octave: number;
   pressedNotes?: string[];
+  /** Remote peer held notes (Keyboard variant ghost highlight). */
+  remoteNotes?: string[];
   variant?: "Piano" | "Keyboard";
   /** Which keyboard shortcut group (0–2) for `Keyboard` variant; omit for `Piano`. */
   keyboardGroup?: number;
@@ -88,6 +90,7 @@ function transposedNoteName(
 export const OctaveSection: React.FC<OctaveSectionProps> = ({
   octave,
   pressedNotes = [],
+  remoteNotes,
   variant = "Piano",
   keyboardGroup,
   noteOffset = 0,
@@ -110,6 +113,10 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
   if (variant === "Keyboard") {
     const keyboardNote = (blackIndex: 0 | 1 | 2 | 3 | 4) =>
       transposedNoteName(octave, BLACK_SEMITONES_FROM_C[blackIndex], noteOffset);
+
+    const remote = new Set((remoteNotes ?? []).map(norm));
+    const isGhostNote = (note: string) =>
+      remote.has(norm(note)) && !pressed.has(norm(note));
 
     return (
       <div
@@ -158,6 +165,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               note={keyboardNote(0)}
               shortcutLabel={blackShortcuts[0] ?? ""}
               isPressed={pressed.has(norm(keyboardNote(0)))}
+              isGhost={isGhostNote(keyboardNote(0))}
               isBlack
               variant="instrument"
             />
@@ -181,6 +189,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               note={keyboardNote(1)}
               shortcutLabel={blackShortcuts[1] ?? ""}
               isPressed={pressed.has(norm(keyboardNote(1)))}
+              isGhost={isGhostNote(keyboardNote(1))}
               isBlack
               variant="instrument"
             />
@@ -205,6 +214,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               note={keyboardNote(2)}
               shortcutLabel={blackShortcuts[2] ?? ""}
               isPressed={pressed.has(norm(keyboardNote(2)))}
+              isGhost={isGhostNote(keyboardNote(2))}
               isBlack
               variant="instrument"
             />
@@ -228,6 +238,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               note={keyboardNote(3)}
               shortcutLabel={blackShortcuts[3] ?? ""}
               isPressed={pressed.has(norm(keyboardNote(3)))}
+              isGhost={isGhostNote(keyboardNote(3))}
               isBlack
               variant="instrument"
             />
@@ -251,6 +262,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               note={keyboardNote(4)}
               shortcutLabel={blackShortcuts[4] ?? ""}
               isPressed={pressed.has(norm(keyboardNote(4)))}
+              isGhost={isGhostNote(keyboardNote(4))}
               isBlack
               variant="instrument"
             />
@@ -293,6 +305,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
                   note={note}
                   shortcutLabel={whiteShortcuts[i] ?? ""}
                   isPressed={pressed.has(norm(note))}
+                  isGhost={isGhostNote(note)}
                   isBlack={false}
                   variant="instrument"
                 />

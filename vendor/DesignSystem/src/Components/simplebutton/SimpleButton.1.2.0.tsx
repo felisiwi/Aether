@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Icon from "../icon/Icon.1.2.0";
 import type { IconName } from "../icon/icon-names";
 import {
@@ -95,12 +95,19 @@ export const SimpleButton: React.FC<SimpleButtonProps> = ({
   className,
   style,
 }) => {
+  const [pointerDown, setPointerDown] = useState(false);
+  const effectiveState = disabled
+    ? "default"
+    : pointerDown
+      ? "pressed"
+      : state;
+
   const content = children ?? label ?? "";
   const hasVisibleText =
     typeof content === "string"
       ? content.length > 0
       : Boolean(content);
-  const tokens = getStateStyle(disabled, state);
+  const tokens = getStateStyle(disabled, effectiveState);
 
   return (
     <button
@@ -129,6 +136,12 @@ export const SimpleButton: React.FC<SimpleButtonProps> = ({
       }}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
+      onPointerDown={() => {
+        if (!disabled) setPointerDown(true);
+      }}
+      onPointerUp={() => setPointerDown(false)}
+      onPointerLeave={() => setPointerDown(false)}
+      onPointerCancel={() => setPointerDown(false)}
     >
       {showIcon ? <Icon name={iconName} size={24} color={tokens.color} /> : null}
       {hasVisibleText ? (

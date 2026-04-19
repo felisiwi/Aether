@@ -272,7 +272,11 @@ export const derivedTokens = {
     paddingButton: "paddingSubtle * 2"  }
 } as const;
 
-/** Theme colour ramps from Figma Themes collection. Each key is a mode (purple, pink, green, blue). */
+// GUARD: themeTokens keys are purple/pink/green/blue — do NOT rename to Figma
+// internal mode names (components/bubbleGum/developedComponents/prototypes).
+// These names were deliberately changed to be human-readable. See theme-map.ts.
+
+/** Theme colour ramps from Figma Themes collection. Keys match theme-map / player slots: purple, pink, green, blue. */
 export const themeTokens = {
   purple: {
     primary20: "#C6ADEB",
