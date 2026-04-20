@@ -16,7 +16,7 @@ import type { WaveformId } from '@ds/Components/soundwavecontroller/SoundWaveCon
 import type { ButtonRowOption } from '@ds/Components/buttonrow/ButtonRow.1.0.0'
 import { TopNav } from '@ds/Components/topnav/TopNav.1.2.0'
 import { JamBoard } from '@ds/Components/jamboard/JamBoard.1.0.0'
-import type { ChordDisplayNote } from '@ds/Components/chorddisplay/ChordDisplay.2.6.0'
+import type { ChordDisplayNote } from '@ds/Components/chorddisplay/ChordDisplay.2.7.0'
 import { EffectsBoard } from '@ds/Components/effectsboard/EffectsBoard.1.0.0'
 import { KeyOctaveController } from '@ds/Components/keyoctavecontroller/KeyOctaveController.1.0.0'
 import { InstrumentInterface } from '@ds/Components/instrumentinterface/InstrumentInterface.1.1.0'
