@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import PianoKey from './PianoKey.1.5.1';
+import PianoKey from './PianoKey.1.5.2';
 import { typography, fontFamily, colors, layout, semanticColors } from '../../tokens/design-tokens';
 
 const meta: Meta<typeof PianoKey> = {
@@ -11,7 +11,7 @@ const meta: Meta<typeof PianoKey> = {
     docs: {
       description: {
         component:
-          'A single piano key. **`variant="default"`** (Figma Instrument=Piano): shortcut only inside the key, bottom-aligned — matches v1.4.0. **`variant="instrument"`** (Figma Instrument=Keyboard): compact rounded cell with note + shortcut centred. ' +
+          'A single piano key. **`variant="default"`** (Figma Instrument=Piano): shortcut only inside the key, bottom-aligned — matches v1.4.0. **`variant="instrument"`** (Figma Instrument=Keyboard): compact rounded cell with note + shortcut centred. **`state="hint"`** matches Figma **State=Hint**. ' +
           'Display-only — no focus or button semantics.',
       },
     },
@@ -22,6 +22,7 @@ const meta: Meta<typeof PianoKey> = {
     isPressed: { control: 'boolean' },
     isBlack: { control: 'boolean' },
     variant: { control: 'radio', options: ['default', 'instrument'] },
+    state: { control: 'select', options: ['default', 'ghost', 'pressed', 'hint'] },
   },
 };
 export default meta;
@@ -75,6 +76,50 @@ export const Keyboard: Story = {
     isPressed: false,
     isBlack: true,
     variant: 'instrument',
+  },
+};
+
+export const KeyboardHintWhite: Story = {
+  args: {
+    note: 'C4',
+    shortcutLabel: 'Z',
+    isPressed: false,
+    isBlack: false,
+    variant: 'instrument',
+    state: 'hint',
+  },
+};
+
+export const KeyboardHintBlack: Story = {
+  args: {
+    note: 'C#4',
+    shortcutLabel: 'S',
+    isPressed: false,
+    isBlack: true,
+    variant: 'instrument',
+    state: 'hint',
+  },
+};
+
+export const PianoHintWhite: Story = {
+  args: {
+    note: 'G3',
+    shortcutLabel: 'B',
+    isPressed: false,
+    isBlack: false,
+    variant: 'default',
+    state: 'hint',
+  },
+};
+
+export const PianoHintBlack: Story = {
+  args: {
+    note: 'G#3',
+    shortcutLabel: 'J',
+    isPressed: false,
+    isBlack: true,
+    variant: 'default',
+    state: 'hint',
   },
 };
 

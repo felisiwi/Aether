@@ -23,6 +23,10 @@ export const ICON_NAMES = [
   'play',
   'pause',
   'stop',
+  'music-notes-plus',
+  'arrow-u-up-left',
+  'arrows-out-line-horizontal',
+  'shuffle',
   'waveform-sine',
   'waveform-triangle',
   'waveform-sawtooth',
@@ -58,6 +62,10 @@ export const FIGMA_PATH_TO_NAME: Record<string, IconName> = {
   '.icons/media/Play': 'play',
   '.icons/media/Pause': 'pause',
   '.icons/media/Stop': 'stop',
+  '.icons/media/MusicNotesPlus': 'music-notes-plus',
+  '.icons/media/ArrowUUpLeft': 'arrow-u-up-left',
+  '.icons/media/ArrowsOutLineHorizontal': 'arrows-out-line-horizontal',
+  '.icons/media/Shuffle': 'shuffle',
   '.icons/calculate/WaveformSine': 'waveform-sine',
   '.icons/calculate/WaveformTriangle': 'waveform-triangle',
   '.icons/calculate/WaveformSawtooth': 'waveform-sawtooth',
@@ -69,3 +77,6 @@ export const FIGMA_PATH_TO_NAME: Record<string, IconName> = {
   '.icons/socials/X': 'x',
   '.icons/socials/YouTube': 'youtube',
 };
+
+/** Backward-compatible alias for older prompts/docs naming this map as FIGMA_PATH_TO_ICON. */
+export const FIGMA_PATH_TO_ICON = FIGMA_PATH_TO_NAME;

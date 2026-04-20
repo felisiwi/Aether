@@ -6,7 +6,7 @@ import {
   layout,
   themeTokens,
 } from '@ds/tokens/design-tokens'
-import PianoKey from '@ds/Components/pianokey/PianoKey.1.4.0'
+import PianoKey from '@ds/Components/pianokey/PianoKey.1.5.2'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { MidiEvent } from '../../lib/midi'
 

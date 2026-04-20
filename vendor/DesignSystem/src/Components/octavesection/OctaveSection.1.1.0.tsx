@@ -1,5 +1,5 @@
 import React from "react";
-import PianoKey from "../pianokey/PianoKey.1.5.1";
+import PianoKey from "../pianokey/PianoKey.1.5.2";
 import { layout } from "../../tokens/design-tokens";
 
 export interface OctaveSectionProps {
