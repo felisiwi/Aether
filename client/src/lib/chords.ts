@@ -239,6 +239,17 @@ export function getProximityHints(notes: number[]): ChordHint[] {
     for (const def of CHORD_DEFS) {
       if (def.intervals.length > 5) continue
 
+      const chordPcs = chordPitchClasses(root, def)
+
+      let heldNotesAllInChord = true
+      for (const pc of seenPc) {
+        if (!chordPcs.has(pc)) {
+          heldNotesAllInChord = false
+          break
+        }
+      }
+      if (!heldNotesAllInChord) continue
+
       const missingNotes = def.intervals
         .map((i) => (root + i) % 12)
         .filter((pc) => !seenPc.has(pc))
