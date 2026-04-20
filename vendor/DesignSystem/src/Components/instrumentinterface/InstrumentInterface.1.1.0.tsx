@@ -12,6 +12,8 @@ export interface InstrumentInterfaceProps {
   pressedNotes?: string[];
   /** Remote peer held notes (Keyboard variant ghost highlight). */
   remoteNotes?: string[];
+  /** Pitch-class names (e.g. "G", "C#") to show as hint state on matching keys. */
+  hintNotes?: string[];
   variant?: "Piano" | "Keyboard";
   /** Semitone transpose offset passed to each octave (physical keys show sounded note). */
   noteOffset?: number;
@@ -34,6 +36,7 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
   maxOctave = 7,
   pressedNotes,
   remoteNotes,
+  hintNotes,
   variant = "Piano",
   noteOffset,
   onNoteOn,
@@ -82,6 +85,7 @@ export const InstrumentInterface: React.FC<InstrumentInterfaceProps> = ({
             octave={clampedStart + i}
             pressedNotes={pressedNotes}
             remoteNotes={remoteNotes}
+            hintNotes={hintNotes}
             variant={variant}
             keyboardGroup={variant === "Keyboard" ? i : undefined}
             noteOffset={noteOffset}

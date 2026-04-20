@@ -1,5 +1,5 @@
 import React from "react";
-import PianoKey from "../pianokey/PianoKey.1.4.0";
+import PianoKey from "../pianokey/PianoKey.1.5.2";
 import { layout } from "../../tokens/design-tokens";
 
 export interface OctaveSectionProps {
@@ -7,6 +7,8 @@ export interface OctaveSectionProps {
   pressedNotes?: string[];
   /** Remote peer held notes (Keyboard variant ghost highlight). */
   remoteNotes?: string[];
+  /** Pitch-class names (e.g. "G", "C#") for proximity-hint highlight (Keyboard variant). */
+  hintNotes?: string[];
   variant?: "Piano" | "Keyboard";
   /** Which keyboard shortcut group (0–2) for `Keyboard` variant; omit for `Piano`. */
   keyboardGroup?: number;
@@ -56,6 +58,12 @@ function norm(s: string): string {
   return s.replace(/\s+/g, "").toLowerCase();
 }
 
+/** Letter pitch class from a note label e.g. "F#3" → "F#". */
+function pitchClassFromKeyNote(note: string): string {
+  const m = note.trim().match(/^([A-G]#?)/i);
+  return m?.[1] ?? "";
+}
+
 const NOTE_NAMES = [
   "C",
   "C#",
@@ -91,6 +99,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
   octave,
   pressedNotes = [],
   remoteNotes,
+  hintNotes,
   variant = "Piano",
   keyboardGroup,
   noteOffset = 0,
@@ -117,6 +126,13 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
     const remote = new Set((remoteNotes ?? []).map(norm));
     const isGhostNote = (note: string) =>
       remote.has(norm(note)) && !pressed.has(norm(note));
+
+    const hintPc = new Set((hintNotes ?? []).map((h) => norm(h)));
+    const keyIsHint = (fullNote: string) =>
+      hintPc.size > 0 &&
+      hintPc.has(norm(pitchClassFromKeyNote(fullNote))) &&
+      !pressed.has(norm(fullNote)) &&
+      !isGhostNote(fullNote);
 
     return (
       <div
@@ -168,6 +184,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               isGhost={isGhostNote(keyboardNote(0))}
               isBlack
               variant="instrument"
+              state={keyIsHint(keyboardNote(0)) ? "hint" : "default"}
             />
           </div>
           <div
@@ -192,6 +209,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               isGhost={isGhostNote(keyboardNote(1))}
               isBlack
               variant="instrument"
+              state={keyIsHint(keyboardNote(1)) ? "hint" : "default"}
             />
           </div>
           <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
@@ -217,6 +235,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               isGhost={isGhostNote(keyboardNote(2))}
               isBlack
               variant="instrument"
+              state={keyIsHint(keyboardNote(2)) ? "hint" : "default"}
             />
           </div>
           <div
@@ -241,6 +260,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               isGhost={isGhostNote(keyboardNote(3))}
               isBlack
               variant="instrument"
+              state={keyIsHint(keyboardNote(3)) ? "hint" : "default"}
             />
           </div>
           <div
@@ -265,6 +285,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
               isGhost={isGhostNote(keyboardNote(4))}
               isBlack
               variant="instrument"
+              state={keyIsHint(keyboardNote(4)) ? "hint" : "default"}
             />
           </div>
           <div
@@ -308,6 +329,7 @@ export const OctaveSection: React.FC<OctaveSectionProps> = ({
                   isGhost={isGhostNote(note)}
                   isBlack={false}
                   variant="instrument"
+                  state={keyIsHint(note) ? "hint" : "default"}
                 />
               </div>
             );
