@@ -1,5 +1,6 @@
 import React from "react";
 import ChordDisplay from "../chorddisplay/ChordDisplay.2.3.0";
+import type { ChordDisplayNote } from "../chorddisplay/ChordDisplay.2.3.0";
 import SliderController from "../slidercontroller/SliderController.1.0.0";
 import { layout } from "../../tokens/design-tokens";
 import type { ThemeIndex } from "../../tokens/theme-map";
@@ -20,10 +21,10 @@ export type JamBoardVariant = "solo" | "duo";
 
 export interface JamBoardProps {
   variant: JamBoardVariant;
-  localNotes?: Array<{ note: string; partOfChord: boolean }>;
+  localNotes?: ChordDisplayNote[];
   localChordName?: string;
   oscilloscopeRef?: React.RefObject<HTMLCanvasElement | null>;
-  remoteNotes?: Array<{ note: string; partOfChord: boolean }>;
+  remoteNotes?: ChordDisplayNote[];
   remoteChordName?: string;
   remoteThemeIndex?: ThemeIndex;
   masterVolume: number;

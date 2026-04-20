@@ -69,10 +69,10 @@ export const FullJamLayout: Story = {
         variant="default"
         chordName="Cmaj7"
         notes={[
-          { note: "C", partOfChord: true },
-          { note: "E", partOfChord: true },
-          { note: "G", partOfChord: true },
-          { note: "B", partOfChord: true },
+          { note: "C", type: "white" },
+          { note: "E", type: "white" },
+          { note: "G", type: "white" },
+          { note: "B", type: "white" },
         ]}
       />
 
@@ -106,11 +106,11 @@ export const DarkBackground: Story = {
         variant="default"
         chordName="Am9"
         notes={[
-          { note: "A", partOfChord: true },
-          { note: "C", partOfChord: true },
-          { note: "E", partOfChord: true },
-          { note: "G", partOfChord: true },
-          { note: "B", partOfChord: true },
+          { note: "A", type: "white" },
+          { note: "C", type: "white" },
+          { note: "E", type: "white" },
+          { note: "G", type: "white" },
+          { note: "B", type: "white" },
         ]}
       />
 

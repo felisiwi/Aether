@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useRef } from "react";
-import { ChordDisplay } from "./ChordDisplay.2.3.0";
+import { ChordDisplay, type ChordDisplayNote } from "./ChordDisplay.2.3.0";
 
 const meta: Meta<typeof ChordDisplay> = {
   title: "Components/ChordDisplay",
@@ -16,10 +16,10 @@ const meta: Meta<typeof ChordDisplay> = {
 export default meta;
 type Story = StoryObj<typeof ChordDisplay>;
 
-const majNotes = [
-  { note: "C3", partOfChord: true },
-  { note: "E3", partOfChord: true },
-  { note: "G3", partOfChord: true },
+const majNotes: ChordDisplayNote[] = [
+  { note: "C3", type: "white" },
+  { note: "E3", type: "white" },
+  { note: "G3", type: "white" },
 ];
 
 export const Default: Story = {
@@ -35,9 +35,9 @@ export const Themed: Story = {
     variant: "themed",
     themeIndex: 0,
     notes: [
-      { note: "D3", partOfChord: true },
-      { note: "F#3", partOfChord: true },
-      { note: "A3", partOfChord: true },
+      { note: "D3", type: "white" },
+      { note: "F#3", type: "white" },
+      { note: "A3", type: "white" },
     ],
     chordName: "Dmaj",
   },
@@ -69,10 +69,10 @@ export const SideBySide: Story = {
         variant="default"
         chordName="Cmaj7"
         notes={[
-          { note: "C3", partOfChord: true },
-          { note: "E3", partOfChord: true },
-          { note: "G3", partOfChord: true },
-          { note: "B3", partOfChord: true },
+          { note: "C3", type: "white" },
+          { note: "E3", type: "white" },
+          { note: "G3", type: "white" },
+          { note: "B3", type: "white" },
         ]}
       />
       <ChordDisplay
@@ -80,10 +80,10 @@ export const SideBySide: Story = {
         themeIndex={1}
         chordName="Fmaj7"
         notes={[
-          { note: "F3", partOfChord: true },
-          { note: "A3", partOfChord: true },
-          { note: "C4", partOfChord: true },
-          { note: "E4", partOfChord: true },
+          { note: "F3", type: "white" },
+          { note: "A3", type: "white" },
+          { note: "C4", type: "white" },
+          { note: "E4", type: "white" },
         ]}
       />
     </div>

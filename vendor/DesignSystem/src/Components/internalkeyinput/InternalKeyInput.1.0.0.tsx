@@ -1,10 +1,11 @@
 import React from "react";
 import { Note } from "../note/Note.1.0.0";
+import type { NoteType } from "../note/Note.1.0.0";
 import { layout } from "../../tokens/design-tokens";
 
 export interface InternalKeyInputNote {
   note: string;
-  partOfChord: boolean;
+  type: NoteType;
 }
 
 /**
@@ -13,7 +14,6 @@ export interface InternalKeyInputNote {
  */
 export interface InternalKeyInputProps {
   notes: InternalKeyInputNote[];
-  variant?: "default" | "themed";
   themeIndex?: 0 | 1 | 2 | 3;
   className?: string;
   style?: React.CSSProperties;
@@ -23,7 +23,6 @@ const MAX_NOTES = 8;
 
 export const InternalKeyInput: React.FC<InternalKeyInputProps> = ({
   notes,
-  variant = "default",
   themeIndex = 0,
   className,
   style,
@@ -74,9 +73,8 @@ export const InternalKeyInput: React.FC<InternalKeyInputProps> = ({
           <Note
             key={`r0-${index}-${n.note}`}
             note={n.note}
-            partOfChord={n.partOfChord}
+            type={n.type}
             size="large"
-            variant={variant}
             themeIndex={themeIndex}
           />
         ))}
@@ -87,9 +85,8 @@ export const InternalKeyInput: React.FC<InternalKeyInputProps> = ({
             <Note
               key={`r1-${index}-${n.note}`}
               note={n.note}
-              partOfChord={n.partOfChord}
+              type={n.type}
               size="large"
-              variant={variant}
               themeIndex={themeIndex}
             />
           ))}

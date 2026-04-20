@@ -6,9 +6,11 @@ import { layout, semanticColors } from "../../tokens/design-tokens";
 
 export type ChordDisplayVariant = "default" | "themed" | "oscilloscope";
 
+export type ChordDisplayNoteType = "white" | "orange" | "themed";
+
 export interface ChordDisplayNote {
   note: string;
-  partOfChord: boolean;
+  type: ChordDisplayNoteType;
 }
 
 /**
@@ -139,7 +141,6 @@ export const ChordDisplay: React.FC<ChordDisplayProps> = ({
               {hasNotes ? (
                 <InternalKeyInput
                   notes={noteItems}
-                  variant={noteVariant}
                   themeIndex={themedIdx}
                 />
               ) : null}

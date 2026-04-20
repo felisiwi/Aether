@@ -2,17 +2,17 @@ import React from "react";
 import {
   typography,
   fontFamily,
-  colors,
   semanticColors,
   themeTokens,
 } from "../../tokens/design-tokens";
 import { THEME_KEYS } from "../../tokens/theme-map";
 
+export type NoteType = "white" | "orange" | "themed";
+
 export interface NoteProps {
   note: string;
-  partOfChord: boolean;
+  type: NoteType;
   size?: "large" | "small";
-  variant?: "default" | "themed";
   themeIndex?: 0 | 1 | 2 | 3;
   className?: string;
   style?: React.CSSProperties;
@@ -20,9 +20,8 @@ export interface NoteProps {
 
 export const Note: React.FC<NoteProps> = ({
   note,
-  partOfChord,
+  type: noteType,
   size = "large",
-  variant = "default",
   themeIndex = 0,
   className,
   style,
@@ -30,29 +29,27 @@ export const Note: React.FC<NoteProps> = ({
   const themeKey = THEME_KEYS[themeIndex ?? 0];
 
   let color: string;
-  if (partOfChord) {
+  if (noteType === "white") {
     color = semanticColors.semanticStrokeStaticStrokeWhiteSolid;
-  } else if (variant === "themed") {
+  } else if (noteType === "orange") {
+    color = semanticColors.strokeColour;
+  } else {
     color =
       size === "small"
         ? themeTokens[themeKey].primary20
-        : semanticColors.semanticStrokeStaticStrokeBlackSolid;
-  } else if (size === "large") {
-    color = semanticColors.semanticStrokeStaticStrokeBlackSolid;
-  } else {
-    color = colors.textBodyColour;
+        : themeTokens[themeKey].primary50;
   }
 
   const isLarge = size === "large";
-  const type = isLarge ? typography.titleS : typography.label;
+  const textTypo = isLarge ? typography.titleS : typography.label;
 
   const textStyle: React.CSSProperties = {
     fontFamily,
-    fontSize: isLarge ? 20 : type.fontSize,
+    fontSize: isLarge ? 20 : textTypo.fontSize,
     fontWeight: 660,
-    lineHeight: isLarge ? `${32}px` : `${type.lineHeight}px`,
-    letterSpacing: type.letterSpacing,
-    fontStretch: `${type.fontWidth}%`,
+    lineHeight: isLarge ? `${32}px` : `${textTypo.lineHeight}px`,
+    letterSpacing: textTypo.letterSpacing,
+    fontStretch: `${textTypo.fontWidth}%`,
     color,
     textAlign: "center",
     fontFeatureSettings: "'ss01' 1, 'lnum' 1, 'tnum' 1",

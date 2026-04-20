@@ -1,7 +1,7 @@
 import React from "react";
 import PlayerInfo from "../playerinfo/PlayerInfo.1.1.0";
 import ChordDisplay from "../chorddisplay/ChordDisplay.2.3.0";
-import type { ChordDisplayProps } from "../chorddisplay/ChordDisplay.2.3.0";
+import type { ChordDisplayNote, ChordDisplayProps } from "../chorddisplay/ChordDisplay.2.3.0";
 import type { ThemeIndex } from "../../tokens/theme-map";
 import { layout } from "../../tokens/design-tokens";
 
@@ -44,9 +44,9 @@ export const PlayerDisplay: React.FC<PlayerDisplayProps> = ({
   const chordVariant: ChordDisplayProps["variant"] =
     variant === "local" ? "default" : "themed";
 
-  const chordNotes = notes.map((note) => ({
+  const chordNotes: ChordDisplayNote[] = notes.map((note) => ({
     note,
-    partOfChord: true,
+    type: "white",
   }));
 
   return (
