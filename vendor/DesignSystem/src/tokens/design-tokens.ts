@@ -47,19 +47,19 @@ export const typography = {
     fontSize: 10,
     lineHeight: 16,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 120  },
   buttonM: {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   buttonS: {
     fontSize: 14,
     lineHeight: 28,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   titleM: {
     fontSize: 24,
@@ -83,13 +83,13 @@ export const typography = {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0.3,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   buttonSActive: {
     fontSize: 14,
     lineHeight: 28,
     letterSpacing: 0.2,
-    fontWeight: 600,
+    fontWeight: 660,
     fontWidth: 108  },
   h6: {
     lineHeight: 24,
@@ -212,7 +212,9 @@ export const semanticColors = {
   strokeTheme: "var(--ds-stroke-theme)",
   backdropSurfaceThemedElevatedSurface: "var(--ds-backdrop-surface-themed-elevated-surface)",
   backdropStaticThemedElevatedSurface: "var(--ds-backdrop-static-themed-elevated-surface)",
-  backdropStaticElevatedSurface: "var(--ds-backdrop-static-elevated-surface)"
+  backdropStaticElevatedSurface: "var(--ds-backdrop-static-elevated-surface)",
+  strokeThemePressed: "var(--ds-stroke-theme-pressed)",
+  backdropSurfaceThemedSurfacePressed: "var(--ds-backdrop-surface-themed-surface-pressed)"
 } as const;
 
 /** Same references as {@link semanticColors}; actual values switch via semantic-tokens.css [data-theme="dark"]. */
@@ -306,7 +308,7 @@ export const themeTokens = {
     primary10: "#92E8AA",
     primary70: "#0F481F",
     primary40: "#27B951",
-    primary50: "#1E8E3E",
+    primary50: "#1C873B",
     primary80: "#0A2911",
     primary90: "#041509",
     primaryInverse50: "#000000"  },
