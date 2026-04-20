@@ -22,6 +22,8 @@ export default defineConfig({
         __dirname,
         '../vendor/DesignSystem/src/Components/paginationindicator',
       ),
+      /** Must be before `@ds` so `@ds/tokens/…` resolves to this folder (CSS + TS path alignment). */
+      '@ds/tokens': path.resolve(__dirname, '../vendor/DesignSystem/src/tokens'),
       '@ds': path.resolve(__dirname, '../vendor/DesignSystem/src'),
     },
     dedupe: ['react', 'react-dom'],
