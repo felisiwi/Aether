@@ -16,7 +16,7 @@ import type { WaveformId } from '@ds/Components/soundwavecontroller/SoundWaveCon
 import type { ButtonRowOption } from '@ds/Components/buttonrow/ButtonRow.1.0.0'
 import { TopNav } from '@ds/Components/topnav/TopNav.1.2.0'
 import { JamBoard } from '@ds/Components/jamboard/JamBoard.1.0.0'
-import type { ChordDisplayNote } from '@ds/Components/chorddisplay/ChordDisplay.2.3.0'
+import type { ChordDisplayNote } from '@ds/Components/chorddisplay/ChordDisplay.2.4.0'
 import { EffectsBoard } from '@ds/Components/effectsboard/EffectsBoard.1.0.0'
 import { KeyOctaveController } from '@ds/Components/keyoctavecontroller/KeyOctaveController.1.0.0'
 import { InstrumentInterface } from '@ds/Components/instrumentinterface/InstrumentInterface.1.1.0'
@@ -26,8 +26,8 @@ import { useTheme } from '../../contexts/ThemeContext'
 import type { PianoKeyboardHandle } from './PianoKeyboard'
 import type { MidiEvent, InstrumentMode } from '../../lib/midi'
 import type { Synth } from '../../lib/synth'
-import { detectChord } from '../../lib/chords'
-import type { ChordResult } from '../../lib/chords'
+import { detectChord, getProximityHints, getProgressionHints } from '../../lib/chords'
+import type { ChordHint, ChordResult, ProgressionHints } from '../../lib/chords'
 import type {
   DataChannelState,
   PatchStateMessage,
@@ -628,6 +628,17 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       [localNotes],
     )
 
+    const localChordHints = useMemo((): ChordHint[] => {
+      if (chordResult?.primary) return []
+      if (localNotes.length === 0) return []
+      return getProximityHints(localNotes)
+    }, [localNotes, chordResult])
+
+    const localProgressionHints = useMemo((): ProgressionHints | undefined => {
+      if (!chordResult?.primary) return undefined
+      return getProgressionHints(chordResult.primary)
+    }, [chordResult])
+
     const chordCardMainLine = useMemo(() => {
       if (chordResult?.primary) return chordResult.primary
       return null
@@ -833,6 +844,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               onMasterVolumeChange={(v) => handleVolume(v / 100)}
               remoteVolume={Math.round(remoteVolume * 100)}
               onRemoteVolumeChange={(v) => setRemoteVolume(v / 100)}
+              chordHints={localChordHints}
+              progressionHints={localProgressionHints}
             />
           </div>
 
