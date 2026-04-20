@@ -700,7 +700,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         const ctx2d = canvas.getContext('2d')
         if (!ctx2d) return
 
-        ctx2d.fillStyle = semanticColors.backdropStaticBlack
+        ctx2d.fillStyle = '#000000'
         ctx2d.fillRect(0, 0, w, h)
 
         const analyser = synth?.getAnalyser() ?? null
@@ -711,7 +711,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
           ctx2d.moveTo(0, h / 2)
           ctx2d.lineTo(w, h / 2)
           ctx2d.lineWidth = 1
-          ctx2d.strokeStyle = semanticColors.strokeInvertedMedium
+          ctx2d.strokeStyle = '#ffffff1f'
           ctx2d.stroke()
           return
         }
@@ -740,9 +740,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         }
 
         ctx2d.lineWidth = 2
-        ctx2d.strokeStyle = clipping
-          ? semanticColors.textFunctionalError
-          : semanticColors.strokeColour
+        ctx2d.strokeStyle = clipping ? '#EB0000' : '#F04700'
         ctx2d.stroke()
       }
 
