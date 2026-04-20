@@ -2,6 +2,7 @@ import React from "react";
 import {
   typography,
   fontFamily,
+  colors,
   semanticColors,
   themeTokens,
 } from "../../tokens/design-tokens";
@@ -32,7 +33,7 @@ export const Note: React.FC<NoteProps> = ({
   if (noteType === "white") {
     color = semanticColors.semanticStrokeStaticStrokeWhiteSolid;
   } else if (noteType === "orange") {
-    color = semanticColors.strokeColour;
+    color = colors.textPressed;
   } else {
     color =
       size === "small"
