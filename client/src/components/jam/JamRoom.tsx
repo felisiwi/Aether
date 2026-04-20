@@ -634,17 +634,15 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       return getProximityHints(localNotes)
     }, [localNotes, chordResult])
 
-    const hintHighlightNotes = useMemo((): string[] => {
-      if (chordResult?.primary) return []
-      if (localChordHints.length === 0) return []
-      const noteSet = new Set<string>()
-      for (const hint of localChordHints) {
-        for (const note of hint.missingNotes) {
-          noteSet.add(note)
-        }
-      }
-      return Array.from(noteSet)
-    }, [localChordHints, chordResult])
+    const [hintHighlightNotes, setHintHighlightNotes] = useState<string[]>([])
+
+    const handleChordHintHover = useCallback((notes: string[]) => {
+      setHintHighlightNotes(notes)
+    }, [])
+
+    const handleChordHintLeave = useCallback(() => {
+      setHintHighlightNotes([])
+    }, [])
 
     const localProgressionHints = useMemo((): ProgressionHints | undefined => {
       if (!chordResult?.primary) return undefined
