@@ -55,7 +55,7 @@ export default function JamRoomPage({
     jamRoomRef.current?.handleLocalMidi(event)
   }, [])
 
-  useMIDI({ onMidiEvent, enabled: mode === 'wind' || mode === 'nanokey' })
+  useMIDI({ onMidiEvent, enabled: true })
 
   // Wire remote MIDI from Session → JamRoom component
   useEffect(() => {
