@@ -2,7 +2,6 @@ import React from "react";
 import {
   typography,
   fontFamily,
-  colors,
   semanticColors,
   layout,
   themeTokens,
@@ -30,7 +29,7 @@ export const Tag: React.FC<TagProps> = ({
   const textColor =
     variant === "themed"
       ? themeTokens[themeKey].primary60
-      : colors.textBodyNeutral;
+      : semanticColors.semanticStrokeStaticStrokeBlackSolid;
 
   const textStyle: React.CSSProperties = {
     fontFamily,

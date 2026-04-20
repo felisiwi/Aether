@@ -36,9 +36,9 @@ export const Note: React.FC<NoteProps> = ({
     color =
       size === "small"
         ? themeTokens[themeKey].primary20
-        : colors.textBodyNeutral;
+        : semanticColors.semanticStrokeStaticStrokeBlackSolid;
   } else if (size === "large") {
-    color = colors.textBodyNeutral;
+    color = semanticColors.semanticStrokeStaticStrokeBlackSolid;
   } else {
     color = colors.textBodyColour;
   }
