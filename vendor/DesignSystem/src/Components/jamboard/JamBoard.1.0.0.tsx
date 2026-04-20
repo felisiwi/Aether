@@ -1,9 +1,9 @@
 import React from "react";
-import ChordDisplay from "../chorddisplay/ChordDisplay.2.4.0";
+import ChordDisplay from "../chorddisplay/ChordDisplay.2.7.0";
 import type {
   ChordDisplayNote,
   ChordDisplayProgressionHints,
-} from "../chorddisplay/ChordDisplay.2.4.0";
+} from "../chorddisplay/ChordDisplay.2.7.0";
 import type { ChordCollectionHint } from "../chordcollection/ChordCollection.1.0.0";
 import SliderController from "../slidercontroller/SliderController.1.0.0";
 import { layout } from "../../tokens/design-tokens";
@@ -37,6 +37,8 @@ export interface JamBoardProps {
   onRemoteVolumeChange?: (v: number) => void;
   chordHints?: ChordCollectionHint[];
   progressionHints?: ChordDisplayProgressionHints;
+  onChordHintHover?: (notes: string[]) => void;
+  onChordHintLeave?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -80,6 +82,8 @@ export const JamBoard: React.FC<JamBoardProps> = ({
   onRemoteVolumeChange,
   chordHints = [],
   progressionHints,
+  onChordHintHover,
+  onChordHintLeave,
   className,
   style,
 }) => {
@@ -107,6 +111,8 @@ export const JamBoard: React.FC<JamBoardProps> = ({
         chordName={localChordName}
         chordHints={chordHints}
         progressionHints={progressionHints}
+        onChordHintHover={onChordHintHover}
+        onChordHintLeave={onChordHintLeave}
         style={growChordStyle}
       />
 

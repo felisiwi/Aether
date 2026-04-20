@@ -856,6 +856,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               onRemoteVolumeChange={(v) => setRemoteVolume(v / 100)}
               chordHints={localChordHints}
               progressionHints={localProgressionHints}
+              onChordHintHover={handleChordHintHover}
+              onChordHintLeave={handleChordHintLeave}
             />
           </div>
 
