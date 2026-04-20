@@ -651,7 +651,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
         const noteName = midiNoteToName(midiNote)
         const pc = pitchClassName(midiNote)
         const isInChord = hasChord && (chordResult?.noteNames?.includes(pc) ?? false)
-        return { note: noteName, partOfChord: isInChord }
+        return { note: noteName, type: isInChord ? 'white' as const : 'orange' as const }
       })
     }, [localNotes, chordResult])
 
@@ -659,7 +659,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       () =>
         Array.from(remoteNotes).map((midiNote) => {
           const noteName = midiNoteToName(midiNote)
-          return { note: noteName, partOfChord: false }
+          return { note: noteName, type: 'themed' as const }
         }),
       [remoteNotes],
     )
