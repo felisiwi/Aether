@@ -274,85 +274,128 @@ export interface ProgressionHints {
   move: ChordHint[]
 }
 
-function progressionChordNames(names: string[]): ChordHint[] {
-  return names.map((chordName) => ({ chordName, missingNotes: [] as string[] }))
+/** Letter name → pitch class for roots spelled with flats (NOTE_NAMES uses sharps). */
+const FLAT_ROOT_TO_PC: Record<string, number> = {
+  Db: 1,
+  Eb: 3,
+  Gb: 6,
+  Ab: 8,
+  Bb: 10,
+  Cb: 11,
+  Fb: 4,
+}
+
+function rootNameToPc(rootName: string): number {
+  const sharpIdx = NOTE_NAMES.indexOf(rootName as (typeof NOTE_NAMES)[number])
+  if (sharpIdx !== -1) return sharpIdx
+  const flatPc = FLAT_ROOT_TO_PC[rootName]
+  return flatPc !== undefined ? flatPc : -1
+}
+
+/** Match longest chord suffix first so e.g. "maj7" wins over "maj" and "m". */
+const CHORD_DEFS_LONGEST_SUFFIX_FIRST: readonly ChordDef[] = [...CHORD_DEFS]
+  .map((def, index) => ({ def, index }))
+  .sort((a, b) => b.def.suffix.length - a.def.suffix.length || a.index - b.index)
+  .map(({ def }) => def)
+
+function parseChordNameToDef(chordName: string): { rootPc: number; def: ChordDef } | null {
+  for (const def of CHORD_DEFS_LONGEST_SUFFIX_FIRST) {
+    if (!chordName.endsWith(def.suffix)) continue
+    const rootStr = chordName.slice(0, chordName.length - def.suffix.length)
+    if (rootStr.length === 0) continue
+    const rootPc = rootNameToPc(rootStr)
+    if (rootPc < 0) continue
+    return { rootPc, def }
+  }
+  return null
+}
+
+function getChordNotes(chordName: string): string[] {
+  const parsed = parseChordNameToDef(chordName)
+  if (!parsed) return []
+  const { rootPc, def } = parsed
+  return def.intervals.map((i) => NOTE_NAMES[(rootPc + i) % 12])
+}
+
+function makeHint(chordName: string): ChordHint {
+  return { chordName, missingNotes: getChordNotes(chordName) }
 }
 
 const PROGRESSION_MAP: Record<string, ProgressionHints> = {
   Cmaj: {
-    resolve: progressionChordNames(['Fmaj', 'Gmaj', 'Am']),
-    tension: progressionChordNames(['Dm', 'Em', 'Bdim']),
-    move: progressionChordNames(['Emaj', 'Amaj', 'Gmaj']),
+    resolve: [makeHint('Fmaj'), makeHint('Gmaj'), makeHint('Am')],
+    tension: [makeHint('Dm'), makeHint('Em'), makeHint('Bdim')],
+    move: [makeHint('Emaj'), makeHint('Amaj'), makeHint('Gmaj')],
   },
   Fmaj: {
-    resolve: progressionChordNames(['Cmaj', 'Bbmaj', 'Am']),
-    tension: progressionChordNames(['Gm', 'Dm', 'Em']),
-    move: progressionChordNames(['Abmaj', 'Dbmaj', 'Bbmaj']),
+    resolve: [makeHint('Cmaj'), makeHint('Bbmaj'), makeHint('Am')],
+    tension: [makeHint('Gm'), makeHint('Dm'), makeHint('Em')],
+    move: [makeHint('Abmaj'), makeHint('Dbmaj'), makeHint('Bbmaj')],
   },
   Gmaj: {
-    resolve: progressionChordNames(['Cmaj', 'Dmaj', 'Em']),
-    tension: progressionChordNames(['Am', 'Bm', 'Fdim']),
-    move: progressionChordNames(['Bmaj', 'Emaj', 'Amaj']),
+    resolve: [makeHint('Cmaj'), makeHint('Dmaj'), makeHint('Em')],
+    tension: [makeHint('Am'), makeHint('Bm'), makeHint('Fdim')],
+    move: [makeHint('Bmaj'), makeHint('Emaj'), makeHint('Amaj')],
   },
   Am: {
-    resolve: progressionChordNames(['Dmaj', 'Emaj', 'Cmaj']),
-    tension: progressionChordNames(['Bdim', 'E7', 'Dm']),
-    move: progressionChordNames(['Fmaj', 'Gmaj', 'Cmaj']),
+    resolve: [makeHint('Dmaj'), makeHint('Emaj'), makeHint('Cmaj')],
+    tension: [makeHint('Bdim'), makeHint('E7'), makeHint('Dm')],
+    move: [makeHint('Fmaj'), makeHint('Gmaj'), makeHint('Cmaj')],
   },
   Dm: {
-    resolve: progressionChordNames(['Gmaj', 'Am', 'Cmaj']),
-    tension: progressionChordNames(['E7', 'Bdim', 'Fmaj']),
-    move: progressionChordNames(['Bbmaj', 'Ebmaj', 'Am']),
+    resolve: [makeHint('Gmaj'), makeHint('Am'), makeHint('Cmaj')],
+    tension: [makeHint('E7'), makeHint('Bdim'), makeHint('Fmaj')],
+    move: [makeHint('Bbmaj'), makeHint('Ebmaj'), makeHint('Am')],
   },
   Em: {
-    resolve: progressionChordNames(['Am', 'Cmaj', 'Gmaj']),
-    tension: progressionChordNames(['Fdim', 'B7', 'Am']),
-    move: progressionChordNames(['Cmaj', 'Dmaj', 'Fmaj']),
+    resolve: [makeHint('Am'), makeHint('Cmaj'), makeHint('Gmaj')],
+    tension: [makeHint('Fdim'), makeHint('B7'), makeHint('Am')],
+    move: [makeHint('Cmaj'), makeHint('Dmaj'), makeHint('Fmaj')],
   },
   Amaj: {
-    resolve: progressionChordNames(['Dmaj', 'Emaj', 'F#m']),
-    tension: progressionChordNames(['Bm', 'C#m', 'G#dim']),
-    move: progressionChordNames(['C#maj', 'F#maj', 'Emaj']),
+    resolve: [makeHint('Dmaj'), makeHint('Emaj'), makeHint('F#m')],
+    tension: [makeHint('Bm'), makeHint('C#m'), makeHint('G#dim')],
+    move: [makeHint('C#maj'), makeHint('F#maj'), makeHint('Emaj')],
   },
   Dmaj: {
-    resolve: progressionChordNames(['Gmaj', 'Amaj', 'Bm']),
-    tension: progressionChordNames(['Em', 'F#m', 'C#dim']),
-    move: progressionChordNames(['F#maj', 'Bmaj', 'Amaj']),
+    resolve: [makeHint('Gmaj'), makeHint('Amaj'), makeHint('Bm')],
+    tension: [makeHint('Em'), makeHint('F#m'), makeHint('C#dim')],
+    move: [makeHint('F#maj'), makeHint('Bmaj'), makeHint('Amaj')],
   },
   Emaj: {
-    resolve: progressionChordNames(['Amaj', 'Bmaj', 'C#m']),
-    tension: progressionChordNames(['F#m', 'G#m', 'D#dim']),
-    move: progressionChordNames(['Abmaj', 'Dbmaj', 'Bmaj']),
+    resolve: [makeHint('Amaj'), makeHint('Bmaj'), makeHint('C#m')],
+    tension: [makeHint('F#m'), makeHint('G#m'), makeHint('D#dim')],
+    move: [makeHint('Abmaj'), makeHint('Dbmaj'), makeHint('Bmaj')],
   },
   Cmaj7: {
-    resolve: progressionChordNames(['Fmaj7', 'G7', 'Am7']),
-    tension: progressionChordNames(['Dm7', 'Em7', 'Bm7b5']),
-    move: progressionChordNames(['Emaj7', 'Amaj7', 'Gmaj7']),
+    resolve: [makeHint('Fmaj7'), makeHint('G7'), makeHint('Am7')],
+    tension: [makeHint('Dm7'), makeHint('Em7'), makeHint('Bm7b5')],
+    move: [makeHint('Emaj7'), makeHint('Amaj7'), makeHint('Gmaj7')],
   },
   Am7: {
-    resolve: progressionChordNames(['Dm7', 'G7', 'Cmaj7']),
-    tension: progressionChordNames(['Bm7b5', 'E7', 'Dm7']),
-    move: progressionChordNames(['Fmaj7', 'Gmaj7', 'Cmaj7']),
+    resolve: [makeHint('Dm7'), makeHint('G7'), makeHint('Cmaj7')],
+    tension: [makeHint('Bm7b5'), makeHint('E7'), makeHint('Dm7')],
+    move: [makeHint('Fmaj7'), makeHint('Gmaj7'), makeHint('Cmaj7')],
   },
   Dm7: {
-    resolve: progressionChordNames(['G7', 'Am7', 'Cmaj7']),
-    tension: progressionChordNames(['E7', 'Bm7b5', 'Fmaj7']),
-    move: progressionChordNames(['Bbmaj7', 'Ebmaj7', 'Am7']),
+    resolve: [makeHint('G7'), makeHint('Am7'), makeHint('Cmaj7')],
+    tension: [makeHint('E7'), makeHint('Bm7b5'), makeHint('Fmaj7')],
+    move: [makeHint('Bbmaj7'), makeHint('Ebmaj7'), makeHint('Am7')],
   },
   G7: {
-    resolve: progressionChordNames(['Cmaj', 'Cmaj7', 'Am']),
-    tension: progressionChordNames(['Bdim', 'Dm', 'Fmaj']),
-    move: progressionChordNames(['Dbmaj', 'Gbmaj', 'Dmaj']),
+    resolve: [makeHint('Cmaj'), makeHint('Cmaj7'), makeHint('Am')],
+    tension: [makeHint('Bdim'), makeHint('Dm'), makeHint('Fmaj')],
+    move: [makeHint('Dbmaj'), makeHint('Gbmaj'), makeHint('Dmaj')],
   },
   C7: {
-    resolve: progressionChordNames(['Fmaj', 'Fm', 'Am']),
-    tension: progressionChordNames(['Gdim', 'Dm', 'Gm']),
-    move: progressionChordNames(['Dbmaj', 'Gbmaj', 'Abmaj']),
+    resolve: [makeHint('Fmaj'), makeHint('Fm'), makeHint('Am')],
+    tension: [makeHint('Gdim'), makeHint('Dm'), makeHint('Gm')],
+    move: [makeHint('Dbmaj'), makeHint('Gbmaj'), makeHint('Abmaj')],
   },
   Fmaj7: {
-    resolve: progressionChordNames(['Cmaj7', 'G7', 'Am7']),
-    tension: progressionChordNames(['Gm7', 'Dm7', 'Em7']),
-    move: progressionChordNames(['Abmaj7', 'Dbmaj7', 'Bbmaj7']),
+    resolve: [makeHint('Cmaj7'), makeHint('G7'), makeHint('Am7')],
+    tension: [makeHint('Gm7'), makeHint('Dm7'), makeHint('Em7')],
+    move: [makeHint('Abmaj7'), makeHint('Dbmaj7'), makeHint('Bbmaj7')],
   },
 }
 
@@ -360,8 +403,8 @@ const PROGRESSION_MAP: Record<string, ProgressionHints> = {
  * Given a detected chord name (e.g. "Cmaj", "Am7"),
  * return suggested next chords grouped into three emotional
  * directions: resolve, tension, move.
- * Each group returns up to 3 chord names with empty missingNotes
- * (progression hints show chord names only, not missing notes).
+ * Each hint includes the chord's constituent pitch-class names in `missingNotes`
+ * (reused for hover/tooltip in the UI).
  */
 export function getProgressionHints(chordName: string): ProgressionHints {
   return PROGRESSION_MAP[chordName] ?? { resolve: [], tension: [], move: [] }
