@@ -212,3 +212,157 @@ export function detectChord(notes: number[]): ChordResult | null {
     .map((pc) => NOTE_NAMES[pc])
   return { primary, alternative, noteNames: chordNoteNames }
 }
+
+export interface ChordHint {
+  chordName: string
+  missingNotes: string[]
+}
+
+/**
+ * Given a set of held MIDI notes with no detected chord,
+ * return up to 3 chords that are closest to being complete
+ * (i.e. require the fewest additional notes to form).
+ * Only considers chords needing 1 or 2 additional notes.
+ * Returns hints sorted by fewest missing notes first.
+ */
+export function getProximityHints(notes: number[]): ChordHint[] {
+  if (notes.length === 0) return []
+
+  const seenPc = new Set<number>()
+  for (const n of notes) {
+    seenPc.add(pitchClass(n))
+  }
+
+  const bestByName = new Map<string, { missingCount: number; missingNotes: string[] }>()
+
+  for (let root = 0; root < 12; root++) {
+    for (const def of CHORD_DEFS) {
+      if (def.intervals.length > 5) continue
+
+      const chordPcs = chordPitchClasses(root, def)
+      const missing: number[] = []
+      for (const pc of chordPcs) {
+        if (!seenPc.has(pc)) missing.push(pc)
+      }
+
+      if (missing.length === 0) continue
+      if (missing.length > 2) continue
+
+      missing.sort((a, b) => a - b)
+      const missingNotes = missing.map((pc) => NOTE_NAMES[pc])
+      const chordName = `${NOTE_NAMES[root]}${def.suffix}`
+
+      const prev = bestByName.get(chordName)
+      if (prev === undefined || missing.length < prev.missingCount) {
+        bestByName.set(chordName, { missingCount: missing.length, missingNotes })
+      }
+    }
+  }
+
+  const scored: { chordName: string; missingNotes: string[]; missingCount: number }[] = []
+  for (const [chordName, v] of bestByName) {
+    scored.push({ chordName, missingNotes: v.missingNotes, missingCount: v.missingCount })
+  }
+  scored.sort((a, b) => a.missingCount - b.missingCount || a.chordName.localeCompare(b.chordName))
+
+  return scored.slice(0, 3).map(({ chordName, missingNotes }) => ({ chordName, missingNotes }))
+}
+
+export interface ProgressionHints {
+  resolve: ChordHint[]
+  tension: ChordHint[]
+  move: ChordHint[]
+}
+
+function progressionChordNames(names: string[]): ChordHint[] {
+  return names.map((chordName) => ({ chordName, missingNotes: [] as string[] }))
+}
+
+const PROGRESSION_MAP: Record<string, ProgressionHints> = {
+  Cmaj: {
+    resolve: progressionChordNames(['Fmaj', 'Gmaj', 'Am']),
+    tension: progressionChordNames(['Dm', 'Em', 'Bdim']),
+    move: progressionChordNames(['Emaj', 'Amaj', 'Gmaj']),
+  },
+  Fmaj: {
+    resolve: progressionChordNames(['Cmaj', 'Bbmaj', 'Am']),
+    tension: progressionChordNames(['Gm', 'Dm', 'Em']),
+    move: progressionChordNames(['Abmaj', 'Dbmaj', 'Bbmaj']),
+  },
+  Gmaj: {
+    resolve: progressionChordNames(['Cmaj', 'Dmaj', 'Em']),
+    tension: progressionChordNames(['Am', 'Bm', 'Fdim']),
+    move: progressionChordNames(['Bmaj', 'Emaj', 'Amaj']),
+  },
+  Am: {
+    resolve: progressionChordNames(['Dmaj', 'Emaj', 'Cmaj']),
+    tension: progressionChordNames(['Bdim', 'E7', 'Dm']),
+    move: progressionChordNames(['Fmaj', 'Gmaj', 'Cmaj']),
+  },
+  Dm: {
+    resolve: progressionChordNames(['Gmaj', 'Am', 'Cmaj']),
+    tension: progressionChordNames(['E7', 'Bdim', 'Fmaj']),
+    move: progressionChordNames(['Bbmaj', 'Ebmaj', 'Am']),
+  },
+  Em: {
+    resolve: progressionChordNames(['Am', 'Cmaj', 'Gmaj']),
+    tension: progressionChordNames(['Fdim', 'B7', 'Am']),
+    move: progressionChordNames(['Cmaj', 'Dmaj', 'Fmaj']),
+  },
+  Amaj: {
+    resolve: progressionChordNames(['Dmaj', 'Emaj', 'F#m']),
+    tension: progressionChordNames(['Bm', 'C#m', 'G#dim']),
+    move: progressionChordNames(['C#maj', 'F#maj', 'Emaj']),
+  },
+  Dmaj: {
+    resolve: progressionChordNames(['Gmaj', 'Amaj', 'Bm']),
+    tension: progressionChordNames(['Em', 'F#m', 'C#dim']),
+    move: progressionChordNames(['F#maj', 'Bmaj', 'Amaj']),
+  },
+  Emaj: {
+    resolve: progressionChordNames(['Amaj', 'Bmaj', 'C#m']),
+    tension: progressionChordNames(['F#m', 'G#m', 'D#dim']),
+    move: progressionChordNames(['Abmaj', 'Dbmaj', 'Bmaj']),
+  },
+  Cmaj7: {
+    resolve: progressionChordNames(['Fmaj7', 'G7', 'Am7']),
+    tension: progressionChordNames(['Dm7', 'Em7', 'Bm7b5']),
+    move: progressionChordNames(['Emaj7', 'Amaj7', 'Gmaj7']),
+  },
+  Am7: {
+    resolve: progressionChordNames(['Dm7', 'G7', 'Cmaj7']),
+    tension: progressionChordNames(['Bm7b5', 'E7', 'Dm7']),
+    move: progressionChordNames(['Fmaj7', 'Gmaj7', 'Cmaj7']),
+  },
+  Dm7: {
+    resolve: progressionChordNames(['G7', 'Am7', 'Cmaj7']),
+    tension: progressionChordNames(['E7', 'Bm7b5', 'Fmaj7']),
+    move: progressionChordNames(['Bbmaj7', 'Ebmaj7', 'Am7']),
+  },
+  G7: {
+    resolve: progressionChordNames(['Cmaj', 'Cmaj7', 'Am']),
+    tension: progressionChordNames(['Bdim', 'Dm', 'Fmaj']),
+    move: progressionChordNames(['Dbmaj', 'Gbmaj', 'Dmaj']),
+  },
+  C7: {
+    resolve: progressionChordNames(['Fmaj', 'Fm', 'Am']),
+    tension: progressionChordNames(['Gdim', 'Dm', 'Gm']),
+    move: progressionChordNames(['Dbmaj', 'Gbmaj', 'Abmaj']),
+  },
+  Fmaj7: {
+    resolve: progressionChordNames(['Cmaj7', 'G7', 'Am7']),
+    tension: progressionChordNames(['Gm7', 'Dm7', 'Em7']),
+    move: progressionChordNames(['Abmaj7', 'Dbmaj7', 'Bbmaj7']),
+  },
+}
+
+/**
+ * Given a detected chord name (e.g. "Cmaj", "Am7"),
+ * return suggested next chords grouped into three emotional
+ * directions: resolve, tension, move.
+ * Each group returns up to 3 chord names with empty missingNotes
+ * (progression hints show chord names only, not missing notes).
+ */
+export function getProgressionHints(chordName: string): ProgressionHints {
+  return PROGRESSION_MAP[chordName] ?? { resolve: [], tension: [], move: [] }
+}
