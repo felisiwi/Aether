@@ -239,22 +239,19 @@ export function getProximityHints(notes: number[]): ChordHint[] {
     for (const def of CHORD_DEFS) {
       if (def.intervals.length > 5) continue
 
-      const chordPcs = chordPitchClasses(root, def)
-      const missing: number[] = []
-      for (const pc of chordPcs) {
-        if (!seenPc.has(pc)) missing.push(pc)
-      }
+      const missingNotes = def.intervals
+        .map((i) => (root + i) % 12)
+        .filter((pc) => !seenPc.has(pc))
+        .map((pc) => NOTE_NAMES[pc])
 
-      if (missing.length === 0) continue
-      if (missing.length > 2) continue
+      if (missingNotes.length === 0) continue
+      if (missingNotes.length > 2) continue
 
-      missing.sort((a, b) => a - b)
-      const missingNotes = missing.map((pc) => NOTE_NAMES[pc])
       const chordName = `${NOTE_NAMES[root]}${def.suffix}`
 
       const prev = bestByName.get(chordName)
-      if (prev === undefined || missing.length < prev.missingCount) {
-        bestByName.set(chordName, { missingCount: missing.length, missingNotes })
+      if (prev === undefined || missingNotes.length < prev.missingCount) {
+        bestByName.set(chordName, { missingCount: missingNotes.length, missingNotes })
       }
     }
   }
