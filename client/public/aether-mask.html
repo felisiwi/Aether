@@ -331,12 +331,11 @@ const SCALES = {
 };
 let currentScale = SCALES["C Major"];
 let currentFreq = currentScale[4];
+let smoothBandY = 0.5;
 let polarAngle = 0;
 let polarDist = 0;
 let smoothAngle = 0;
 let smoothDist = 0;
-let lastAngleBand = -1;
-let prevSmoothAngleSnapshot = 0;
 const HARMONIC_HINTS = [
   [2, 4],
   [0, 3],
@@ -367,6 +366,10 @@ function angleDiff(target, current) {
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   return d;
+}
+
+function getWellPositions() {
+  return [0, 4, 7].map((degree) => (degree + 0.5) / 8.0);
 }
 
 const panel = document.getElementById("tweak-panel");
@@ -812,6 +815,7 @@ document.getElementById("tweak-toggle").addEventListener("click", () => {
 });
 
 let audioCtx = null;
+let lastBand = -1;
 let activeGain = null;
 let activeBand = -1;
 let hintFaded = false;
@@ -991,7 +995,6 @@ function frame(t){
   mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
   const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
   idleBreath+=(idle-idleBreath)*0.02;
-  const prevAngForVib=prevSmoothAngleSnapshot;
   const cx=window.innerWidth/2;
   const cy=window.innerHeight/2;
   const dx=tmx-cx;
@@ -1001,40 +1004,60 @@ function frame(t){
   polarDist=maxDist>0?Math.min(Math.sqrt(dx*dx+dy*dy)/maxDist,1.0):0;
   smoothAngle+=angleDiff(polarAngle,smoothAngle)*0.06;
   smoothDist+=(polarDist-smoothDist)*0.05;
-  if (gravityEnabled) {
-    const wellAngles=[0,4,7].map((d)=>(d/8.0)*Math.PI*2-Math.PI);
-    let totalAngPull=0;
-    wellAngles.forEach((wellA)=>{
-      const adist=Math.abs(angleDiff(wellA,smoothAngle));
-      const pull=gravityStrength*Math.exp(-adist*4.0)*0.3;
-      totalAngPull+=angleDiff(wellA,smoothAngle)*-pull;
-    });
-    const maxAngularPull=0.02;
-    smoothAngle+=Math.max(-maxAngularPull,Math.min(maxAngularPull,totalAngPull));
-  }
   const normalised=(smoothAngle+Math.PI)/(Math.PI*2);
   const rawAngleBand=normalised*8;
   const angleBand=Math.max(0,Math.min(7,Math.floor(rawAngleBand)));
-  const angleFraction=rawAngleBand-Math.floor(rawAngleBand);
-  const octaveShift=Math.floor(smoothDist*3)-1;
-  const baseFreq=currentScale[angleBand];
-  const targetFreq=baseFreq*Math.pow(2,octaveShift);
-  const angleDeadZone=deadZoneSize;
-  const inAngleDeadZone=angleFraction<angleDeadZone||
-    angleFraction>(1-angleDeadZone);
-  const shouldTriggerAngle=!inAngleDeadZone||
-    smoothVelocity>velocityThreshold;
-  const isSettlingPolar=smoothVelocity<
-    velocityThreshold+portamentoSensitivity*8;
-  if (angleBand!==lastAngleBand&&isSettlingPolar&&shouldTriggerAngle) {
-    lastAngleBand=angleBand;
+  const normY=1.0-tmy/window.innerHeight;
+  const rawBand=normY*8;
+  const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
+  const bandFraction=rawBand-Math.floor(rawBand);
+  const inDeadZone=bandFraction<deadZoneSize||
+    bandFraction>(1-deadZoneSize);
+  const shouldTrigger=!inDeadZone||smoothVelocity>8;
+  const sensitivity=portamentoSensitivity;
+  const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
+  let clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
+  if (gravityEnabled) {
+    const wellsRes=getWellPositions();
+    const nearestWell=wellsRes.reduce((a,b)=>
+      Math.abs(a-smoothBandY)<Math.abs(b-smoothBandY)?a:b
+    );
+    const movingTowardWell=
+      (normY-smoothBandY)*(nearestWell-smoothBandY)>0;
+    const resistanceMultiplier=movingTowardWell?1.4:0.7;
+    clampedGlide=Math.max(
+      0.01,
+      Math.min(0.12,glideSpeed*resistanceMultiplier)
+    );
+  }
+  smoothBandY+=(normY-smoothBandY)*clampedGlide;
+  if (gravityEnabled) {
+    const wells=getWellPositions();
+    let totalPull=0;
+    wells.forEach((wellY)=>{
+      const dist=Math.abs(smoothBandY-wellY);
+      const pull=gravityStrength*Math.exp(-dist*6.0)*0.4;
+      const direction=wellY-smoothBandY;
+      totalPull+=direction*pull;
+    });
+    const maxPullPerFrame=0.004;
+    smoothBandY+=Math.max(-maxPullPerFrame,
+      Math.min(maxPullPerFrame,totalPull));
+    smoothBandY=Math.max(0,Math.min(1,smoothBandY));
+  }
+  const velocityGate=velocityThreshold+portamentoSensitivity*8;
+  const isSettling=smoothVelocity<velocityGate;
+  if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
+    lastBand=clampedBand;
     const velVolume=soundVolume*
       (0.4+Math.min(smoothVelocity/15.0,0.6));
-    playNoteWithVolume(angleBand,velVolume);
+    playNoteWithVolume(clampedBand,velVolume);
   }
-  const angularVel=Math.abs(angleDiff(smoothAngle,prevAngForVib))*60.0;
-  prevSmoothAngleSnapshot=smoothAngle;
-  const freqGlide=0.03+(1.0-portamentoSensitivity)*0.08;
+  let targetBand=Math.floor(smoothBandY*8);
+  if (targetBand>7) targetBand=7;
+  if (targetBand<0) targetBand=0;
+  const targetFreq=currentScale[targetBand];
+  const freqGlide=0.03+(1.0-sensitivity)*0.08;
   if (glideOsc1&&audioCtx) {
     currentFreq+=(targetFreq-currentFreq)*freqGlide;
     const distPressure=smoothDist>0.9?(smoothDist-0.9)*10.0:0.0;
@@ -1055,8 +1078,8 @@ function frame(t){
       const octVol=octaveAmount*soundVolume*sustainFade*octaveMix;
       octaveLayerGainNode.gain.setTargetAtTime(octVol,audioCtx.currentTime,0.15);
     }
-    if (angleBand===lastAngleBand) {
-      const vibratoDepth=angularVel*0.4*vibratoDepthControl;
+    if (clampedBand===lastBand) {
+      const vibratoDepth=smoothVelX*0.4*vibratoDepthControl;
       const vibrato=Math.sin(performance.now()*0.001*
         vibratoSpeedControl)*vibratoDepth;
       glideOsc1.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
@@ -1065,9 +1088,9 @@ function frame(t){
       glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
       glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
     }
-    const holdingAngle=angleBand===lastAngleBand;
-    const sustainBoost=holdingAngle?
-      Math.min(angularVel/10.0,0.3):0.0;
+    const holdingNote=clampedBand===lastBand;
+    const sustainBoost=holdingNote?
+      Math.min(smoothVelX/10.0,0.3):0.0;
     const targetGlideVol=soundVolume*
       (sustainLevel+sustainBoost)*sustainFade;
     if (glideGain&&audioCtx) {
@@ -1082,7 +1105,7 @@ function frame(t){
   gl.uniform2f(um2,mx2,canvas.height-my2);
   gl.uniform1f(ut,t*.001);
   gl.uniform1f(uIdle,idleBreath);
-  gl.uniform1f(uActiveBand,activeBand);
+  gl.uniform1f(uActiveBand,angleBand);
   gl.uniform1f(uMouseX,mouseX);
   gl.uniform1f(uPolarAngle,smoothAngle);
   gl.uniform1f(uPolarDist,smoothDist);
