@@ -158,6 +158,16 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 <canvas id="c"></canvas>
 <div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
   <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
+  <canvas id="sand-canvas" style="
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:62%;
+  aspect-ratio:2096/495;
+  pointer-events:none;
+  opacity:0.85;
+  z-index:1;
+"></canvas>
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -176,6 +186,33 @@ const canvas = document.getElementById("c");
 const startOverlay = document.getElementById("start-overlay");
 const logoLayerEl = document.getElementById("logo-layer");
 const logoWrapEl = document.getElementById("logo-wrap");
+const sandCanvas = document.getElementById(
+  'sand-canvas');
+const sandCtx = sandCanvas
+  ? sandCanvas.getContext('2d') : null;
+// Load logo PNG to sample letter shape pixels
+const logoImg = new Image();
+let logoPixels = null;
+let logoPixelCanvas = null;
+logoImg.onload = () => {
+  logoPixelCanvas = document.createElement('canvas');
+  logoPixelCanvas.width = 200;
+  logoPixelCanvas.height = Math.round(200 * 495 / 2096);
+  const pCtx = logoPixelCanvas.getContext('2d');
+  pCtx.drawImage(logoImg, 0, 0,
+    logoPixelCanvas.width, logoPixelCanvas.height);
+  logoPixels = pCtx.getImageData(0, 0,
+    logoPixelCanvas.width,
+    logoPixelCanvas.height);
+};
+logoImg.src = '/aether_logo_white.png';
+function isInsideLetter(nx, ny) {
+  if (!logoPixels) return false;
+  const px = Math.floor(nx * (logoPixels.width - 1));
+  const py = Math.floor(ny * (logoPixels.height - 1));
+  const i = (py * logoPixels.width + px) * 4;
+  return logoPixels.data[i + 3] > 128;
+}
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -584,6 +621,9 @@ let logoColor = "white";
 let logoProximity = 1;
 let logoSoundReact = 1;
 let logoWaveWarp = 1;
+let sandDissolve = 0.6;
+let particles = [];
+const MAX_PARTICLES = 300;
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
@@ -1086,6 +1126,17 @@ appendSoundSlider(
   },
   "logoWaveWarp",
 );
+appendSoundSlider(
+  "logo sand",
+  0,
+  1,
+  0.01,
+  () => sandDissolve,
+  (v) => {
+    sandDissolve = v;
+  },
+  "sandDissolve",
+);
 
 const gravityRow = document.createElement("div");
 gravityRow.className = "tweak-row";
@@ -1253,6 +1304,7 @@ function refreshPanelFromState() {
     else if (k === "logoSoundReact") v = logoSoundReact;
     else if (k === "logoChromatic") v = logoChromatic;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
+    else if (k === "sandDissolve") v = sandDissolve;
     else if (k === "fpsCap") v = fpsCap;
     else if (k === "renderScale") v = renderScale;
     else if (k === "gravityStrength") v = gravityStrength;
@@ -1276,6 +1328,7 @@ function getCurrentSettings() {
     logoSoundReact,
     logoChromatic,
     logoWaveWarp,
+    sandDissolve,
     fpsCap,
     renderScale,
     idleThrottle,
@@ -1343,6 +1396,8 @@ function applySettings(o) {
   if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
+  if (n(o.sandDissolve))
+    sandDissolve = Math.max(0, Math.min(1, o.sandDissolve));
   if (n(o.fpsCap)) fpsCap = o.fpsCap;
   if (n(o.renderScale)) {
     renderScale = o.renderScale;
@@ -1549,6 +1604,38 @@ let pageFocused = true;
 let masterGain = null;
 let pageFadeGain = null;
 let lastBand = -1;
+function spawnParticles(count, intensity) {
+  if (!logoPixels) return;
+  let spawned = 0;
+  let attempts = 0;
+  while (spawned < count && attempts < count * 10) {
+    attempts++;
+    const nx = Math.random();
+    const ny = Math.random();
+    if (!isInsideLetter(nx, ny)) continue;
+    const band = Math.max(0, lastBand);
+    const freq = 2 + band * 1.5;
+    const nodal = Math.abs(
+      Math.sin(nx * Math.PI * freq) *
+      Math.sin(ny * Math.PI * freq * 0.7));
+    if (nodal > 0.3) continue;
+    const vx = (Math.random() - 0.5) * 0.008
+      * intensity;
+    const vy = (Math.random() - 0.3) * 0.006
+      * intensity;
+    particles.push({
+      x: nx, y: ny,
+      vx, vy,
+      life: 1.0,
+      size: 0.8 + Math.random() * 1.2
+    });
+    spawned++;
+  }
+  if (particles.length > MAX_PARTICLES) {
+    particles = particles.slice(
+      particles.length - MAX_PARTICLES);
+  }
+}
 let activeGain = null;
 let activeBand = -1;
 let hintFaded = false;
@@ -1800,6 +1887,12 @@ function resize(){
   canvas.width=window.innerWidth * devicePixelRatio * renderScale;
   canvas.height=window.innerHeight * devicePixelRatio * renderScale;
   gl.viewport(0,0,canvas.width,canvas.height);
+  if (sandCanvas) {
+    const logoW = window.innerWidth * 0.62;
+    const logoH = logoW * 495 / 2096;
+    sandCanvas.width = Math.round(logoW);
+    sandCanvas.height = Math.round(logoH);
+  }
 }
 window.addEventListener("resize",resize);resize();
 window.addEventListener(
@@ -2025,6 +2118,50 @@ function frame(t){
     const transformStr =
       `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%) scaleX(${waveScale.toFixed(4)})`;
     logoWrapEl.style.transform = transformStr;
+    if (sandCtx && sandCanvas) {
+      if (sandDissolve > 0) {
+        const W = sandCanvas.width;
+        const H = sandCanvas.height;
+        if (W > 0 && H > 0) {
+          const spawnCount = Math.floor(
+            (noteFlash * 15 + smoothVelocity * 0.3)
+            * sandDissolve);
+          if (spawnCount > 0) {
+            spawnParticles(spawnCount,
+              (noteFlash + smoothVelocity * 0.05)
+              * sandDissolve);
+          }
+          sandCtx.clearRect(0, 0, W, H);
+          const toRemove = [];
+          const logoColor_local = logoColor === 'black'
+            ? '0,0,0' : '255,200,120';
+          particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.0001;
+            p.life -= 0.025;
+            if (p.life <= 0 || p.x < 0 || p.x > 1
+                || p.y < 0 || p.y > 1) {
+              toRemove.push(i);
+              return;
+            }
+            const px = p.x * W;
+            const py = p.y * H;
+            sandCtx.beginPath();
+            sandCtx.arc(px, py, p.size, 0, Math.PI * 2);
+            sandCtx.fillStyle =
+              `rgba(${logoColor_local},${p.life * 0.8})`;
+            sandCtx.fill();
+          });
+          for (let i = toRemove.length - 1; i >= 0; i--) {
+            particles.splice(toRemove[i], 1);
+          }
+        }
+      } else {
+        sandCtx.clearRect(0, 0, sandCanvas.width, sandCanvas.height);
+        particles.length = 0;
+      }
+    }
     const ca = logoChromatic * finalOpacity;
     if (ca > 0.1) {
       const tLogo = performance.now();
