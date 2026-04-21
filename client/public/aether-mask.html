@@ -81,6 +81,8 @@ uniform float u_mouseX;
 uniform float u_smoothBandY;
 uniform float u_hintBand0;
 uniform float u_hintBand1;
+uniform float u_flickerSpeed;
+uniform float u_flickerAmount;
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
 }
@@ -122,7 +124,7 @@ void main() {
     waveX += ripple * 0.04 * sin(float(i) * 1.3);
     waveX += ripple2 * 0.025 * cos(float(i) * 0.9);
     float dy = uv.y - bandY - waveX;
-    float flicker = 1.0 + 0.15 * sin(t * 3.0 * harmonic + fi * 12.0)
+    float flicker = 1.0 + u_flickerAmount * sin(t * u_flickerSpeed * harmonic + fi * 12.0)
                             + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
     float band = exp(-dy * dy * 180.0) * flicker;
     float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
@@ -191,6 +193,8 @@ const uMouseX=gl.getUniformLocation(p,"u_mouseX");
 const uSmoothBandY=gl.getUniformLocation(p,"u_smoothBandY");
 const uHintBand0=gl.getUniformLocation(p,"u_hintBand0");
 const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
+const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
+const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
 
 const tweak = {
   u_glowCoreRadius: 0.09,
@@ -205,6 +209,8 @@ const tweak = {
   u_waveFreq: 8,
   u_waveSpeed: 1,
   u_rippleStrength: 0.8,
+  u_flickerSpeed: 1.5,
+  u_flickerAmount: 0.12,
 };
 
 function applyTweakUniforms() {
@@ -219,6 +225,8 @@ function applyTweakUniforms() {
   gl.uniform1f(uWaveFreq, tweak.u_waveFreq);
   gl.uniform1f(uWaveSpeed, tweak.u_waveSpeed);
   gl.uniform1f(uRippleStrength, tweak.u_rippleStrength);
+  gl.uniform1f(uFlickerSpeed, tweak.u_flickerSpeed);
+  gl.uniform1f(uFlickerAmount, tweak.u_flickerAmount);
 }
 
 const sliderDefs = [
@@ -234,6 +242,8 @@ const sliderDefs = [
   { key: "u_waveFreq", label: "wave frequency", min: 2, max: 20, step: 0.5 },
   { key: "u_waveSpeed", label: "wave speed", min: 0, max: 3, step: 0.1 },
   { key: "u_rippleStrength", label: "ripple strength", min: 0, max: 2, step: 0.1 },
+  { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
+  { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.5, step: 0.01 },
 ];
 
 const SCALES = {
@@ -434,6 +444,8 @@ copyBtn.addEventListener("click", () => {
     u_waveFreq: tweak.u_waveFreq,
     u_waveSpeed: tweak.u_waveSpeed,
     u_rippleStrength: tweak.u_rippleStrength,
+    u_flickerSpeed: tweak.u_flickerSpeed,
+    u_flickerAmount: tweak.u_flickerAmount,
   };
   console.log(o);
 });
