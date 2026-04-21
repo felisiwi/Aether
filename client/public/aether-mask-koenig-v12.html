@@ -69,27 +69,6 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
-#hang-drum-toggle-row {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-#hang-drum-toggle-row button {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 2px;
-  font-family: inherit;
-  font-size: 9px;
-  background: #1a0800;
-  color: rgba(255,150,80,0.85);
-  border: 1px solid rgba(255,100,40,0.4);
-  cursor: pointer;
-}
-#hang-drum-toggle-row button.selected {
-  background: rgba(255,100,40,0.35);
-  color: #fff;
-}
 </style>
 </head>
 <body>
@@ -97,7 +76,7 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
 </div>
-<div id="zone-indicator" style="position:absolute;bottom:48px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;color:rgba(255,150,80,0.15);pointer-events:none;user-select:none;transition:opacity 1.2s;">C</div>
+<div id="zone-indicator" style="position:absolute;bottom:56px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:10px;letter-spacing:0.14em;color:rgba(255,150,80,0.35);pointer-events:none;user-select:none;transition:opacity 0.5s;opacity:0.2;">HOME · FLAT</div>
 <div class="logo-wrap">
 <video autoplay muted loop playsinline>
 <source src="aether-bg.mp4" type="video/mp4">
@@ -132,14 +111,17 @@ uniform float u_octaveAmount;
 uniform float u_octaveDirection;
 uniform float u_velocity;
 uniform float u_velX;
+uniform float u_zoneHueShift;
+uniform float u_zoneDarkness;
+uniform float u_zoneScroll;
+uniform float u_zoneWaveSpeedMul;
+uniform float u_zoneTilt;
 uniform float u_drift;
 uniform float u_speedOctave;
 uniform float u_edgeMorph;
 uniform float u_logoPresence;
 uniform float u_noteFlash;
 uniform float u_activeBandNorm;
-uniform float u_hangDrum;
-uniform float u_sympathetic[8];
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
 }
@@ -147,6 +129,12 @@ float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
 float sn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*sn(p);p*=2.;a*=.5;}return v;}
 const float ACTIVE_BAND_GLOW = 1.0;
+vec3 applyHueShift(vec3 col, float shift) {
+  col.r = clamp(col.r + shift * 0.3, 0.0, 1.0);
+  col.g = clamp(col.g + shift * 0.5, 0.0, 1.0);
+  col.b = clamp(col.b - shift * 0.1, 0.0, 1.0);
+  return col;
+}
 void main() {
   vec2 uv = gl_FragCoord.xy / u_res;
   vec2 logoCentre = vec2(0.5, 0.5);
@@ -178,6 +166,11 @@ void main() {
   float smoke = fbm(uvRefracted * 1.8 + sd * u_warpStrength * 0.4 + t * 0.06);
   smoke = clamp(smoke * u_noiseAmount * 0.6, 0.0, 1.0);
   float tiltedY = uv.y;
+  if (abs(u_zoneTilt) > 0.001) {
+    float perspY = uv.y - 0.5;
+    float tilt = u_zoneTilt * 0.4;
+    tiltedY = 0.5 + perspY / (1.0 - tilt * perspY);
+  }
   float waves = 0.0;
   float wc = u_waveCount;
   for (int i = 0; i < 12; i++) {
@@ -185,7 +178,7 @@ void main() {
     float fi = float(i) / wc;
     float bandY = fi;
     float harmonic = 1.0 + float(i) * 0.5;
-    float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
+    float phase = fi * 6.28 + t * u_waveSpeed * u_zoneWaveSpeedMul * harmonic * 0.3;
     float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
                   * 0.03 * (1.0 + float(i) * 0.1);
     waveX += ripple * 0.04 * sin(float(i) * 1.3);
@@ -206,8 +199,8 @@ void main() {
     band *= 1.0 + speedBoost;
     float isWell = 0.0;
     if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
-    if (abs(float(i) - 1.0) < 0.5) isWell = 1.0;
     if (abs(float(i) - 4.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 7.0) < 0.5) isWell = 1.0;
     band *= 1.0 + isWell * u_gravityStrength * 0.35;
     float isHint0 = 1.0 - step(0.5, abs(float(i) - u_hintBand0));
     float isHint1 = 1.0 - step(0.5, abs(float(i) - u_hintBand1));
@@ -215,33 +208,12 @@ void main() {
     float driftWobble = u_drift * 0.03 *
       sin(t * 3.0 + float(i) * 1.7);
     band *= 1.0 + driftWobble;
-    float scaleDeg = float(i);
-    if (u_hangDrum > 0.5) {
-      if (i == 0) scaleDeg = 0.0;
-      else if (i == 1) scaleDeg = 4.0;
-      else if (i == 2) scaleDeg = 2.0;
-      else if (i == 3) scaleDeg = 6.0;
-      else if (i == 4) scaleDeg = 7.0;
-      else if (i == 5) scaleDeg = 3.0;
-      else if (i == 6) scaleDeg = 5.0;
-      else scaleDeg = 1.0;
-    }
     float isMorphBand = 0.0;
-    if (abs(scaleDeg - 3.0) < 0.01) isMorphBand = 1.0;
-    if (abs(scaleDeg - 6.0) < 0.01) isMorphBand = 1.0;
+    if (abs(float(i) - 3.0) < 0.5) isMorphBand = 1.0;
+    if (abs(float(i) - 6.0) < 0.5) isMorphBand = 1.0;
     float morphShimmer = isMorphBand * u_edgeMorph * 0.2 *
       sin(t * 6.0 + fi * 4.0);
     band *= 1.0 + morphShimmer;
-    float sympLevel = 0.0;
-    if (i == 0) sympLevel = u_sympathetic[0];
-    if (i == 1) sympLevel = u_sympathetic[1];
-    if (i == 2) sympLevel = u_sympathetic[2];
-    if (i == 3) sympLevel = u_sympathetic[3];
-    if (i == 4) sympLevel = u_sympathetic[4];
-    if (i == 5) sympLevel = u_sympathetic[5];
-    if (i == 6) sympLevel = u_sympathetic[6];
-    if (i == 7) sympLevel = u_sympathetic[7];
-    band *= 1.0 + sympLevel * 3.0;
     waves += band;
   }
   waves = clamp(waves * u_noiseAmount, 0.0, 1.0);
@@ -277,7 +249,7 @@ void main() {
     (1.0 - logoZoneX * logoZoneY * 0.8) *
     u_logoPresence * 0.15;
   float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine + velBurst + edgeGlow + logoBrightness + logoEdge, 0.0, 1.0);
-  vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
+  vec3 col = mix(vec3(u_zoneDarkness, u_zoneDarkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
   col = mix(col, vec3(0.75, 0.2, 0.02),
@@ -287,6 +259,7 @@ void main() {
   col = mix(col, vec3(1.0, 0.9, 0.7),
             smoothstep(0.8, 1.0, v));
   col = mix(col, col * vec3(1.0, 0.85, 0.6), u_mouseX * 0.3);
+  col = applyHueShift(col, u_zoneHueShift);
   float grain = (hash(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
   col += grain;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -328,14 +301,17 @@ const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
 const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
 const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
+const uZoneHueShift=gl.getUniformLocation(p,"u_zoneHueShift");
+const uZoneDarkness=gl.getUniformLocation(p,"u_zoneDarkness");
+const uZoneScroll=gl.getUniformLocation(p,"u_zoneScroll");
+const uZoneWaveSpeedMul=gl.getUniformLocation(p,"u_zoneWaveSpeedMul");
+const uZoneTilt=gl.getUniformLocation(p,"u_zoneTilt");
 const uDrift=gl.getUniformLocation(p,"u_drift");
 const uSpeedOctave=gl.getUniformLocation(p,"u_speedOctave");
 const uEdgeMorph=gl.getUniformLocation(p,"u_edgeMorph");
 const uLogoPresence=gl.getUniformLocation(p,"u_logoPresence");
 const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
 const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
-const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
-const uSympathetic=gl.getUniformLocation(p,"u_sympathetic[0]");
 
 const tweak = {
   u_glowCoreRadius: 0.09,
@@ -404,29 +380,21 @@ const SCALES = {
   Chromatic: [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.0],
 };
 let currentScale = SCALES["C Major"];
-let currentFreq = 392;
+let currentFreq = currentScale[4];
 let smoothBandY = 0.5;
 let polarAngle = 0;
 let polarDist = 0;
 let smoothAngle = 0;
 let smoothDist = 0;
-const HANG_DRUM_MAP = [0, 4, 2, 6, 7, 3, 5, 1];
-let hangDrumEnabled = true;
-function getScaleDegree(bandIndex) {
-  if (hangDrumEnabled) {
-    return HANG_DRUM_MAP[bandIndex];
-  }
-  return bandIndex;
-}
 const HARMONIC_HINTS = [
-  [1, 2],
+  [2, 4],
+  [0, 3],
   [0, 4],
-  [0, 5],
-  [1, 4],
-  [0, 1],
-  [2, 6],
-  [5, 7],
-  [6, 0],
+  [1, 5],
+  [0, 6],
+  [3, 7],
+  [4, 0],
+  [5, 0],
 ];
 let soundAttack = 400;
 let soundDecay = 3000;
@@ -449,21 +417,63 @@ let directionHarmonyAmount = 0.5;
 let harmonyLastTx = window.innerWidth / 2;
 let harmonyLastTy = window.innerHeight / 2;
 let oscType = "sine";
-let sympatheticGains = [];
-let sympatheticOscs = [];
-let sympatheticFilters = [];
-let sympatheticLevels = new Float32Array(8);
-let sympatheticMix = 0.15;
 
-let targetScrollSemitones = 0;
-let smoothScrollSemitones = 0;
+let currentZone = 0;
+let targetZone = 0;
+let zoneTransition = 0;
 let zoneScrollAccum = 0;
-let scrollFreqMult = 1;
+let zoneFreqMult = 1;
+
+const ZONE_CONFIGS = [
+  {
+    name: "DEEP",
+    semitoneShift: -7,
+    hueShift: -0.15,
+    waveSpeed: 0.2,
+    darkness: 0.12,
+    description: "low / resonant",
+  },
+  {
+    name: "LOW",
+    semitoneShift: -5,
+    hueShift: -0.08,
+    waveSpeed: 0.3,
+    darkness: 0.09,
+    description: "warm / grounded",
+  },
+  {
+    name: "HOME",
+    semitoneShift: 0,
+    hueShift: 0,
+    waveSpeed: 0.4,
+    darkness: 0.07,
+    description: "balanced",
+  },
+  {
+    name: "HIGH",
+    semitoneShift: 5,
+    hueShift: 0.08,
+    waveSpeed: 0.6,
+    darkness: 0.05,
+    description: "bright / open",
+  },
+  {
+    name: "BRILLIANT",
+    semitoneShift: 7,
+    hueShift: 0.15,
+    waveSpeed: 0.8,
+    darkness: 0.03,
+    description: "high / crystalline",
+  },
+];
+
+function getZoneConfig(zone) {
+  return ZONE_CONFIGS[zone + 2];
+}
 
 function getMorphedFreq(bandIndex) {
-  const degree = getScaleDegree(bandIndex);
-  const base = currentScale[degree] * scrollFreqMult;
-  if (degree === 3 || degree === 6) {
+  const base = currentScale[bandIndex] * zoneFreqMult;
+  if (bandIndex === 3 || bandIndex === 6) {
     const raised = base * Math.pow(2, 1 / 12);
     return (
       base * (1 - edgeMorphAmount * 0.7) + raised * edgeMorphAmount * 0.7
@@ -479,7 +489,26 @@ function noteFreqForBand(bandIndex) {
   return oct * Math.pow(2, scaledOffset / 12);
 }
 
-currentFreq = getMorphedFreq(4);
+function getZoneDisplayName(zone) {
+  const m = {
+    "-2": "DEEP · FAR AWAY",
+    "-1": "LOW · AWAY",
+    "0": "HOME · FLAT",
+    "1": "HIGH · TOWARD",
+    "2": "BRILLIANT · DEEP TOWARD",
+  };
+  return m[String(zone)] || getZoneConfig(zone).name;
+}
+
+function flashZoneIndicator() {
+  const el = document.getElementById("zone-indicator");
+  if (!el) return;
+  el.textContent = getZoneDisplayName(targetZone);
+  el.style.opacity = "0.6";
+  setTimeout(() => {
+    el.style.opacity = "0.2";
+  }, 1500);
+}
 
 function angleDiff(target, current) {
   let d = target - current;
@@ -489,7 +518,7 @@ function angleDiff(target, current) {
 }
 
 function getWellPositions() {
-  return [0, 1, 4].map((b) => (b + 0.5) / 8.0);
+  return [0, 4, 7].map((d) => (d + 0.5) / 8.0);
 }
 
 const panel = document.getElementById("tweak-panel");
@@ -722,17 +751,6 @@ appendSoundSlider(
   },
   "directionHarmonyAmount",
 );
-appendSoundSlider(
-  "sympathetic",
-  0.0,
-  0.5,
-  0.01,
-  () => sympatheticMix,
-  (v) => {
-    sympatheticMix = v;
-  },
-  "sympatheticMix",
-);
 
 const gravityRow = document.createElement("div");
 gravityRow.className = "tweak-row";
@@ -791,41 +809,6 @@ gravityRow.appendChild(gravityHead);
 gravityRow.appendChild(gravitySliderRow);
 panel.appendChild(gravityRow);
 
-const hangDrumRow = document.createElement("div");
-hangDrumRow.className = "tweak-row";
-const hangDrumHead = document.createElement("div");
-hangDrumHead.className = "tweak-head";
-const hangDrumLab = document.createElement("span");
-hangDrumLab.className = "tweak-label";
-hangDrumLab.textContent = "hang layout";
-hangDrumHead.appendChild(hangDrumLab);
-hangDrumRow.appendChild(hangDrumHead);
-const hangDrumToggleWrap = document.createElement("div");
-hangDrumToggleWrap.id = "hang-drum-toggle-row";
-const hangBtnOn = document.createElement("button");
-hangBtnOn.type = "button";
-hangBtnOn.textContent = "HANG DRUM ON";
-const hangBtnOff = document.createElement("button");
-hangBtnOff.type = "button";
-hangBtnOff.textContent = "HANG DRUM OFF";
-function syncHangDrumToggleButtons() {
-  hangBtnOn.classList.toggle("selected", hangDrumEnabled);
-  hangBtnOff.classList.toggle("selected", !hangDrumEnabled);
-}
-hangBtnOn.addEventListener("click", () => {
-  hangDrumEnabled = true;
-  syncHangDrumToggleButtons();
-});
-hangBtnOff.addEventListener("click", () => {
-  hangDrumEnabled = false;
-  syncHangDrumToggleButtons();
-});
-syncHangDrumToggleButtons();
-hangDrumToggleWrap.appendChild(hangBtnOn);
-hangDrumToggleWrap.appendChild(hangBtnOff);
-hangDrumRow.appendChild(hangDrumToggleWrap);
-panel.appendChild(hangDrumRow);
-
 const oscBlock = document.createElement("div");
 oscBlock.style.marginBottom = "12px";
 const oscHead = document.createElement("div");
@@ -878,7 +861,6 @@ function refreshPanelFromState() {
     else if (k === "octaveMix") v = octaveMix;
     else if (k === "speedOctaveThreshold") v = speedOctaveThreshold;
     else if (k === "directionHarmonyAmount") v = directionHarmonyAmount;
-    else if (k === "sympatheticMix") v = sympatheticMix;
     else return;
     inp.value = String(v);
     const row = inp.closest(".tweak-row");
@@ -909,13 +891,7 @@ function applyImportedSettings(o) {
   if (n(o.speedOctaveThreshold)) speedOctaveThreshold = o.speedOctaveThreshold;
   if (n(o.directionHarmonyAmount))
     directionHarmonyAmount = o.directionHarmonyAmount;
-  if (n(o.sympatheticMix)) sympatheticMix = o.sympatheticMix;
-  if (typeof o.hangDrumEnabled === "boolean")
-    hangDrumEnabled = o.hangDrumEnabled;
-  if (n(o.targetScrollSemitones))
-    targetScrollSemitones = Math.max(-12, Math.min(12, o.targetScrollSemitones));
   syncGravityToggleButtons();
-  syncHangDrumToggleButtons();
   refreshPanelFromState();
 }
 
@@ -952,9 +928,6 @@ copyBtn.addEventListener("click", () => {
     octaveMix,
     speedOctaveThreshold,
     directionHarmonyAmount,
-    sympatheticMix,
-    hangDrumEnabled,
-    targetScrollSemitones,
   };
   const text = JSON.stringify(o, null, 2);
   navigator.clipboard.writeText(text).then(() => {
@@ -1039,29 +1012,6 @@ let octaveLayerG2 = null;
 let octaveDirection = 0;
 let octaveAmount = 0.0;
 
-function initSympathetic() {
-  if (!audioCtx || sympatheticOscs.length > 0) return;
-  for (let i = 0; i < 8; i++) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const filter = audioCtx.createBiquadFilter();
-    osc.type = "sine";
-    const freq = getMorphedFreq(i);
-    osc.frequency.value = freq;
-    gain.gain.value = 0.0;
-    filter.type = "bandpass";
-    filter.Q.value = 8.0;
-    filter.frequency.value = freq;
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    sympatheticOscs.push(osc);
-    sympatheticGains.push(gain);
-    sympatheticFilters.push(filter);
-  }
-}
-
 function initGlide() {
   if (!audioCtx || glideOsc1) return;
   glideOsc1 = audioCtx.createOscillator();
@@ -1126,7 +1076,6 @@ function initAudio() {
   if (audioCtx.state === "suspended") audioCtx.resume();
   initGlide();
   initOctaveLayer();
-  initSympathetic();
 }
 
 function playNoteWithVolume(bandIndex, vol) {
@@ -1210,45 +1159,21 @@ window.addEventListener(
   (e) => {
     e.preventDefault();
     initAudio();
+    let moved = false;
     zoneScrollAccum += e.deltaY;
-    while (zoneScrollAccum > 80) {
-      zoneScrollAccum -= 80;
-      targetScrollSemitones = Math.max(
-        -12,
-        Math.min(12, targetScrollSemitones - 1),
-      );
+    while (zoneScrollAccum > 120) {
+      zoneScrollAccum -= 120;
+      const prev = targetZone;
+      targetZone = Math.max(-2, Math.min(2, targetZone - 1));
+      if (targetZone !== prev) moved = true;
     }
-    while (zoneScrollAccum < -80) {
-      zoneScrollAccum += 80;
-      targetScrollSemitones = Math.max(
-        -12,
-        Math.min(12, targetScrollSemitones + 1),
-      );
+    while (zoneScrollAccum < -120) {
+      zoneScrollAccum += 120;
+      const prev = targetZone;
+      targetZone = Math.max(-2, Math.min(2, targetZone + 1));
+      if (targetZone !== prev) moved = true;
     }
-    const noteNames = [
-      "C",
-      "C#",
-      "D",
-      "D#",
-      "E",
-      "F",
-      "F#",
-      "G",
-      "G#",
-      "A",
-      "A#",
-      "B",
-    ];
-    const rootNote = ((targetScrollSemitones % 12) + 12) % 12;
-    const ind = document.getElementById("zone-indicator");
-    if (ind) {
-      ind.textContent = noteNames[rootNote];
-      ind.style.opacity = "0.6";
-      clearTimeout(ind._fadeTimer);
-      ind._fadeTimer = setTimeout(() => {
-        ind.style.opacity = "0.15";
-      }, 2000);
-    }
+    if (moved) flashZoneIndicator();
   },
   { passive: false },
 );
@@ -1267,9 +1192,6 @@ function frame(t){
     const targetOff=harmonicMap[sectorIndex];
     harmonicOffset+=(targetOff-harmonicOffset)*0.05;
   }
-  smoothScrollSemitones+=
-    (targetScrollSemitones-smoothScrollSemitones)*0.03;
-  scrollFreqMult=Math.pow(2,smoothScrollSemitones/12);
   const rawVel=Math.abs(tmy-prevTmy);
   prevTmy=tmy;
   mouseVelocity=rawVel;
@@ -1290,6 +1212,27 @@ function frame(t){
   mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
   const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
   idleBreath+=(idle-idleBreath)*0.02;
+  const zoneChanged = targetZone !== currentZone;
+  if (zoneChanged) {
+    zoneTransition += 0.02;
+    if (zoneTransition >= 1.0) {
+      currentZone = targetZone;
+      zoneTransition = 0.0;
+    }
+  }
+  const fromZ = getZoneConfig(currentZone);
+  const toZ = getZoneConfig(targetZone);
+  const zt = zoneTransition;
+  const zoneSemitones =
+    fromZ.semitoneShift * (1 - zt) + toZ.semitoneShift * zt;
+  zoneFreqMult = Math.pow(2, zoneSemitones / 12);
+  const zoneWaveSpeedMul =
+    (fromZ.waveSpeed * (1 - zt) + toZ.waveSpeed * zt) / 0.4;
+  const zoneDarkness =
+    fromZ.darkness * (1 - zt) + toZ.darkness * zt;
+  const zoneHueShift =
+    fromZ.hueShift * (1 - zt) + toZ.hueShift * zt;
+  const zoneTilt = (zoneSemitones / 7.0) * 0.6;
   const cx=window.innerWidth/2;
   const cy=window.innerHeight/2;
   const dx=tmx-cx;
@@ -1363,7 +1306,6 @@ function frame(t){
     }
   }
   noteFlash*=0.88;
-  const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
   const freqGlide=0.03+(1.0-sensitivity)*0.08;
   if (glideOsc1&&audioCtx) {
     currentFreq+=(noteFreqForBand(targetBand)-currentFreq)*freqGlide;
@@ -1380,6 +1322,7 @@ function frame(t){
         octaveLayerG2.gain.setValueAtTime(octBlend*0.4,audioCtx.currentTime);
       }
     }
+    const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
     if (octaveLayerOsc1&&audioCtx&&octaveLayerGainNode) {
       const octVol=octaveAmount*soundVolume*sustainFade*octaveMix;
       octaveLayerGainNode.gain.setTargetAtTime(octVol,audioCtx.currentTime,0.15);
@@ -1406,38 +1349,6 @@ function frame(t){
     glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
     glideG2.gain.setValueAtTime(blend*0.4,audioCtx.currentTime);
   }
-  if (sympatheticOscs.length>0&&audioCtx) {
-    for (let i=0;i<8;i++) {
-      const freq=getMorphedFreq(i);
-      sympatheticOscs[i].frequency.setValueAtTime(
-        freq,
-        audioCtx.currentTime,
-      );
-      sympatheticFilters[i].frequency.setValueAtTime(
-        freq,
-        audioCtx.currentTime,
-      );
-      const isActive=i===lastBand;
-      const isNeighbour=
-        lastBand>=0&&
-        (Math.abs(i-lastBand)===1||Math.abs(i-lastBand)===7);
-      const isHintBand=
-        lastBand>=0&&
-        (HARMONIC_HINTS[lastBand]||[]).includes(i);
-      let targetLevel=0;
-      if (isActive) targetLevel=sympatheticMix*0.3;
-      else if (isHintBand) targetLevel=sympatheticMix*0.5;
-      else if (isNeighbour) targetLevel=sympatheticMix*0.2;
-      targetLevel*=sustainFade;
-      sympatheticLevels[i]+=
-        (targetLevel-sympatheticLevels[i])*0.015;
-      sympatheticGains[i].gain.setTargetAtTime(
-        sympatheticLevels[i],
-        audioCtx.currentTime,
-        0.3,
-      );
-    }
-  }
   gl.uniform2f(ur,canvas.width,canvas.height);
   gl.uniform2f(um,mx,canvas.height-my);
   gl.uniform2f(um2,mx2,canvas.height-my2);
@@ -1454,8 +1365,11 @@ function frame(t){
   gl.uniform1f(uOctaveDirection, octaveDirection);
   gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
   gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
-  gl.uniform1f(uHangDrum, hangDrumEnabled ? 1.0 : 0.0);
-  gl.uniform1fv(uSympathetic, sympatheticLevels);
+  gl.uniform1f(uZoneHueShift, zoneHueShift);
+  gl.uniform1f(uZoneDarkness, zoneDarkness);
+  gl.uniform1f(uZoneScroll, zoneTransition);
+  gl.uniform1f(uZoneWaveSpeedMul, zoneWaveSpeedMul);
+  gl.uniform1f(uZoneTilt, zoneTilt);
   gl.uniform1f(uDrift, Math.max(0.35, edgeMorphAmount * 1.1 + 0.45));
   gl.uniform1f(uSpeedOctave, speedOctave);
   gl.uniform1f(uEdgeMorph, edgeMorphAmount);
