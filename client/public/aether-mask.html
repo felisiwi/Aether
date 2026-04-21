@@ -120,7 +120,9 @@ MOVE IN CIRCLES TO PLAY
 const canvas = document.getElementById("c");
 const logoCanvas = document.getElementById("logo-canvas");
 const logoCtx = logoCanvas.getContext("2d");
-const gl = canvas.getContext("webgl");
+const gl = canvas.getContext("webgl", {
+  preserveDrawingBuffer: true
+});
 const vert = `attribute vec2 a; void main(){gl_Position=vec4(a,0,1);}`;
 const frag = `precision mediump float;
 uniform vec2 u_res, u_mouse, u_mouse2;
