@@ -156,10 +156,25 @@
 
     // Apply chromatic drop-shadow
     const ca = logoChromatic * finalOpacity;
-    logoWrapEl.style.filter = ca > 0.2
-      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,30,0,0.6)) ` +
-        `drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,180,255,0.5))`
-      : 'none';
+    if (ca > 0.1) {
+      // Live jitter — small time-based wobble on the offsets
+      const t = performance.now();
+      const jitterX = Math.sin(t * 0.011) * 0.6 + Math.sin(t * 0.037) * 0.3;
+      const jitterY = Math.sin(t * 0.017) * 0.4;
+
+      const offX = ca + jitterX;
+      const offY = jitterY;
+
+      logoWrapEl.style.filter =
+        // Cyan offset one way
+        `drop-shadow(${offX.toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(0,255,255,1)) ` +
+        // Magenta offset the other way
+        `drop-shadow(${(-offX).toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(255,0,255,1)) ` +
+        // Subtle yellow ghost, smaller offset, semi-transparent
+        `drop-shadow(${(offX * 0.4).toFixed(2)}px ${(-offY * 0.4).toFixed(2)}px 0 rgba(255,255,100,0.35))`;
+    } else {
+      logoWrapEl.style.filter = 'none';
+    }
 
     // HUD
     hudEl.textContent =
