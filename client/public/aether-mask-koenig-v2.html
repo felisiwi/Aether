@@ -36,9 +36,6 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
-MOVE MOUSE TO PLAY
-</div>
 <div class="logo-wrap">
 <video autoplay muted loop playsinline>
 <source src="aether-bg.mp4" type="video/mp4">
@@ -60,7 +57,6 @@ uniform float u_glowWideRadius, u_glowWideIntensity;
 uniform float u_warpStrength, u_noiseAmount, u_darkness;
 uniform float u_waveCount, u_waveFreq, u_waveSpeed, u_rippleStrength;
 uniform float u_idle;
-uniform float u_activeBand;
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
 }
@@ -105,8 +101,6 @@ void main() {
     float flicker = 1.0 + 0.15 * sin(t * 8.0 * harmonic + fi * 12.0)
                             + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
     float band = exp(-dy * dy * 800.0) * flicker;
-    float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
-    band *= 1.0 + isActive * 1.5;
     waves += band;
   }
   waves = clamp(waves * u_noiseAmount, 0.0, 1.0);
@@ -160,7 +154,6 @@ const uWaveFreq=gl.getUniformLocation(p,"u_waveFreq");
 const uWaveSpeed=gl.getUniformLocation(p,"u_waveSpeed");
 const uRippleStrength=gl.getUniformLocation(p,"u_rippleStrength");
 const uIdle=gl.getUniformLocation(p,"u_idle");
-const uActiveBand=gl.getUniformLocation(p,"u_activeBand");
 
 const tweak = {
   u_glowCoreRadius: 0.09,
@@ -266,65 +259,11 @@ document.getElementById("tweak-toggle").addEventListener("click", () => {
   document.getElementById("tweak-toggle").setAttribute("aria-expanded", open ? "false" : "true");
 });
 
-const SCALE_FREQS = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
-let audioCtx = null;
-let lastBand = -1;
-let activeGain = null;
-let activeBand = -1;
-let hintFaded = false;
-
-function initAudio() {
-  if (!audioCtx) audioCtx = new AudioContext();
-  if (audioCtx.state === "suspended") audioCtx.resume();
-}
-
-function playNote(bandIndex) {
-  if (!audioCtx) return;
-  const freq = SCALE_FREQS[bandIndex];
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = freq * 2;
-  filter.Q.value = 2;
-  osc.type = "sine";
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.5);
-  activeBand = bandIndex;
-  setTimeout(() => {
-    if (activeBand === bandIndex) activeBand = -1;
-  }, 300);
-}
-
 let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
 let mx2=mx,my2=my;
 let lastMoveTime=performance.now();
 let idleBreath=0;
-document.addEventListener("mousemove", (e) => {
-  initAudio();
-  if (!hintFaded) {
-    hintFaded = true;
-    const h = document.getElementById("hint");
-    h.style.opacity = "0";
-    h.style.transition = "opacity 1s";
-  }
-  tx = e.clientX;
-  ty = e.clientY;
-  lastMoveTime = performance.now();
-  const bandIndex = Math.floor((1.0 - e.clientY / window.innerHeight) * 8);
-  const clampedBand = Math.max(0, Math.min(7, bandIndex));
-  if (clampedBand !== lastBand) {
-    lastBand = clampedBand;
-    playNote(clampedBand);
-  }
-});
+document.addEventListener("mousemove",e=>{tx=e.clientX;ty=e.clientY;lastMoveTime=performance.now();});
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);}
 window.addEventListener("resize",resize);resize();
 function frame(t){
@@ -338,7 +277,6 @@ function frame(t){
   gl.uniform2f(um2,mx2,canvas.height-my2);
   gl.uniform1f(ut,t*.001);
   gl.uniform1f(uIdle,idleBreath);
-  gl.uniform1f(uActiveBand,activeBand);
   applyTweakUniforms();
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   requestAnimationFrame(frame);
