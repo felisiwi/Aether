@@ -133,6 +133,37 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
+/* Video logo: mask on wrapper; flip only the video element */
+#logo-video-stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 8;
+}
+#logo-video-mask {
+  position: relative;
+  width: 55vw;
+  aspect-ratio: 2096 / 495;
+  -webkit-mask-image: url('/aether_logo_white.png');
+  mask-image: url('/aether_logo_white.png');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% auto;
+  mask-size: 100% auto;
+  overflow: hidden;
+}
+#logo-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleY(-1);
+}
 </style>
 </head>
 <body>
@@ -156,6 +187,13 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   </div>
 </div>
 <canvas id="c"></canvas>
+<div id="logo-video-stage" aria-hidden="true">
+  <div id="logo-video-mask">
+    <video id="logo-video" autoplay muted loop playsinline>
+      <source src="/aether-bg.mp4" type="video/mp4">
+    </video>
+  </div>
+</div>
 <div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
   <canvas id="lens-canvas" style="
   position:absolute;
@@ -205,6 +243,26 @@ const canvas = document.getElementById("c");
 const startOverlay = document.getElementById("start-overlay");
 const logoLayerEl = document.getElementById("logo-layer");
 const logoWrapEl = document.getElementById("logo-wrap");
+const logoVideoMaskEl = document.getElementById("logo-video-mask");
+function logLogoLayerSizes() {
+  if (!logoVideoMaskEl || !logoWrapEl) return;
+  const vr = logoVideoMaskEl.getBoundingClientRect();
+  const wr = logoWrapEl.getBoundingClientRect();
+  console.log("[aether-mask logo sizes]", {
+    videoMask: { id: "logo-video-mask", w: Math.round(vr.width), h: Math.round(vr.height) },
+    cssLogoWrap: { id: "logo-wrap", w: Math.round(wr.width), h: Math.round(wr.height) },
+    mismatchPx: {
+      w: Math.round(wr.width - vr.width),
+      h: Math.round(wr.height - vr.height),
+    },
+  });
+}
+addEventListener("load", () => {
+  requestAnimationFrame(logLogoLayerSizes);
+});
+addEventListener("resize", () => {
+  requestAnimationFrame(logLogoLayerSizes);
+});
 const sandCanvas = document.getElementById(
   'sand-canvas');
 const sandCtx = sandCanvas
