@@ -159,6 +159,11 @@ uniform float u_flickerSpeed;
 uniform float u_flickerAmount;
 uniform float u_waveSharpness;
 uniform float u_waveBrightness;
+uniform float u_waveGlow;
+uniform float u_waveTemp;
+uniform float u_waveSpacing;
+uniform float u_waveAlt;
+uniform float u_mouseRadius;
 uniform float u_gravityStrength;
 uniform float u_octaveAmount;
 uniform float u_octaveDirection;
@@ -203,12 +208,12 @@ void main() {
   vec2 mA = vec2(m.x * aspect, m.y);
   float mouseDist = length(uvA - mA);
   float ripple = sin(mouseDist * 18.0 - t * 4.0)
-                 * exp(-mouseDist * 4.0)
+                 * exp(-mouseDist / u_mouseRadius * 1.2)
                  * u_rippleStrength;
   vec2 m2A = vec2(m2.x * aspect, m2.y);
   float mouseDist2 = length(uvA - m2A);
   float ripple2 = sin(mouseDist2 * 14.0 - t * 3.0)
-                  * exp(-mouseDist2 * 3.5)
+                  * exp(-mouseDist2 / u_mouseRadius * 1.05)
                   * u_rippleStrength * 0.5;
   vec2 smokeUV = uvRefracted * 2.5 + vec2(t * 0.04);
   float eps = 0.005;
@@ -227,7 +232,7 @@ void main() {
   for (int i = 0; i < 12; i++) {
     if (float(i) >= wc) break;
     float fi = float(i) / wc;
-    float bandY = fi;
+    float bandY = fi * u_waveSpacing + (1.0 - u_waveSpacing) * 0.5;
     float harmonic = 1.0 + float(i) * 0.5;
     float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
     float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
@@ -246,6 +251,11 @@ void main() {
     float activeWidth = 1.0 + isActive * ACTIVE_BAND_GLOW * 0.4;
     float band = exp(-dy * dy * (u_waveSharpness / activeWidth)) * flicker;
     band *= 1.0 + isActive * ACTIVE_BAND_GLOW * 1.4;
+    float altFactor = 1.0 + u_waveAlt *
+      sin(float(i) * 3.14159);
+    band *= altFactor;
+    float glowHalo = exp(-dy * dy * (u_waveSharpness * 0.05))
+                     * u_waveGlow * flicker;
     float isWell = 0.0;
     if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
     if (abs(float(i) - 1.0) < 0.5) isWell = 1.0;
@@ -267,7 +277,7 @@ void main() {
     if (i == 6) sympLevel = u_sympathetic[6];
     if (i == 7) sympLevel = u_sympathetic[7];
     band *= 1.0 + sympLevel * 3.0;
-    waves += band;
+    waves += band + glowHalo * 0.4;
   }
   waves = clamp(waves * u_waveBrightness, 0.0, 1.0);
   vec2 smokeOff = vec2(
@@ -317,6 +327,10 @@ void main() {
   col = mix(col, vec3(1.0, 0.9, 0.7),
             smoothstep(0.8, 1.0, v));
   col = mix(col, col * vec3(1.0, 0.85, 0.6), u_mouseX * 0.3);
+  vec3 redTone  = vec3(0.6, 0.08, 0.0);
+  vec3 amberTone = vec3(0.9, 0.45, 0.05);
+  vec3 tempShift = mix(redTone, amberTone, u_waveTemp);
+  col = mix(col, col * (tempShift * 2.0), 0.3);
   float grain = (hash(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
   col += grain;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -354,6 +368,11 @@ const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
 const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
 const uWaveSharpness=gl.getUniformLocation(p,"u_waveSharpness");
 const uWaveBrightness=gl.getUniformLocation(p,"u_waveBrightness");
+const uWaveGlow=gl.getUniformLocation(p,"u_waveGlow");
+const uWaveTemp=gl.getUniformLocation(p,"u_waveTemp");
+const uWaveSpacing=gl.getUniformLocation(p,"u_waveSpacing");
+const uWaveAlt=gl.getUniformLocation(p,"u_waveAlt");
+const uMouseRadius=gl.getUniformLocation(p,"u_mouseRadius");
 const uGravityStrength=gl.getUniformLocation(p,"u_gravityStrength");
 const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
 const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
@@ -389,6 +408,11 @@ const tweak = {
   u_flickerAmount: 0.06,
   u_waveSharpness: 600,
   u_waveBrightness: 1.6,
+  u_waveGlow: 0.3,
+  u_waveTemp: 0.5,
+  u_waveSpacing: 1.0,
+  u_waveAlt: 0.0,
+  u_mouseRadius: 0.3,
 };
 
 function applyTweakUniforms() {
@@ -407,25 +431,35 @@ function applyTweakUniforms() {
   gl.uniform1f(uFlickerAmount, tweak.u_flickerAmount);
   gl.uniform1f(uWaveSharpness, tweak.u_waveSharpness);
   gl.uniform1f(uWaveBrightness, tweak.u_waveBrightness);
+  gl.uniform1f(uWaveGlow, tweak.u_waveGlow);
+  gl.uniform1f(uWaveTemp, tweak.u_waveTemp);
+  gl.uniform1f(uWaveSpacing, tweak.u_waveSpacing);
+  gl.uniform1f(uWaveAlt, tweak.u_waveAlt);
+  gl.uniform1f(uMouseRadius, tweak.u_mouseRadius);
 }
 
 const sliderDefs = [
-  { key: "u_glowCoreRadius", label: "glow core radius", min: 0.02, max: 0.2, step: 0.001 },
-  { key: "u_glowCoreIntensity", label: "glow core intensity", min: 0.5, max: 3, step: 0.01 },
-  { key: "u_glowWideRadius", label: "glow wide radius", min: 0.1, max: 0.8, step: 0.01 },
-  { key: "u_glowWideIntensity", label: "glow wide intensity", min: 0.1, max: 1, step: 0.01 },
+  { key: "u_glowCoreRadius", label: "glow core radius", min: 0.005, max: 0.15, step: 0.001 },
+  { key: "u_glowCoreIntensity", label: "glow core intensity", min: 0.0, max: 6.0, step: 0.05 },
+  { key: "u_glowWideRadius", label: "glow wide radius", min: 0.05, max: 1.2, step: 0.01 },
+  { key: "u_glowWideIntensity", label: "glow wide intensity", min: 0.0, max: 2.0, step: 0.01 },
   { key: "u_trailLag", label: "trail lag", min: 0.001, max: 0.08, step: 0.001 },
-  { key: "u_warpStrength", label: "warp strength", min: 0.1, max: 1, step: 0.01 },
-  { key: "u_noiseAmount", label: "noise amount", min: 0.1, max: 0.8, step: 0.01 },
+  { key: "u_warpStrength", label: "warp strength", min: 0.0, max: 2.0, step: 0.01 },
+  { key: "u_noiseAmount", label: "noise amount", min: 0.0, max: 1.0, step: 0.01 },
   { key: "u_darkness", label: "darkness", min: 0.01, max: 0.15, step: 0.001 },
   { key: "u_waveCount", label: "wave count", min: 2, max: 12, step: 1 },
   { key: "u_waveFreq", label: "wave frequency", min: 2, max: 20, step: 0.5 },
   { key: "u_waveSpeed", label: "wave speed", min: 0, max: 3, step: 0.1 },
-  { key: "u_rippleStrength", label: "ripple strength", min: 0, max: 2, step: 0.1 },
+  { key: "u_rippleStrength", label: "ripple strength", min: 0.0, max: 4.0, step: 0.05 },
   { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
-  { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.5, step: 0.01 },
-  { key: "u_waveSharpness", label: "wave sharpness", min: 50, max: 1200, step: 10 },
-  { key: "u_waveBrightness", label: "wave brightness", min: 0.1, max: 2.0, step: 0.05 },
+  { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.3, step: 0.005 },
+  { key: "u_waveSharpness", label: "wave sharpness", min: 20, max: 2000, step: 10 },
+  { key: "u_waveBrightness", label: "wave brightness", min: 0.02, max: 3.0, step: 0.02 },
+  { key: "u_waveGlow", label: "wave glow", min: 0.0, max: 2.0, step: 0.05 },
+  { key: "u_waveTemp", label: "wave temp (0=deep red / 1=amber)", min: 0.0, max: 1.0, step: 0.01 },
+  { key: "u_waveSpacing", label: "wave spacing", min: 0.3, max: 2.0, step: 0.05 },
+  { key: "u_waveAlt", label: "wave alt", min: 0.0, max: 1.0, step: 0.01 },
+  { key: "u_mouseRadius", label: "mouse radius", min: 0.05, max: 1.0, step: 0.01 },
 ];
 
 const SCALES = {
@@ -600,9 +634,9 @@ function appendSoundSlider(label, min, max, step, getVal, setVal, settingKey) {
 }
 appendSoundSlider(
   "attack ms",
-  1,
-  500,
-  1,
+  0,
+  3000,
+  10,
   () => soundAttack,
   (v) => {
     soundAttack = v;
@@ -611,9 +645,9 @@ appendSoundSlider(
 );
 appendSoundSlider(
   "decay ms",
-  50,
-  5000,
-  10,
+  100,
+  15000,
+  100,
   () => soundDecay,
   (v) => {
     soundDecay = v;
@@ -633,9 +667,9 @@ appendSoundSlider(
 );
 appendSoundSlider(
   "portamento",
-  0,
-  1,
-  0.01,
+  0.0,
+  1.0,
+  0.005,
   () => portamentoSensitivity,
   (v) => {
     portamentoSensitivity = v;
@@ -666,8 +700,8 @@ appendSoundSlider(
 );
 appendSoundSlider(
   "release time",
-  0.3,
-  5.0,
+  0.1,
+  12.0,
   0.1,
   () => releaseTime,
   (v) => {
@@ -678,7 +712,7 @@ appendSoundSlider(
 appendSoundSlider(
   "velocity threshold",
   0,
-  15,
+  30,
   0.5,
   () => velocityThreshold,
   (v) => {
@@ -689,7 +723,7 @@ appendSoundSlider(
 appendSoundSlider(
   "sustain level",
   0.0,
-  0.5,
+  1.0,
   0.01,
   () => sustainLevel,
   (v) => {
@@ -700,7 +734,7 @@ appendSoundSlider(
 appendSoundSlider(
   "dead zone size",
   0.0,
-  0.45,
+  0.49,
   0.01,
   () => deadZoneSize,
   (v) => {
@@ -933,6 +967,11 @@ copyBtn.addEventListener("click", () => {
     u_flickerAmount: tweak.u_flickerAmount,
     u_waveSharpness: tweak.u_waveSharpness,
     u_waveBrightness: tweak.u_waveBrightness,
+    u_waveGlow: tweak.u_waveGlow,
+    u_waveTemp: tweak.u_waveTemp,
+    u_waveSpacing: tweak.u_waveSpacing,
+    u_waveAlt: tweak.u_waveAlt,
+    u_mouseRadius: tweak.u_mouseRadius,
     releaseTime,
     velocityThreshold,
     sustainLevel,
