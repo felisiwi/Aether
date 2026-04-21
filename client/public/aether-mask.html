@@ -137,7 +137,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 <svg id="logo-svg" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
   <defs>
     <filter id="logo-distort" x="-20%" y="-60%" width="140%" height="220%" color-interpolation-filters="sRGB">
-      <feTurbulence id="logo-turbulence" type="fractalNoise" baseFrequency="0.012 0.006" numOctaves="4" seed="7" result="noise"/>
+      <feTurbulence id="logo-turbulence" type="fractalNoise" baseFrequency="0.012 0.006" numOctaves="3" seed="7" result="noise"/>
       <feDisplacementMap id="logo-displace" in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
       <feComposite id="logo-boost" in="displaced" in2="displaced" operator="arithmetic" k1="0" k2="1.4" k3="0" k4="0.05" result="boosted"/>
       <feComposite in="boosted" in2="displaced" operator="in" result="boostedMasked"/>
@@ -180,7 +180,7 @@ const logoGroupEl = document.getElementById("logo-group");
 const logoTurbulenceEl = document.getElementById("logo-turbulence");
 const logoDisplaceEl = document.getElementById("logo-displace");
 const logoBlurEl = document.getElementById("logo-blur");
-if (logoTurbulenceEl) logoTurbulenceEl.setAttribute("numOctaves", "6");
+if (logoTurbulenceEl) logoTurbulenceEl.setAttribute("numOctaves", "3");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -606,6 +606,7 @@ let fpsLastTime = performance.now();
 let fpsDisplay = 60;
 let lastFrameTime = 0;
 let frameInterval = 1000 / 60;
+let lastLogoUpdate = 0;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -2003,6 +2004,9 @@ function frame(t){
   const displaceEl = logoDisplaceEl;
   const logoGroupNode = logoGroupEl;
   if (turbulenceEl && displaceEl && logoGroupNode) {
+    const logoUpdateInterval = 1000 / 15;
+    const shouldUpdateLogo =
+      now - lastLogoUpdate > logoUpdateInterval;
     const velForLogo = Math.min(
       smoothVelocity * 0.7 + smoothVelX * 0.3, 20);
     const targetDisplacement = logoDistortBase +
@@ -2013,14 +2017,6 @@ function frame(t){
     logoDisplacement += (targetDisplacement -
       logoDisplacement) * 0.04;
     logoBlur += (targetBlur - logoBlur) * 0.03;
-    displaceEl?.setAttribute("scale",
-      logoDisplacement.toFixed(2));
-    document.getElementById("logo-blur")
-      ?.setAttribute("stdDeviation",
-        Math.max(0, logoBlur).toFixed(2));
-    const k2val = Math.max(logoSharpness, 1.8);
-    document.getElementById("logo-boost")
-      ?.setAttribute("k2", k2val.toFixed(2));
     const distToLogo = Math.sqrt(
       Math.pow((mx / window.innerWidth) - 0.5, 2) +
       Math.pow((my / window.innerHeight) - 0.5, 2));
@@ -2028,29 +2024,45 @@ function frame(t){
       Math.min(1, (distToLogo - 0.08) / 0.35));
     const proximityDistortScale = 0.6 +
       proximityFactor * 0.4;
-    displaceEl?.setAttribute("scale",
-      (logoDisplacement * proximityDistortScale)
-        .toFixed(2));
+    if (logoPresence >= 0.05 && shouldUpdateLogo) {
+      lastLogoUpdate = now;
+      displaceEl?.setAttribute("scale",
+        (logoDisplacement * proximityDistortScale)
+          .toFixed(2));
+      document.getElementById("logo-blur")
+        ?.setAttribute("stdDeviation",
+          Math.max(0, logoBlur).toFixed(2));
+      const k2val = Math.max(logoSharpness, 1.8);
+      document.getElementById("logo-boost")
+        ?.setAttribute("k2", k2val.toFixed(2));
+      const bfAnim = Math.sin(now *
+        logoTurbSpeed * 0.001) * 0.005;
+      const bf = logoTurbFreq + bfAnim;
+      turbulenceEl?.setAttribute("baseFrequency",
+        `${bf.toFixed(4)} ${(bf * 0.5).toFixed(4)}`);
+    }
     const proximityBoost = (1.0 - proximityFactor)
       * 0.4;
     const finalLogoOpacity = Math.min(0.98,
       Math.max(logoBrightness,
         logoPresence * 1.8 + proximityBoost));
-    logoGroupNode.style.opacity =
-      finalLogoOpacity.toFixed(3);
+    const newOpacity = finalLogoOpacity.toFixed(3);
+    if (logoGroupNode._lastOpacity !== newOpacity) {
+      logoGroupNode._lastOpacity = newOpacity;
+      logoGroupNode.style.opacity = newOpacity;
+    }
     const ca = logoChromatic * finalLogoOpacity;
     if (logoGroupNode) {
-      logoGroupNode.style.filter = ca > 0.1
+      const newFilter = ca > 0.1
         ? `url(#logo-distort)
        drop-shadow(${ca}px 0 0 rgba(255,0,60,0.5))
        drop-shadow(${-ca}px 0 0 rgba(0,200,255,0.4))`
         : "url(#logo-distort)";
+      if (logoGroupNode._lastFilter !== newFilter) {
+        logoGroupNode._lastFilter = newFilter;
+        logoGroupNode.style.filter = newFilter;
+      }
     }
-    const bfAnim = Math.sin(Date.now() *
-      logoTurbSpeed * 0.001) * 0.005;
-    const bf = logoTurbFreq + bfAnim;
-    turbulenceEl.setAttribute("baseFrequency",
-      `${bf.toFixed(4)} ${(bf * 0.5).toFixed(4)}`);
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
