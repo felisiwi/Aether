@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Aether Logo Test</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#1a0500; width:100vw; height:100vh; overflow:hidden;
+         font-family:monospace; color:#ffaa80; }
+  #bg { position:fixed; inset:0; width:100%; height:100%;
+        background:radial-gradient(circle at 30% 40%, #ff4400, #1a0500); }
+  #logo {
+    position:fixed;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:62vw;
+    aspect-ratio:2096/495;
+    -webkit-mask-image:url('/aether_logo_white.png');
+            mask-image:url('/aether_logo_white.png');
+    -webkit-mask-repeat:no-repeat;
+            mask-repeat:no-repeat;
+    -webkit-mask-position:center;
+            mask-position:center;
+    -webkit-mask-size:100% auto;
+            mask-size:100% auto;
+    background:#ffffff;
+    opacity:0.15;
+    pointer-events:none;
+    will-change:opacity,filter,background;
+  }
+  #panel {
+    position:fixed; top:16px; right:16px;
+    background:rgba(0,0,0,0.5);
+    border:1px solid rgba(255,150,100,0.3);
+    border-radius:8px;
+    padding:16px;
+    width:240px;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+  }
+  .row { display:flex; justify-content:space-between; margin-bottom:4px; }
+  input[type=range] { width:100%; margin-bottom:12px; }
+  button {
+    background:rgba(255,100,50,0.2);
+    border:1px solid rgba(255,150,100,0.4);
+    color:#ffaa80;
+    padding:6px 10px;
+    font-family:monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    cursor:pointer;
+  }
+  button.active { background:rgba(255,100,50,0.6); color:#fff; }
+  #hud {
+    position:fixed; top:8px; left:8px;
+    font-size:11px; color:#0f0;
+    background:rgba(0,0,0,0.6);
+    padding:6px 8px; border-radius:4px;
+    white-space:pre; pointer-events:none;
+    z-index:9999;
+  }
+</style>
+</head>
+<body>
+
+<div id="bg"></div>
+<div id="logo"></div>
+
+<div id="panel">
+  <div class="row"><span>OPACITY</span><span id="v-opacity">0.15</span></div>
+  <input id="s-opacity" type="range" min="0" max="1" step="0.01" value="0.15">
+
+  <div class="row"><span>COLOUR</span><span></span></div>
+  <div style="display:flex;gap:4px;margin-bottom:12px;">
+    <button id="b-white" class="active">WHITE</button>
+    <button id="b-black">BLACK</button>
+  </div>
+
+  <div class="row"><span>CHROMATIC</span><span id="v-chromatic">0</span></div>
+  <input id="s-chromatic" type="range" min="0" max="10" step="0.1" value="0">
+
+  <div class="row"><span>PROXIMITY</span><span id="v-proximity">1</span></div>
+  <input id="s-proximity" type="range" min="0" max="2" step="0.01" value="1">
+</div>
+
+<div id="hud"></div>
+
+<script>
+  // STATE — declared with let so slider handlers can reassign
+  let logoOpacity = 0.15;
+  let logoColor = 'white';
+  let logoChromatic = 0;
+  let logoProximity = 1;
+  let mouseX = window.innerWidth / 2;
+  let mouseY = window.innerHeight / 2;
+
+  // REFERENCES
+  const logoEl = document.getElementById('logo');
+  const hudEl = document.getElementById('hud');
+
+  // SLIDERS — direct wiring, no abstraction
+  document.getElementById('s-opacity').oninput = (e) => {
+    logoOpacity = parseFloat(e.target.value);
+    document.getElementById('v-opacity').textContent = logoOpacity.toFixed(2);
+  };
+  document.getElementById('s-chromatic').oninput = (e) => {
+    logoChromatic = parseFloat(e.target.value);
+    document.getElementById('v-chromatic').textContent = logoChromatic.toFixed(1);
+  };
+  document.getElementById('s-proximity').oninput = (e) => {
+    logoProximity = parseFloat(e.target.value);
+    document.getElementById('v-proximity').textContent = logoProximity.toFixed(2);
+  };
+
+  // COLOUR TOGGLE
+  document.getElementById('b-white').onclick = () => {
+    logoColor = 'white';
+    document.getElementById('b-white').classList.add('active');
+    document.getElementById('b-black').classList.remove('active');
+  };
+  document.getElementById('b-black').onclick = () => {
+    logoColor = 'black';
+    document.getElementById('b-black').classList.add('active');
+    document.getElementById('b-white').classList.remove('active');
+  };
+
+  // MOUSE TRACKING
+  window.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  // FRAME LOOP
+  function frame() {
+    // Distance from centre (0 at centre, 1 at corners)
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const maxDist = Math.hypot(cx, cy);
+    const dist = Math.hypot(mouseX - cx, mouseY - cy) / maxDist;
+    const proximityBoost = (1 - dist) * 0.5 * logoProximity;
+
+    const finalOpacity = Math.min(0.97, logoOpacity + proximityBoost);
+
+    // Apply opacity
+    logoEl.style.opacity = finalOpacity.toFixed(3);
+
+    // Apply colour
+    logoEl.style.background = logoColor === 'black' ? '#000' : '#fff';
+
+    // Apply chromatic drop-shadow
+    const ca = logoChromatic * finalOpacity;
+    logoEl.style.filter = ca > 0.2
+      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,30,0,0.6)) ` +
+        `drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,180,255,0.5))`
+      : 'none';
+
+    // HUD
+    hudEl.textContent =
+      `opacity:    ${logoOpacity.toFixed(3)}\n` +
+      `colour:     ${logoColor}\n` +
+      `chromatic:  ${logoChromatic.toFixed(1)}\n` +
+      `proximity:  ${logoProximity.toFixed(2)}\n` +
+      `mouseDist:  ${dist.toFixed(2)}\n` +
+      `finalOp:    ${finalOpacity.toFixed(3)}`;
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+
+</body>
+</html>
