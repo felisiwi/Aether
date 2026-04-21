@@ -135,7 +135,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 <body>
 <canvas id="c"></canvas>
 <div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
-  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
+  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -1886,11 +1886,11 @@ function frame(t){
   }
   const logoEl = document.getElementById('logo-layer');
   if (logoEl && logoWrapEl) {
-    const finalOpacity = Math.min(0.97,
-      Math.max(logoBrightness, logoPresence * 1.2)
-    );
+    const finalOpacity = logoBrightness;
     logoEl.style.opacity = finalOpacity.toFixed(3);
-    logoEl.style.background = logoColor === 'black' ? '#000' : '#fff';
+    logoEl.style.setProperty('background-color',
+      logoColor === 'black' ? '#000000' : '#ffffff',
+      'important');
     const ca = logoChromatic * finalOpacity;
     if (ca > 0.1) {
       const tLogo = performance.now();
