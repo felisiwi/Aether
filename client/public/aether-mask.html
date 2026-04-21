@@ -48,6 +48,27 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
+#gravity-toggle-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+#gravity-toggle-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#gravity-toggle-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
 </style>
 </head>
 <body>
@@ -83,6 +104,8 @@ uniform float u_hintBand0;
 uniform float u_hintBand1;
 uniform float u_flickerSpeed;
 uniform float u_flickerAmount;
+uniform float u_waveSharpness;
+uniform float u_gravityStrength;
 uniform float u_velocity;
 uniform float u_velX;
 float hash(vec2 p) {
@@ -131,8 +154,13 @@ void main() {
     float dy = uv.y - bandY - waveX;
     float flicker = 1.0 + u_flickerAmount * sin(t * u_flickerSpeed * harmonic + fi * 12.0)
                             + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
-    float band = exp(-dy * dy * 180.0) * flicker;
+    float band = exp(-dy * dy * u_waveSharpness) * flicker;
     band *= 1.0 + isActive * 1.5;
+    float isWell = 0.0;
+    if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 4.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 7.0) < 0.5) isWell = 1.0;
+    band *= 1.0 + isWell * u_gravityStrength * 0.3;
     float isHint0 = 1.0 - step(0.5, abs(float(i) - u_hintBand0));
     float isHint1 = 1.0 - step(0.5, abs(float(i) - u_hintBand1));
     float hintGlow = (isHint0 + isHint1) * 0.4;
@@ -200,6 +228,8 @@ const uHintBand0=gl.getUniformLocation(p,"u_hintBand0");
 const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
 const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
 const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
+const uWaveSharpness=gl.getUniformLocation(p,"u_waveSharpness");
+const uGravityStrength=gl.getUniformLocation(p,"u_gravityStrength");
 const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
 
@@ -218,6 +248,7 @@ const tweak = {
   u_rippleStrength: 0.8,
   u_flickerSpeed: 1.5,
   u_flickerAmount: 0.12,
+  u_waveSharpness: 180,
 };
 
 function applyTweakUniforms() {
@@ -234,6 +265,7 @@ function applyTweakUniforms() {
   gl.uniform1f(uRippleStrength, tweak.u_rippleStrength);
   gl.uniform1f(uFlickerSpeed, tweak.u_flickerSpeed);
   gl.uniform1f(uFlickerAmount, tweak.u_flickerAmount);
+  gl.uniform1f(uWaveSharpness, tweak.u_waveSharpness);
 }
 
 const sliderDefs = [
@@ -251,6 +283,7 @@ const sliderDefs = [
   { key: "u_rippleStrength", label: "ripple strength", min: 0, max: 2, step: 0.1 },
   { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
   { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.5, step: 0.01 },
+  { key: "u_waveSharpness", label: "wave sharpness", min: 50, max: 1200, step: 10 },
 ];
 
 const SCALES = {
@@ -285,7 +318,17 @@ let soundVolume = 0.3;
 let portamentoSensitivity = 0.5;
 let vibratoDepthControl = 1.0;
 let vibratoSpeedControl = 5.5;
+let releaseTime = 1.5;
+let velocityThreshold = 3;
+let sustainLevel = 0.15;
+let deadZoneSize = 0.15;
+let gravityStrength = 0.3;
+let gravityEnabled = true;
 let oscType = "sine";
+
+function getWellPositions() {
+  return [0, 4, 7].map((degree) => (degree + 0.5) / 8.0);
+}
 
 const panel = document.getElementById("tweak-panel");
 const readouts = {};
@@ -309,6 +352,7 @@ sliderDefs.forEach((def) => {
   input.max = String(def.max);
   input.step = String(def.step);
   input.value = String(tweak[def.key]);
+  input.dataset.settingKey = def.key;
   input.addEventListener("input", () => {
     const x = parseFloat(input.value);
     tweak[def.key] = x;
@@ -344,7 +388,7 @@ scaleWrap.appendChild(scaleHead);
 scaleWrap.appendChild(scaleSelect);
 panel.appendChild(scaleWrap);
 
-function appendSoundSlider(label, min, max, step, getVal, setVal) {
+function appendSoundSlider(label, min, max, step, getVal, setVal, settingKey) {
   const row = document.createElement("div");
   row.className = "tweak-row";
   const head = document.createElement("div");
@@ -363,6 +407,7 @@ function appendSoundSlider(label, min, max, step, getVal, setVal) {
   input.max = String(max);
   input.step = String(step);
   input.value = String(getVal());
+  if (settingKey) input.dataset.settingKey = settingKey;
   input.addEventListener("input", () => {
     const x = parseFloat(input.value);
     setVal(x);
@@ -381,6 +426,7 @@ appendSoundSlider(
   (v) => {
     soundAttack = v;
   },
+  "soundAttack",
 );
 appendSoundSlider(
   "decay ms",
@@ -391,6 +437,7 @@ appendSoundSlider(
   (v) => {
     soundDecay = v;
   },
+  "soundDecay",
 );
 appendSoundSlider(
   "volume",
@@ -401,6 +448,7 @@ appendSoundSlider(
   (v) => {
     soundVolume = v;
   },
+  "soundVolume",
 );
 appendSoundSlider(
   "portamento",
@@ -411,6 +459,7 @@ appendSoundSlider(
   (v) => {
     portamentoSensitivity = v;
   },
+  "portamentoSensitivity",
 );
 appendSoundSlider(
   "vibrato depth",
@@ -421,6 +470,7 @@ appendSoundSlider(
   (v) => {
     vibratoDepthControl = v;
   },
+  "vibratoDepthControl",
 );
 appendSoundSlider(
   "vibrato speed",
@@ -431,7 +481,109 @@ appendSoundSlider(
   (v) => {
     vibratoSpeedControl = v;
   },
+  "vibratoSpeedControl",
 );
+appendSoundSlider(
+  "release time",
+  0.3,
+  5.0,
+  0.1,
+  () => releaseTime,
+  (v) => {
+    releaseTime = v;
+  },
+  "releaseTime",
+);
+appendSoundSlider(
+  "velocity threshold",
+  0,
+  15,
+  0.5,
+  () => velocityThreshold,
+  (v) => {
+    velocityThreshold = v;
+  },
+  "velocityThreshold",
+);
+appendSoundSlider(
+  "sustain level",
+  0.0,
+  0.5,
+  0.01,
+  () => sustainLevel,
+  (v) => {
+    sustainLevel = v;
+  },
+  "sustainLevel",
+);
+appendSoundSlider(
+  "dead zone size",
+  0.0,
+  0.45,
+  0.01,
+  () => deadZoneSize,
+  (v) => {
+    deadZoneSize = v;
+  },
+  "deadZoneSize",
+);
+
+const gravityRow = document.createElement("div");
+gravityRow.className = "tweak-row";
+const gravityHead = document.createElement("div");
+gravityHead.className = "tweak-head";
+const gravityLab = document.createElement("span");
+gravityLab.className = "tweak-label";
+gravityLab.textContent = "gravity";
+const gravityVal = document.createElement("span");
+gravityVal.className = "tweak-val";
+gravityVal.textContent = String(gravityStrength);
+gravityHead.appendChild(gravityLab);
+gravityHead.appendChild(gravityVal);
+const gravitySliderRow = document.createElement("div");
+gravitySliderRow.style.cssText = "display:flex;gap:6px;align-items:center;";
+const gravityInput = document.createElement("input");
+gravityInput.type = "range";
+gravityInput.min = "0";
+gravityInput.max = "1";
+gravityInput.step = "0.01";
+gravityInput.value = String(gravityStrength);
+gravityInput.dataset.settingKey = "gravityStrength";
+gravityInput.style.cssText = "flex:1;min-width:0;accent-color:#c96;";
+gravityInput.addEventListener("input", () => {
+  const x = parseFloat(gravityInput.value);
+  gravityStrength = x;
+  gravityVal.textContent = String(x);
+});
+const gravityToggleWrap = document.createElement("div");
+gravityToggleWrap.id = "gravity-toggle-row";
+gravityToggleWrap.style.flexShrink = "0";
+const gravityBtnOn = document.createElement("button");
+gravityBtnOn.type = "button";
+gravityBtnOn.textContent = "GRAVITY ON";
+const gravityBtnOff = document.createElement("button");
+gravityBtnOff.type = "button";
+gravityBtnOff.textContent = "GRAVITY OFF";
+function syncGravityToggleButtons() {
+  gravityBtnOn.classList.toggle("selected", gravityEnabled);
+  gravityBtnOff.classList.toggle("selected", !gravityEnabled);
+}
+gravityBtnOn.addEventListener("click", () => {
+  gravityEnabled = true;
+  syncGravityToggleButtons();
+});
+gravityBtnOff.addEventListener("click", () => {
+  gravityEnabled = false;
+  syncGravityToggleButtons();
+});
+syncGravityToggleButtons();
+gravityToggleWrap.appendChild(gravityBtnOn);
+gravityToggleWrap.appendChild(gravityBtnOff);
+gravitySliderRow.appendChild(gravityInput);
+gravitySliderRow.appendChild(gravityToggleWrap);
+gravityRow.appendChild(gravityHead);
+gravityRow.appendChild(gravitySliderRow);
+panel.appendChild(gravityRow);
 
 const oscBlock = document.createElement("div");
 oscBlock.style.marginBottom = "12px";
@@ -466,6 +618,52 @@ oscTypes.forEach(({ type, text }) => {
 oscBlock.appendChild(oscRow);
 panel.appendChild(oscBlock);
 
+function refreshPanelFromState() {
+  panel.querySelectorAll('input[type="range"][data-setting-key]').forEach((inp) => {
+    const k = inp.dataset.settingKey;
+    let v;
+    if (Object.prototype.hasOwnProperty.call(tweak, k)) v = tweak[k];
+    else if (k === "releaseTime") v = releaseTime;
+    else if (k === "velocityThreshold") v = velocityThreshold;
+    else if (k === "sustainLevel") v = sustainLevel;
+    else if (k === "deadZoneSize") v = deadZoneSize;
+    else if (k === "soundAttack") v = soundAttack;
+    else if (k === "soundDecay") v = soundDecay;
+    else if (k === "soundVolume") v = soundVolume;
+    else if (k === "portamentoSensitivity") v = portamentoSensitivity;
+    else if (k === "vibratoDepthControl") v = vibratoDepthControl;
+    else if (k === "vibratoSpeedControl") v = vibratoSpeedControl;
+    else if (k === "gravityStrength") v = gravityStrength;
+    else return;
+    inp.value = String(v);
+    const row = inp.closest(".tweak-row");
+    const valEl = row && row.querySelector(".tweak-val");
+    if (valEl) valEl.textContent = String(v);
+  });
+}
+
+function applyImportedSettings(o) {
+  if (!o || typeof o !== "object") return;
+  const n = (x) => typeof x === "number" && !Number.isNaN(x);
+  for (const key of Object.keys(tweak)) {
+    if (n(o[key])) tweak[key] = o[key];
+  }
+  if (n(o.releaseTime)) releaseTime = o.releaseTime;
+  if (n(o.velocityThreshold)) velocityThreshold = o.velocityThreshold;
+  if (n(o.sustainLevel)) sustainLevel = o.sustainLevel;
+  if (n(o.deadZoneSize)) deadZoneSize = o.deadZoneSize;
+  if (n(o.soundAttack)) soundAttack = o.soundAttack;
+  if (n(o.soundDecay)) soundDecay = o.soundDecay;
+  if (n(o.soundVolume)) soundVolume = o.soundVolume;
+  if (n(o.portamentoSensitivity)) portamentoSensitivity = o.portamentoSensitivity;
+  if (n(o.vibratoDepthControl)) vibratoDepthControl = o.vibratoDepthControl;
+  if (n(o.vibratoSpeedControl)) vibratoSpeedControl = o.vibratoSpeedControl;
+  if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
+  if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
+  syncGravityToggleButtons();
+  refreshPanelFromState();
+}
+
 const copyBtn = document.createElement("button");
 copyBtn.type = "button";
 copyBtn.id = "tweak-copy";
@@ -486,9 +684,16 @@ copyBtn.addEventListener("click", () => {
     u_rippleStrength: tweak.u_rippleStrength,
     u_flickerSpeed: tweak.u_flickerSpeed,
     u_flickerAmount: tweak.u_flickerAmount,
+    u_waveSharpness: tweak.u_waveSharpness,
+    releaseTime,
+    velocityThreshold,
+    sustainLevel,
+    deadZoneSize,
     portamentoSensitivity,
     vibratoDepthControl,
     vibratoSpeedControl,
+    gravityStrength,
+    gravityEnabled,
   };
   const text = JSON.stringify(o, null, 2);
   navigator.clipboard.writeText(text).then(() => {
@@ -507,6 +712,45 @@ copyBtn.addEventListener("click", () => {
   });
 });
 panel.appendChild(copyBtn);
+
+const importInput = document.createElement("input");
+importInput.type = "file";
+importInput.accept = ".json,application/json";
+importInput.style.display = "none";
+importInput.addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const o = JSON.parse(String(reader.result));
+      applyImportedSettings(o);
+      importBtn.textContent = "Imported!";
+      importBtn.style.background = "rgba(80,200,120,0.25)";
+      setTimeout(() => {
+        importBtn.textContent = "Import";
+        importBtn.style.background = "";
+      }, 1500);
+    } catch (err) {
+      importBtn.textContent = "Invalid JSON";
+      importBtn.style.background = "rgba(200,60,40,0.3)";
+      setTimeout(() => {
+        importBtn.textContent = "Import";
+        importBtn.style.background = "";
+      }, 2000);
+    }
+  };
+  reader.readAsText(f);
+});
+const importBtn = document.createElement("button");
+importBtn.type = "button";
+importBtn.id = "tweak-import";
+importBtn.textContent = "Import";
+importBtn.style.marginLeft = "8px";
+importBtn.addEventListener("click", () => importInput.click());
+panel.appendChild(importBtn);
+panel.appendChild(importInput);
 
 document.getElementById("tweak-toggle").addEventListener("click", () => {
   const root = document.getElementById("tweak-root");
@@ -658,14 +902,44 @@ function frame(t){
   const rawBand=normY*8;
   const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
   const bandFraction=rawBand-Math.floor(rawBand);
-  const inDeadZone=bandFraction<0.15||bandFraction>0.85;
+  const inDeadZone=bandFraction<deadZoneSize||bandFraction>(1-deadZoneSize);
   const shouldTrigger=!inDeadZone||smoothVelocity>8;
   const sensitivity=portamentoSensitivity;
   const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
-  const clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
-  smoothBandY+=(normY-smoothBandY)*clampedGlide;
-  const velocityThreshold=3+portamentoSensitivity*8;
-  const isSettling=smoothVelocity<velocityThreshold;
+  let clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
+  if (gravityEnabled) {
+    const wellsRes = getWellPositions();
+    const nearestWell = wellsRes.reduce((a, b) =>
+      Math.abs(a - smoothBandY) < Math.abs(b - smoothBandY) ? a : b
+    );
+    const movingTowardWell =
+      (normY - smoothBandY) * (nearestWell - smoothBandY) > 0;
+    const resistanceMultiplier = movingTowardWell ? 1.4 : 0.7;
+    clampedGlide = Math.max(
+      0.01,
+      Math.min(0.12, glideSpeed * resistanceMultiplier)
+    );
+  }
+  smoothBandY += (normY - smoothBandY) * clampedGlide;
+  if (gravityEnabled) {
+    const wells = getWellPositions();
+    let totalPull = 0;
+    wells.forEach((wellY) => {
+      const dist = Math.abs(smoothBandY - wellY);
+      // Softer falloff — exp(-dist * 6) instead of 12
+      // so pull starts earlier and builds more gradually
+      const pull = gravityStrength * Math.exp(-dist * 6.0) * 0.4;
+      const direction = wellY - smoothBandY;
+      totalPull += direction * pull;
+    });
+    // Cap max movement per frame so it never snaps suddenly
+    const maxPullPerFrame = 0.004;
+    smoothBandY += Math.max(-maxPullPerFrame,
+      Math.min(maxPullPerFrame, totalPull));
+    smoothBandY = Math.max(0, Math.min(1, smoothBandY));
+  }
+  const velocityGate=velocityThreshold+portamentoSensitivity*8;
+  const isSettling=smoothVelocity<velocityGate;
   if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
     lastBand=clampedBand;
     const velVolume=soundVolume*(0.4+Math.min(smoothVelocity/15.0,0.6));
@@ -688,11 +962,10 @@ function frame(t){
       glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
       glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
     }
-    const releaseTime=1.5;
     const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
     const holdingNote=clampedBand===lastBand;
     const sustainBoost=holdingNote?Math.min(smoothVelX/10.0,0.3):0.0;
-    const targetGlideVol=soundVolume*(0.15+sustainBoost)*sustainFade;
+    const targetGlideVol=soundVolume*(sustainLevel+sustainBoost)*sustainFade;
     if (glideGain&&audioCtx) {
       glideGain.gain.setTargetAtTime(targetGlideVol,audioCtx.currentTime,0.3);
     }
@@ -708,6 +981,10 @@ function frame(t){
   gl.uniform1f(uActiveBand,activeBand);
   gl.uniform1f(uMouseX,mouseX);
   gl.uniform1f(uSmoothBandY,smoothBandY);
+  gl.uniform1f(
+    uGravityStrength,
+    gravityEnabled ? gravityStrength : 0.0
+  );
   gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
   gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
   if (activeBand>=0&&activeBand<8) {
