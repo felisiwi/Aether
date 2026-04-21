@@ -6,22 +6,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a0500; width: 100vw; height: 100vh; overflow: hidden; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-#logo-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  -webkit-mask-image: url('/aether_logo_white.svg');
-  mask-image: url('/aether_logo_white.svg');
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: 60% auto;
-  mask-size: 60% auto;
-  background: rgba(255, 100, 50, 0.3);
-  opacity: 0;
-}
 #tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
 #tweak-toggle {
   position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
@@ -108,7 +92,30 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </head>
 <body>
 <canvas id="c"></canvas>
-<canvas id="logo-canvas"></canvas>
+<div id="logo-div" style="
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+">
+  <div id="logo-mask" style="
+    width: 60%;
+    aspect-ratio: 1048 / 248;
+    background: rgba(255, 180, 80, 0.9);
+    -webkit-mask-image: url('/aether_logo_white.svg');
+    mask-image: url('/aether_logo_white.svg');
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: 100% auto;
+    mask-size: 100% auto;
+    opacity: 0.06;
+    mix-blend-mode: screen;
+  "></div>
+</div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
 </div>
@@ -119,8 +126,6 @@ MOVE IN CIRCLES TO PLAY
 </div>
 <script>
 const canvas = document.getElementById("c");
-const logoCanvas = document.getElementById("logo-canvas");
-const logoCtx = logoCanvas.getContext("2d");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: true
 });
@@ -1178,8 +1183,6 @@ document.addEventListener("mousemove", (e) => {
 function resize(){
   canvas.width=innerWidth;
   canvas.height=innerHeight;
-  logoCanvas.width=window.innerWidth;
-  logoCanvas.height=window.innerHeight;
   gl.viewport(0,0,canvas.width,canvas.height);
 }
 window.addEventListener("resize",resize);resize();
@@ -1325,8 +1328,9 @@ function frame(t){
       logoPresence+=(0.0-logoPresence)*0.008;
     }
   }
-  if (Math.round(logoPresence * 100) % 10 === 0) {
-    console.log("logoPresence:", logoPresence.toFixed(3));
+  const logoMask = document.getElementById("logo-mask");
+  if (logoMask) {
+    logoMask.style.opacity = Math.max(0.06, Math.min(logoPresence * 1.5, 0.85)).toFixed(3);
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
@@ -1448,10 +1452,6 @@ function frame(t){
   }
   applyTweakUniforms();
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
-  logoCtx.clearRect(0, 0, logoCanvas.width, logoCanvas.height);
-  logoCtx.globalAlpha = 1.0;
-  logoCtx.drawImage(canvas, 0, 0);
-  logoCanvas.style.opacity = Math.max(0.08, Math.min(logoPresence * 2.0, 0.95)).toFixed(3);
   requestAnimationFrame(frame);
 }
 applyTweakUniforms();
