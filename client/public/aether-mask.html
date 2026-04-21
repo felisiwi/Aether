@@ -157,6 +157,25 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </div>
 <canvas id="c"></canvas>
 <div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
+  <canvas id="lens-canvas" style="
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:66%;
+  aspect-ratio:2096/495;
+  -webkit-mask-image:url('/aether_logo_white.png');
+  mask-image:url('/aether_logo_white.png');
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+  -webkit-mask-position:center;
+  mask-position:center;
+  -webkit-mask-size:100% auto;
+  mask-size:100% auto;
+  pointer-events:none;
+  opacity:0;
+  will-change:opacity;
+  z-index:0;
+"></canvas>
   <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
   <canvas id="sand-canvas" style="
   position:absolute;
@@ -437,6 +456,77 @@ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_
 const al=gl.getAttribLocation(p,"a");
 gl.enableVertexAttribArray(al);
 gl.vertexAttribPointer(al,2,gl.FLOAT,false,0,0);
+
+const lensCanvas = document.getElementById("lens-canvas");
+const lensGl = lensCanvas
+  ? lensCanvas.getContext("webgl", {
+    powerPreference: "high-performance",
+    antialias: false,
+    preserveDrawingBuffer: false,
+  })
+  : null;
+const lensFrag = frag
+  .replace(
+    "uniform float u_splatAge;",
+    "uniform float u_splatAge;\nuniform float u_lensStrength;",
+  )
+  .replace(
+    "  vec2 uvRefracted = uv;",
+    "  vec2 lensCenter = vec2(0.5, 0.5);\n  vec2 lensOffset = uv - lensCenter;\n  float lensDist = length(lensOffset);\n  float lensWarp = u_lensStrength * (1.0 - exp(-lensDist * 3.0));\n  vec2 uvRefracted = uv + lensOffset * lensWarp;",
+  );
+let lensProgram = null;
+const lensUniformLoc = {};
+function lensShader(type, src) {
+  const s = lensGl.createShader(type);
+  lensGl.shaderSource(s, src);
+  lensGl.compileShader(s);
+  return s;
+}
+function getLensUniform(name) {
+  if (!lensGl || !lensProgram) return null;
+  if (!Object.prototype.hasOwnProperty.call(lensUniformLoc, name)) {
+    lensUniformLoc[name] = lensGl.getUniformLocation(lensProgram, name);
+  }
+  return lensUniformLoc[name];
+}
+function setLens1f(name, val) {
+  if (!lensGl) return;
+  const loc = getLensUniform(name);
+  if (loc) lensGl.uniform1f(loc, val);
+}
+function setLens2f(name, x, y) {
+  if (!lensGl) return;
+  const loc = getLensUniform(name);
+  if (loc) lensGl.uniform2f(loc, x, y);
+}
+function setLens1i(name, v) {
+  if (!lensGl) return;
+  const loc = getLensUniform(name);
+  if (loc) lensGl.uniform1i(loc, v);
+}
+if (lensGl) {
+  lensProgram = lensGl.createProgram();
+  lensGl.attachShader(lensProgram, lensShader(lensGl.VERTEX_SHADER, vert));
+  lensGl.attachShader(lensProgram, lensShader(lensGl.FRAGMENT_SHADER, lensFrag));
+  lensGl.linkProgram(lensProgram);
+  if (!lensGl.getProgramParameter(lensProgram, lensGl.LINK_STATUS)) {
+    lensProgram = null;
+  } else {
+    lensGl.useProgram(lensProgram);
+    const lb = lensGl.createBuffer();
+    lensGl.bindBuffer(lensGl.ARRAY_BUFFER, lb);
+    lensGl.bufferData(
+      lensGl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+      lensGl.STATIC_DRAW,
+    );
+    const la = lensGl.getAttribLocation(lensProgram, "a");
+    lensGl.enableVertexAttribArray(la);
+    lensGl.vertexAttribPointer(la, 2, lensGl.FLOAT, false, 0, 0);
+  }
+  gl.useProgram(p);
+}
+
 const ur=gl.getUniformLocation(p,"u_res"),um=gl.getUniformLocation(p,"u_mouse"),um2=gl.getUniformLocation(p,"u_mouse2"),ut=gl.getUniformLocation(p,"u_time");
 const uGlowCoreRadius=gl.getUniformLocation(p,"u_glowCoreRadius");
 const uGlowCoreIntensity=gl.getUniformLocation(p,"u_glowCoreIntensity");
@@ -621,6 +711,7 @@ let logoColor = "white";
 let logoProximity = 1;
 let logoSoundReact = 1;
 let logoWaveWarp = 1;
+let lensStrength = 0.15;
 let sandDissolve = 0.6;
 let sandSize = 1.0;
 let sandSpeed = 1.0;
@@ -1132,6 +1223,17 @@ appendSoundSlider(
   "logoWaveWarp",
 );
 appendSoundSlider(
+  "logo lens",
+  0,
+  0.8,
+  0.01,
+  () => lensStrength,
+  (v) => {
+    lensStrength = v;
+  },
+  "lensStrength",
+);
+appendSoundSlider(
   "logo sand",
   0,
   3,
@@ -1378,6 +1480,7 @@ function refreshPanelFromState() {
     else if (k === "logoSoundReact") v = logoSoundReact;
     else if (k === "logoChromatic") v = logoChromatic;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
+    else if (k === "lensStrength") v = lensStrength;
     else if (k === "sandDissolve") v = sandDissolve;
     else if (k === "sandSize") v = sandSize;
     else if (k === "sandSpeed") v = sandSpeed;
@@ -1408,6 +1511,7 @@ function getCurrentSettings() {
     logoSoundReact,
     logoChromatic,
     logoWaveWarp,
+    lensStrength,
     sandDissolve,
     sandSize,
     sandSpeed,
@@ -1482,6 +1586,8 @@ function applySettings(o) {
   if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
+  if (n(o.lensStrength))
+    lensStrength = Math.max(0, Math.min(0.8, o.lensStrength));
   if (n(o.sandDissolve))
     sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
   if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
@@ -2000,6 +2106,13 @@ function resize(){
     sandCanvas.width = Math.round(logoW);
     sandCanvas.height = Math.round(logoH);
   }
+  if (lensCanvas && lensGl) {
+    const lw = Math.round(window.innerWidth * 0.66);
+    const lh = Math.round(lw * 495 / 2096);
+    lensCanvas.width = lw;
+    lensCanvas.height = lh;
+    lensGl.viewport(0, 0, lw, lh);
+  }
 }
 window.addEventListener("resize",resize);resize();
 window.addEventListener(
@@ -2423,6 +2536,92 @@ function frame(t){
   }
   applyTweakUniforms();
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+
+  if (
+    lensGl &&
+    lensProgram &&
+    lensStrength > 0 &&
+    lensCanvas &&
+    lensCanvas.width > 0 &&
+    lensCanvas.height > 0
+  ) {
+    lensGl.useProgram(lensProgram);
+    const lsx = lensCanvas.width / window.innerWidth;
+    const lsy = lensCanvas.height / window.innerHeight;
+    setLens2f("u_res", lensCanvas.width, lensCanvas.height);
+    setLens1f("u_time", t * 0.001);
+    setLens2f("u_mouse", mx * lsx, lensCanvas.height - my * lsy);
+    setLens2f("u_mouse2", mx2 * lsx, lensCanvas.height - my2 * lsy);
+    setLens1f("u_idle", idleBreath);
+    setLens1f("u_activeBand", clampedBand);
+    setLens1f("u_mouseX", mouseX);
+    setLens1f("u_smoothBandY", smoothBandY);
+    setLens1f(
+      "u_gravityStrength",
+      gravityEnabled ? gravityStrength : 0.0,
+    );
+    setLens1f("u_octaveAmount", octaveAmount);
+    setLens1f("u_octaveDirection", octaveDirection);
+    setLens1f("u_velocity", Math.min(smoothVelocity / 20.0, 1.0));
+    setLens1f("u_velX", Math.min(smoothVelX / 15.0, 1.0));
+    setLens1f("u_hangDrum", hangDrumEnabled ? 1.0 : 0.0);
+    const symLocL = getLensUniform("u_sympathetic[0]");
+    if (symLocL) lensGl.uniform1fv(symLocL, sympatheticLevels);
+    setLens1f("u_drift", Math.max(0.35, idleBreath * 0.8 + 0.45));
+    setLens1f("u_logoPresence", logoPresence);
+    setLens1f("u_noteFlash", noteFlash);
+    setLens1f("u_splatIntensity", splatIntensity);
+    setLens2f("u_splatPos", splatX, splatY);
+    setLens1f("u_splatAge", splatAge);
+    setLens1f("u_activeBandNorm", clampedBand / 7.0);
+    setLens1f("u_lensStrength", lensStrength);
+    const trailLocL = getLensUniform("u_trail[0]");
+    if (trailLocL) lensGl.uniform2fv(trailLocL, trailPos);
+    const trailAgeLocL = getLensUniform("u_trailAge[0]");
+    if (trailAgeLocL) lensGl.uniform1fv(trailAgeLocL, trailAge);
+    setLens1i("u_trailLen", Math.min(trail.length, 10));
+    if (activeBand >= 0 && activeBand < 8) {
+      const hintsL = HARMONIC_HINTS[activeBand];
+      setLens1f("u_hintBand0", hintsL[0]);
+      setLens1f("u_hintBand1", hintsL[1]);
+    } else {
+      setLens1f("u_hintBand0", -1.0);
+      setLens1f("u_hintBand1", -1.0);
+    }
+    setLens1f("u_glowCoreRadius", tweak.u_glowCoreRadius);
+    setLens1f("u_glowCoreIntensity", tweak.u_glowCoreIntensity);
+    setLens1f("u_glowWideRadius", tweak.u_glowWideRadius);
+    setLens1f("u_glowWideIntensity", tweak.u_glowWideIntensity);
+    setLens1f("u_warpStrength", tweak.u_warpStrength);
+    setLens1f("u_noiseAmount", tweak.u_noiseAmount);
+    setLens1f("u_darkness", tweak.u_darkness);
+    setLens1f("u_waveCount", tweak.u_waveCount);
+    setLens1f("u_waveFreq", tweak.u_waveFreq);
+    setLens1f("u_waveSpeed", tweak.u_waveSpeed);
+    setLens1f("u_rippleStrength", tweak.u_rippleStrength);
+    setLens1f("u_flickerSpeed", tweak.u_flickerSpeed);
+    setLens1f("u_flickerAmount", tweak.u_flickerAmount);
+    setLens1f("u_waveSharpness", tweak.u_waveSharpness);
+    setLens1f("u_waveBrightness", tweak.u_waveBrightness);
+    setLens1f("u_waveGlow", tweak.u_waveGlow);
+    setLens1f("u_waveTemp", tweak.u_waveTemp);
+    setLens1f("u_waveSpacing", tweak.u_waveSpacing);
+    setLens1f("u_waveAlt", tweak.u_waveAlt);
+    setLens1f("u_mouseRadius", tweak.u_mouseRadius);
+    lensGl.drawArrays(lensGl.TRIANGLE_STRIP, 0, 4);
+    gl.useProgram(p);
+    const lensOpStr = Math.min(0.95, logoPresence * 1.5).toFixed(2);
+    if (lensCanvas._lastOp !== lensOpStr) {
+      lensCanvas._lastOp = lensOpStr;
+      lensCanvas.style.opacity = lensOpStr;
+    }
+  } else if (lensCanvas) {
+    if (lensCanvas._lastOp !== "0") {
+      lensCanvas._lastOp = "0";
+      lensCanvas.style.opacity = "0";
+    }
+  }
+
   requestAnimationFrame(frame);
 }
 applyTweakUniforms();
