@@ -52,6 +52,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   flex-wrap: wrap;
   margin-top: 4px;
 }
+#logo-blur-toggle-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
 #gravity-toggle-row button {
   flex: 1;
   min-width: 0;
@@ -63,7 +69,22 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   border: 1px solid rgba(255,100,40,0.4);
   cursor: pointer;
 }
+#logo-blur-toggle-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
 #gravity-toggle-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+#logo-blur-toggle-row button.selected {
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
@@ -94,10 +115,15 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 <canvas id="c"></canvas>
 <svg id="logo-svg" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
   <defs>
-    <filter id="logo-distort" x="-20%" y="-50%" width="140%" height="200%" color-interpolation-filters="sRGB">
-      <feTurbulence id="logo-turbulence" type="fractalNoise" baseFrequency="0.015 0.008" numOctaves="3" seed="2" result="noise"/>
-      <feDisplacementMap id="logo-displace" in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
-      <feGaussianBlur id="logo-blur" stdDeviation="0"/>
+    <filter id="logo-distort" x="-20%" y="-60%" width="140%" height="220%" color-interpolation-filters="sRGB">
+      <feTurbulence id="logo-turbulence" type="fractalNoise" baseFrequency="0.012 0.006" numOctaves="4" seed="7" result="noise"/>
+      <feDisplacementMap id="logo-displace" in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feComposite id="logo-boost" in="displaced" in2="displaced" operator="arithmetic" k1="0" k2="1.4" k3="0" k4="-0.1" result="boosted"/>
+      <feGaussianBlur id="logo-blur" in="boosted" stdDeviation="0" result="blurred"/>
+      <feMerge>
+        <feMergeNode in="blurred"/>
+        <feMergeNode in="displaced"/>
+      </feMerge>
     </filter>
     <radialGradient id="logoVignette" cx="50%" cy="50%" r="35%" gradientUnits="userSpaceOnUse" gradientTransform="translate(0,0) scale(1,0.3)">
       <stop offset="0%" stop-color="black" stop-opacity="0"/>
@@ -106,11 +132,11 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   </defs>
   <g id="logo-group" filter="url(#logo-distort)" opacity="0" style="transition:opacity 1.2s ease;mix-blend-mode:screen;">
     <svg x="15%" y="37%" width="70%" height="26%" viewBox="0 0 1048 248" preserveAspectRatio="xMidYMid meet">
-      <path fill="rgba(255,200,100,1.0)" d="M921.904 243.831V63.2156H981.107L983.448 90.6423H985.79C989.58 81.5001 995.49 74.2532 1003.52 68.9016C1011.77 63.3271 1021.69 60.5398 1033.29 60.5398C1036.18 60.5398 1038.75 60.6513 1040.98 60.8743C1043.43 60.8743 1045.77 60.9858 1048 61.2088V119.741C1045.33 119.072 1042.54 118.627 1039.64 118.404C1036.96 118.181 1034.29 118.069 1031.61 118.069C1022.25 118.069 1014.22 119.63 1007.53 122.752C1001.06 125.873 996.047 130.779 992.479 137.468C989.134 144.158 987.351 153.077 987.128 164.226V243.831H921.904Z"/>
-      <path fill="rgba(255,200,100,1.0)" d="M810.142 246.961C788.566 246.961 770.214 243.181 755.089 235.62C739.963 227.837 728.396 217.052 720.389 203.265C712.381 189.478 708.377 173.355 708.377 154.898C708.377 135.107 712.492 118.207 720.722 104.197C729.175 89.9654 740.964 79.1803 756.09 71.842C771.438 64.2813 789.344 60.501 809.808 60.501C833.387 60.501 852.85 65.0596 868.198 74.1769C883.769 83.0719 895.002 95.636 901.897 111.869C908.793 127.88 911.128 146.559 908.904 167.907H771.438C771.66 175.468 773.44 181.917 776.776 187.254C780.113 192.368 784.784 196.26 790.79 198.928C797.018 201.597 804.136 202.931 812.144 202.931C821.264 202.931 828.938 201.374 835.166 198.261C841.617 195.148 845.732 191.034 847.511 185.92H907.236C905.234 198.595 899.784 209.491 890.887 218.608C882.212 227.726 870.867 234.731 856.854 239.623C843.063 244.515 827.492 246.961 810.142 246.961ZM770.437 137.22L767.434 133.217H851.182L847.511 137.22C847.734 129.659 846.288 123.321 843.174 118.207C840.282 113.092 835.945 109.312 830.161 106.866C824.6 104.197 817.816 102.863 809.808 102.863C801.801 102.863 794.905 104.309 789.122 107.199C783.338 109.868 778.778 113.759 775.442 118.874C772.328 123.989 770.659 130.104 770.437 137.22Z"/>
-      <path fill="rgba(255,200,100,1.0)" d="M486.322 243.83V0H551.546V92.3144H554.556C560.131 82.2802 568.715 74.3644 580.311 68.5668C591.906 62.7693 604.505 59.8706 618.107 59.8706C629.925 59.8706 640.517 61.32 649.882 64.2187C659.471 67.1175 667.721 71.9116 674.634 78.601C681.546 85.0675 686.898 93.7638 690.689 104.69C694.479 115.393 696.375 128.66 696.375 144.492V243.83H631.151V156.199C631.151 146.387 630.037 138.026 627.807 131.113C625.8 123.978 622.12 118.515 616.769 114.724C611.64 110.933 604.393 109.038 595.028 109.038C586.108 109.038 578.304 111.045 571.614 115.059C565.148 118.849 560.131 124.089 556.563 130.779C553.218 137.468 551.546 145.161 551.546 153.857V243.83H486.322Z"/>
-      <path fill="rgba(255,200,100,1.0)" d="M413.019 243.831C396.964 243.831 384.812 239.595 376.561 231.121C368.311 222.648 364.186 210.384 364.186 194.329L364.184 109.099H341.658L341.659 60.5003H364.186V44.6314L428.009 0L428.071 60.5003H471.888L471.886 109.099H428.07L428.071 175.264C428.071 180.616 429.297 184.184 431.75 185.967C434.426 187.751 437.994 188.643 442.454 188.643H471.888V243.831H413.019Z"/>
-      <path fill="rgba(255,200,100,1.0)" d="M65.5578 247.174C44.8201 247.174 28.6537 242.492 17.0584 233.127C5.68613 223.761 0 211.497 0 196.335C0 186.746 2.00687 178.273 6.02061 170.915C10.0344 163.556 15.609 157.536 22.7445 152.853C30.1031 147.948 38.688 144.268 48.4994 141.816C58.5337 139.14 69.5715 137.802 81.6127 137.802H143.826V171.249H95.6608C89.6402 171.249 84.2886 171.807 79.6059 172.922C74.9232 174.037 71.3554 176.043 68.9026 178.942C66.4497 181.618 65.2233 185.297 65.2233 189.98C65.2233 195.554 67.4532 199.791 71.9129 202.69C76.3726 205.588 82.2817 207.038 89.6402 207.038C97.4447 207.038 104.023 205.811 109.374 203.359C114.949 200.906 119.186 197.45 122.085 192.99C125.206 188.307 126.767 183.067 126.767 177.27V127.099C126.767 121.97 125.652 117.734 123.423 114.389C121.416 111.044 118.182 108.591 113.723 107.031C109.486 105.247 104.023 104.355 97.3332 104.355C91.9816 104.355 86.9644 105.024 82.2817 106.362C77.822 107.476 74.1427 109.483 71.2439 112.382C68.3451 115.058 66.7842 118.96 66.5612 124.089H4.6827C5.79763 110.71 10.3688 99.2262 18.3963 89.6379C26.4238 80.0497 37.2386 72.6913 50.8407 67.5628C64.4429 62.4342 80.0518 59.8699 97.6677 59.8699C112.162 59.6469 125.429 61.5423 137.471 65.5559C149.512 69.3466 158.766 74.3637 165.232 80.6072H167.239C175.267 74.1407 185.301 69.1236 197.342 65.5559C209.384 61.9882 221.982 60.2044 235.138 60.2044C253.869 60.2044 270.259 62.7687 284.307 67.8972C298.578 73.0258 310.173 80.3842 319.092 89.9724C328.235 99.5606 334.701 111.044 338.492 124.423C342.506 137.579 343.621 152.407 341.837 168.908H171.587V134.123H276.279C275.833 127.433 273.826 121.859 270.259 117.399C266.914 112.717 262.231 109.149 256.211 106.696C250.19 104.243 242.943 103.017 234.469 103.017C225.104 103.017 217.188 104.689 210.721 108.034C204.255 111.379 199.238 116.061 195.67 122.082C192.325 127.879 190.653 134.792 190.653 142.819V160.881C190.653 168.016 191.656 174.148 193.663 179.277C195.893 184.405 199.015 188.642 203.028 191.987C207.265 195.331 212.171 197.896 217.745 199.679C223.543 201.24 230.01 202.021 237.145 202.021C246.511 202.021 254.761 200.46 261.897 197.338C269.255 193.993 273.938 189.868 275.945 184.963H340.165C337.712 198.119 331.691 209.379 322.103 218.744C312.514 227.887 300.027 234.91 284.641 239.816C269.478 244.722 252.42 247.174 233.466 247.174C214.735 247.174 198.123 244.61 183.629 239.482C169.135 234.353 156.87 226.214 146.836 215.065H145.498C139.478 222.424 132.23 228.444 123.757 233.127C115.284 237.809 106.141 241.377 96.3298 243.83C86.5184 246.06 76.2611 247.174 65.5578 247.174Z"/>
+      <path fill="rgba(255,255,255,0.08)" d="M921.904 243.831V63.2156H981.107L983.448 90.6423H985.79C989.58 81.5001 995.49 74.2532 1003.52 68.9016C1011.77 63.3271 1021.69 60.5398 1033.29 60.5398C1036.18 60.5398 1038.75 60.6513 1040.98 60.8743C1043.43 60.8743 1045.77 60.9858 1048 61.2088V119.741C1045.33 119.072 1042.54 118.627 1039.64 118.404C1036.96 118.181 1034.29 118.069 1031.61 118.069C1022.25 118.069 1014.22 119.63 1007.53 122.752C1001.06 125.873 996.047 130.779 992.479 137.468C989.134 144.158 987.351 153.077 987.128 164.226V243.831H921.904Z"/>
+      <path fill="rgba(255,255,255,0.08)" d="M810.142 246.961C788.566 246.961 770.214 243.181 755.089 235.62C739.963 227.837 728.396 217.052 720.389 203.265C712.381 189.478 708.377 173.355 708.377 154.898C708.377 135.107 712.492 118.207 720.722 104.197C729.175 89.9654 740.964 79.1803 756.09 71.842C771.438 64.2813 789.344 60.501 809.808 60.501C833.387 60.501 852.85 65.0596 868.198 74.1769C883.769 83.0719 895.002 95.636 901.897 111.869C908.793 127.88 911.128 146.559 908.904 167.907H771.438C771.66 175.468 773.44 181.917 776.776 187.254C780.113 192.368 784.784 196.26 790.79 198.928C797.018 201.597 804.136 202.931 812.144 202.931C821.264 202.931 828.938 201.374 835.166 198.261C841.617 195.148 845.732 191.034 847.511 185.92H907.236C905.234 198.595 899.784 209.491 890.887 218.608C882.212 227.726 870.867 234.731 856.854 239.623C843.063 244.515 827.492 246.961 810.142 246.961ZM770.437 137.22L767.434 133.217H851.182L847.511 137.22C847.734 129.659 846.288 123.321 843.174 118.207C840.282 113.092 835.945 109.312 830.161 106.866C824.6 104.197 817.816 102.863 809.808 102.863C801.801 102.863 794.905 104.309 789.122 107.199C783.338 109.868 778.778 113.759 775.442 118.874C772.328 123.989 770.659 130.104 770.437 137.22Z"/>
+      <path fill="rgba(255,255,255,0.08)" d="M486.322 243.83V0H551.546V92.3144H554.556C560.131 82.2802 568.715 74.3644 580.311 68.5668C591.906 62.7693 604.505 59.8706 618.107 59.8706C629.925 59.8706 640.517 61.32 649.882 64.2187C659.471 67.1175 667.721 71.9116 674.634 78.601C681.546 85.0675 686.898 93.7638 690.689 104.69C694.479 115.393 696.375 128.66 696.375 144.492V243.83H631.151V156.199C631.151 146.387 630.037 138.026 627.807 131.113C625.8 123.978 622.12 118.515 616.769 114.724C611.64 110.933 604.393 109.038 595.028 109.038C586.108 109.038 578.304 111.045 571.614 115.059C565.148 118.849 560.131 124.089 556.563 130.779C553.218 137.468 551.546 145.161 551.546 153.857V243.83H486.322Z"/>
+      <path fill="rgba(255,255,255,0.08)" d="M413.019 243.831C396.964 243.831 384.812 239.595 376.561 231.121C368.311 222.648 364.186 210.384 364.186 194.329L364.184 109.099H341.658L341.659 60.5003H364.186V44.6314L428.009 0L428.071 60.5003H471.888L471.886 109.099H428.07L428.071 175.264C428.071 180.616 429.297 184.184 431.75 185.967C434.426 187.751 437.994 188.643 442.454 188.643H471.888V243.831H413.019Z"/>
+      <path fill="rgba(255,255,255,0.08)" d="M65.5578 247.174C44.8201 247.174 28.6537 242.492 17.0584 233.127C5.68613 223.761 0 211.497 0 196.335C0 186.746 2.00687 178.273 6.02061 170.915C10.0344 163.556 15.609 157.536 22.7445 152.853C30.1031 147.948 38.688 144.268 48.4994 141.816C58.5337 139.14 69.5715 137.802 81.6127 137.802H143.826V171.249H95.6608C89.6402 171.249 84.2886 171.807 79.6059 172.922C74.9232 174.037 71.3554 176.043 68.9026 178.942C66.4497 181.618 65.2233 185.297 65.2233 189.98C65.2233 195.554 67.4532 199.791 71.9129 202.69C76.3726 205.588 82.2817 207.038 89.6402 207.038C97.4447 207.038 104.023 205.811 109.374 203.359C114.949 200.906 119.186 197.45 122.085 192.99C125.206 188.307 126.767 183.067 126.767 177.27V127.099C126.767 121.97 125.652 117.734 123.423 114.389C121.416 111.044 118.182 108.591 113.723 107.031C109.486 105.247 104.023 104.355 97.3332 104.355C91.9816 104.355 86.9644 105.024 82.2817 106.362C77.822 107.476 74.1427 109.483 71.2439 112.382C68.3451 115.058 66.7842 118.96 66.5612 124.089H4.6827C5.79763 110.71 10.3688 99.2262 18.3963 89.6379C26.4238 80.0497 37.2386 72.6913 50.8407 67.5628C64.4429 62.4342 80.0518 59.8699 97.6677 59.8699C112.162 59.6469 125.429 61.5423 137.471 65.5559C149.512 69.3466 158.766 74.3637 165.232 80.6072H167.239C175.267 74.1407 185.301 69.1236 197.342 65.5559C209.384 61.9882 221.982 60.2044 235.138 60.2044C253.869 60.2044 270.259 62.7687 284.307 67.8972C298.578 73.0258 310.173 80.3842 319.092 89.9724C328.235 99.5606 334.701 111.044 338.492 124.423C342.506 137.579 343.621 152.407 341.837 168.908H171.587V134.123H276.279C275.833 127.433 273.826 121.859 270.259 117.399C266.914 112.717 262.231 109.149 256.211 106.696C250.19 104.243 242.943 103.017 234.469 103.017C225.104 103.017 217.188 104.689 210.721 108.034C204.255 111.379 199.238 116.061 195.67 122.082C192.325 127.879 190.653 134.792 190.653 142.819V160.881C190.653 168.016 191.656 174.148 193.663 179.277C195.893 184.405 199.015 188.642 203.028 191.987C207.265 195.331 212.171 197.896 217.745 199.679C223.543 201.24 230.01 202.021 237.145 202.021C246.511 202.021 254.761 200.46 261.897 197.338C269.255 193.993 273.938 189.868 275.945 184.963H340.165C337.712 198.119 331.691 209.379 322.103 218.744C312.514 227.887 300.027 234.91 284.641 239.816C269.478 244.722 252.42 247.174 233.466 247.174C214.735 247.174 198.123 244.61 183.629 239.482C169.135 234.353 156.87 226.214 146.836 215.065H145.498C139.478 222.424 132.23 228.444 123.757 233.127C115.284 237.809 106.141 241.377 96.3298 243.83C86.5184 246.06 76.2611 247.174 65.5578 247.174Z"/>
     </svg>
   </g>
 </svg>
@@ -514,8 +540,12 @@ let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
 let logoDisplacement = 0;
-let logoBlur = 8;
-let logoOpacityTarget = 0.15;
+let logoBlur = 0;
+let logoDistortAmount = 8;
+let logoBlurAmount = 0.0;
+let logoSharpness = 1.4;
+let logoBrightness = 0.25;
+let logoInvertBlur = false;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -785,6 +815,97 @@ appendSoundSlider(
   "sympatheticMix",
 );
 
+const logoSection = document.createElement("div");
+logoSection.className = "tweak-row";
+const logoSectionHead = document.createElement("div");
+logoSectionHead.className = "tweak-head";
+const logoSectionLab = document.createElement("span");
+logoSectionLab.className = "tweak-label";
+logoSectionLab.textContent = "logo";
+logoSectionHead.appendChild(logoSectionLab);
+logoSection.appendChild(logoSectionHead);
+panel.appendChild(logoSection);
+
+appendSoundSlider(
+  "logo opacity",
+  0.05,
+  1.0,
+  0.01,
+  () => logoBrightness,
+  (v) => {
+    logoBrightness = v;
+  },
+  "logoBrightness",
+);
+appendSoundSlider(
+  "logo distort",
+  0,
+  30,
+  0.5,
+  () => logoDistortAmount,
+  (v) => {
+    logoDistortAmount = v;
+  },
+  "logoDistortAmount",
+);
+appendSoundSlider(
+  "logo blur",
+  0,
+  6,
+  0.1,
+  () => logoBlurAmount,
+  (v) => {
+    logoBlurAmount = v;
+  },
+  "logoBlurAmount",
+);
+appendSoundSlider(
+  "logo sharpness",
+  0.5,
+  3.0,
+  0.05,
+  () => logoSharpness,
+  (v) => {
+    logoSharpness = v;
+  },
+  "logoSharpness",
+);
+
+const logoBlurToggleRow = document.createElement("div");
+logoBlurToggleRow.className = "tweak-row";
+const logoBlurToggleHead = document.createElement("div");
+logoBlurToggleHead.className = "tweak-head";
+const logoBlurToggleLab = document.createElement("span");
+logoBlurToggleLab.className = "tweak-label";
+logoBlurToggleLab.textContent = "logo blur mode";
+logoBlurToggleHead.appendChild(logoBlurToggleLab);
+logoBlurToggleRow.appendChild(logoBlurToggleHead);
+const logoBlurToggleWrap = document.createElement("div");
+logoBlurToggleWrap.id = "logo-blur-toggle-row";
+const logoBlurMoveBtn = document.createElement("button");
+logoBlurMoveBtn.type = "button";
+logoBlurMoveBtn.textContent = "BLUR ON MOVE";
+const logoBlurStillBtn = document.createElement("button");
+logoBlurStillBtn.type = "button";
+logoBlurStillBtn.textContent = "BLUR ON STILL";
+function syncLogoBlurToggleButtons() {
+  logoBlurMoveBtn.classList.toggle("selected", !logoInvertBlur);
+  logoBlurStillBtn.classList.toggle("selected", logoInvertBlur);
+}
+logoBlurMoveBtn.addEventListener("click", () => {
+  logoInvertBlur = false;
+  syncLogoBlurToggleButtons();
+});
+logoBlurStillBtn.addEventListener("click", () => {
+  logoInvertBlur = true;
+  syncLogoBlurToggleButtons();
+});
+syncLogoBlurToggleButtons();
+logoBlurToggleWrap.appendChild(logoBlurMoveBtn);
+logoBlurToggleWrap.appendChild(logoBlurStillBtn);
+logoBlurToggleRow.appendChild(logoBlurToggleWrap);
+panel.appendChild(logoBlurToggleRow);
+
 const gravityRow = document.createElement("div");
 gravityRow.className = "tweak-row";
 const gravityHead = document.createElement("div");
@@ -927,6 +1048,10 @@ function refreshPanelFromState() {
     else if (k === "vibratoSpeedControl") v = vibratoSpeedControl;
     else if (k === "glowSize") v = glowSize;
     else if (k === "glowIntensity") v = glowIntensity;
+    else if (k === "logoBrightness") v = logoBrightness;
+    else if (k === "logoDistortAmount") v = logoDistortAmount;
+    else if (k === "logoBlurAmount") v = logoBlurAmount;
+    else if (k === "logoSharpness") v = logoSharpness;
     else if (k === "gravityStrength") v = gravityStrength;
     else if (k === "octaveMix") v = octaveMix;
     else if (k === "sympatheticMix") v = sympatheticMix;
@@ -962,6 +1087,11 @@ function applyImportedSettings(o) {
   if (n(o.vibratoSpeedControl)) vibratoSpeedControl = o.vibratoSpeedControl;
   if (n(o.glowSize)) glowSize = o.glowSize;
   if (n(o.glowIntensity)) glowIntensity = o.glowIntensity;
+  if (n(o.logoBrightness)) logoBrightness = o.logoBrightness;
+  if (n(o.logoDistortAmount)) logoDistortAmount = o.logoDistortAmount;
+  if (n(o.logoBlurAmount)) logoBlurAmount = o.logoBlurAmount;
+  if (n(o.logoSharpness)) logoSharpness = o.logoSharpness;
+  if (typeof o.logoInvertBlur === "boolean") logoInvertBlur = o.logoInvertBlur;
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
   if (n(o.octaveMix)) octaveMix = o.octaveMix;
@@ -972,6 +1102,7 @@ function applyImportedSettings(o) {
     targetScrollSemitones = Math.max(-12, Math.min(12, o.targetScrollSemitones));
   syncGravityToggleButtons();
   syncHangDrumToggleButtons();
+  syncLogoBlurToggleButtons();
   refreshPanelFromState();
 }
 
@@ -983,6 +1114,11 @@ copyBtn.addEventListener("click", () => {
   const o = {
     glowSize,
     glowIntensity,
+    logoBrightness,
+    logoDistortAmount,
+    logoBlurAmount,
+    logoSharpness,
+    logoInvertBlur,
     u_trailLag: tweak.u_trailLag,
     u_warpStrength: tweak.u_warpStrength,
     u_noiseAmount: tweak.u_noiseAmount,
@@ -1438,25 +1574,33 @@ function frame(t){
   const displaceEl = logoDisplaceEl;
   const logoGroupNode = logoGroupEl;
   if (turbulenceEl && displaceEl && logoGroupNode) {
-    const velForLogo = Math.min(smoothVelocity + smoothVelX, 30);
-    const targetDisplacement = velForLogo * 0.8 +
-      noteFlash * 12.0 +
-      splatIntensity * 8.0;
-    const targetBlur = velForLogo * 0.25 +
-      noteFlash * 3.0;
-    logoDisplacement += (targetDisplacement - logoDisplacement) * 0.08;
-    logoBlur += (targetBlur - logoBlur) * 0.06;
-    logoOpacityTarget = Math.max(0.25,
-      Math.min(logoPresence * 1.2, 0.92));
+    const velForLogo = Math.min(smoothVelocity + smoothVelX, 25);
+    const targetDisplacement = velForLogo * (logoDistortAmount / 25) +
+      noteFlash * 15.0 +
+      splatIntensity * 6.0;
+    let targetBlur;
+    if (logoInvertBlur) {
+      targetBlur = logoBlurAmount +
+        Math.max(0, 3.0 - velForLogo * 0.2);
+    } else {
+      targetBlur = logoBlurAmount +
+        velForLogo * 0.15 + noteFlash * 2.0;
+    }
+    logoDisplacement += (targetDisplacement - logoDisplacement) * 0.07;
+    logoBlur += (targetBlur - logoBlur) * 0.05;
+    document.getElementById("logo-boost")
+      ?.setAttribute("k2", logoSharpness.toFixed(2));
     displaceEl.setAttribute("scale", logoDisplacement.toFixed(2));
     if (logoBlurEl) {
       logoBlurEl.setAttribute("stdDeviation",
-        Math.min(logoBlur, 4).toFixed(1));
+        Math.max(0, logoBlur).toFixed(2));
     }
-    logoGroupNode.style.opacity = logoOpacityTarget.toFixed(3);
-    const bf = 0.015 + Math.sin(Date.now() * 0.0003) * 0.005;
+    const logoOpacity = Math.max(logoBrightness,
+      Math.min(logoPresence * 1.3, 0.95));
+    logoGroupNode.style.opacity = logoOpacity.toFixed(3);
+    const bf = 0.012 + Math.sin(Date.now() * 0.0003) * 0.004;
     turbulenceEl.setAttribute("baseFrequency",
-      `${bf.toFixed(4)} 0.008`);
+      `${bf.toFixed(4)} 0.006`);
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
