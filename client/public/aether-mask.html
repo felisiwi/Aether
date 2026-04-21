@@ -11,14 +11,15 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   inset: 0;
   width: 100%;
   height: 100%;
-  -webkit-mask-image: url('aether_logo_white.svg');
-  mask-image: url('aether_logo_white.svg');
+  -webkit-mask-image: url('/aether_logo_white.svg');
+  mask-image: url('/aether_logo_white.svg');
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
   -webkit-mask-size: 60% auto;
   mask-size: 60% auto;
+  background: rgba(255, 100, 50, 0.3);
   opacity: 0;
 }
 #tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
@@ -1323,6 +1324,9 @@ function frame(t){
     if (logoIdleTime>2.0) {
       logoPresence+=(0.0-logoPresence)*0.008;
     }
+  }
+  if (Math.round(logoPresence * 100) % 10 === 0) {
+    console.log("logoPresence:", logoPresence.toFixed(3));
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
