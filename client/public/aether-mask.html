@@ -113,11 +113,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; will-change: t
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="logo-wrap" style="position:absolute;inset:0;pointer-events:none;">
-  <div id="logo-dark-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.55);-webkit-mask-image:url('/aether_logo_white.png'),linear-gradient(black,black);mask-image:url('/aether_logo_white.png'),linear-gradient(black,black);-webkit-mask-composite:xor;mask-composite:exclude;-webkit-mask-position:center center;mask-position:center center;-webkit-mask-repeat:no-repeat, repeat;mask-repeat:no-repeat, repeat;-webkit-mask-size:62% auto, auto;mask-size:62% auto, auto;opacity:0;pointer-events:none;"></div>
-  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-    <div id="logo-glow-inner" style="width:62%;aspect-ratio:2096/495;background:rgba(255,180,80,0.6);-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;mix-blend-mode:screen;opacity:0;pointer-events:none;"></div>
-  </div>
+<div id="logo-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+  <img id="logo-white" src="/aether_logo_white.png" style="width:62%;height:auto;mix-blend-mode:screen;opacity:0;pointer-events:none;will-change:opacity,filter;">
+  <img id="logo-black" src="/aether_logo_black.png" style="position:absolute;width:62%;height:auto;mix-blend-mode:multiply;opacity:0;pointer-events:none;will-change:opacity,filter;">
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -133,8 +131,8 @@ MOVE IN CIRCLES TO PLAY
 </div>
 <script>
 const canvas = document.getElementById("c");
-const logoDarkEl = document.getElementById("logo-dark-overlay");
-const logoGlowEl = document.getElementById("logo-glow-inner");
+const logoWhiteEl = document.getElementById("logo-white");
+const logoBlackEl = document.getElementById("logo-black");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -539,10 +537,10 @@ let sympatheticOscs = [];
 let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
-let logoBrightness = 0.5;
+let logoBrightness = 0.15;
 let logoChromatic = 0;
 let logoWaveInfluence = 0.5;
-let logoDarkAmount = 0.55;
+let logoDarkAmount = 0.4;
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
@@ -909,7 +907,7 @@ panel.appendChild(logoSection);
 
 appendSoundSlider(
   "logo opacity",
-  0.5,
+  0.15,
   1.0,
   0.01,
   () => logoBrightness,
@@ -1815,38 +1813,39 @@ function frame(t){
   } else {
     logoPresence += (0.0 - logoPresence) * 0.005;
   }
+  const cx = mx / window.innerWidth;
+  const cy = my / window.innerHeight;
   const distToLogo = Math.sqrt(
-    Math.pow((mx / window.innerWidth) - 0.5, 2) +
-    Math.pow((my / window.innerHeight) - 0.5, 2));
+    Math.pow(cx - 0.5, 2) +
+    Math.pow(cy - 0.5, 2));
   const proximityFactor = Math.max(0,
     Math.min(1, (distToLogo - 0.05) / 0.3));
   const proximityBoost = (1.0 - proximityFactor)
-    * 0.35;
+    * 0.3;
   const finalOpacity = Math.min(0.97,
     Math.max(logoBrightness,
-      logoPresence * 1.6 + proximityBoost));
-  if (logoDarkEl) {
-    const darkStr = (logoPresence * 0.8).toFixed(2);
-    if (logoDarkEl._last !== darkStr) {
-      logoDarkEl._last = darkStr;
-      logoDarkEl.style.opacity = darkStr;
-      logoDarkEl.style.background =
-        `rgba(0,0,0,${logoDarkAmount})`;
-    }
-  }
-  if (logoGlowEl) {
-    const glowStr = (finalOpacity * 0.9).toFixed(2);
-    if (logoGlowEl._last !== glowStr) {
-      logoGlowEl._last = glowStr;
-      logoGlowEl.style.opacity = glowStr;
+      logoPresence * 1.8 + proximityBoost));
+  if (logoWhiteEl) {
+    const w = finalOpacity.toFixed(2);
+    if (logoWhiteEl._last !== w) {
+      logoWhiteEl._last = w;
+      logoWhiteEl.style.opacity = w;
     }
     const ca = logoChromatic * finalOpacity;
     const caStr = ca > 0.2
-      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,0,60,0.5)) drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,200,255,0.4))`
+      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,30,0,0.6)) drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,180,255,0.5))`
       : "none";
-    if (logoGlowEl._lastCa !== caStr) {
-      logoGlowEl._lastCa = caStr;
-      logoGlowEl.style.filter = caStr;
+    if (logoWhiteEl._lastCa !== caStr) {
+      logoWhiteEl._lastCa = caStr;
+      logoWhiteEl.style.filter = caStr;
+    }
+  }
+  if (logoBlackEl) {
+    const b = (logoPresence * logoDarkAmount)
+      .toFixed(2);
+    if (logoBlackEl._last !== b) {
+      logoBlackEl._last = b;
+      logoBlackEl.style.opacity = b;
     }
   }
   noteFlash*=0.88;
