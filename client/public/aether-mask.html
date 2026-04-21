@@ -134,8 +134,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
-  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
+<div id="logo-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+  <div id="logo-layer" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62%;aspect-ratio:2096/495;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background:#ffffff;opacity:0;pointer-events:none;will-change:opacity,filter,transform,background;"></div>
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -152,7 +152,6 @@ MOVE IN CIRCLES TO PLAY
 <script>
 const canvas = document.getElementById("c");
 const logoLayerEl = document.getElementById("logo-layer");
-const logoWrapEl = document.getElementById("logo-wrap");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -188,6 +187,7 @@ uniform float u_velocity;
 uniform float u_velX;
 uniform float u_drift;
 uniform float u_logoPresence;
+uniform float u_waveInfluence;
 uniform float u_noteFlash;
 uniform float u_activeBandNorm;
 uniform float u_hangDrum;
@@ -341,7 +341,7 @@ void main() {
   float letterX = 0.5 + sin(t * 0.7) * 0.02;
   float letterGlow = smoothstep(0.25, 0.0,
     abs(uv.x - letterX)) * u_logoPresence
-    * 0.5;
+    * u_waveInfluence * 0.5;
   float rawV = smoke * u_noiseAmount * 0.45
     + waves + smokeTrail * 0.35;
   float baseV = clamp(rawV, 0.0, 0.9);
@@ -411,6 +411,7 @@ const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
 const uDrift=gl.getUniformLocation(p,"u_drift");
 const uLogoPresence=gl.getUniformLocation(p,"u_logoPresence");
+const uWaveInfluence=gl.getUniformLocation(p,"u_waveInfluence");
 const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
 const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
 const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
@@ -557,6 +558,7 @@ let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
 let logoBrightness = 0.15;
 let logoChromatic = 0;
+let logoWaveInfluence = 0.5;
 let logoColor = "white";
 let logoProximity = 1;
 let logoSoundReact = 1;
@@ -993,6 +995,17 @@ appendSoundSlider(
   "logoSoundReact",
 );
 appendSoundSlider(
+  "logo wave infl.",
+  0,
+  1,
+  0.01,
+  () => logoWaveInfluence,
+  (v) => {
+    logoWaveInfluence = v;
+  },
+  "logoWaveInfluence",
+);
+appendSoundSlider(
   "logo chromatic",
   0,
   10,
@@ -1180,6 +1193,7 @@ function refreshPanelFromState() {
     else if (k === "logoProximity") v = logoProximity;
     else if (k === "logoSoundReact") v = logoSoundReact;
     else if (k === "logoChromatic") v = logoChromatic;
+    else if (k === "logoWaveInfluence") v = logoWaveInfluence;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
     else if (k === "fpsCap") v = fpsCap;
     else if (k === "renderScale") v = renderScale;
@@ -1203,6 +1217,7 @@ function getCurrentSettings() {
     logoProximity,
     logoSoundReact,
     logoChromatic,
+    logoWaveInfluence,
     logoWaveWarp,
     fpsCap,
     renderScale,
@@ -1269,6 +1284,7 @@ function applySettings(o) {
   if (n(o.logoProximity)) logoProximity = o.logoProximity;
   if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
+  if (n(o.logoWaveInfluence)) logoWaveInfluence = o.logoWaveInfluence;
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
   if (n(o.fpsCap)) fpsCap = o.fpsCap;
   if (n(o.renderScale)) {
@@ -1884,42 +1900,48 @@ function frame(t){
   } else {
     logoPresence += (0.0 - logoPresence) * 0.005;
   }
-  const logoEl = document.getElementById('logo-layer');
-  if (logoEl && logoWrapEl) {
-    const mouseDistFromCenter = Math.sqrt(
-      Math.pow((mx / window.innerWidth) - 0.5, 2) +
-      Math.pow((my / window.innerHeight) - 0.5, 2));
-    const proximityBoost =
-      (1 - Math.min(1, mouseDistFromCenter / 0.4))
-      * 0.35 * logoProximity;
-    const soundBoost = noteFlash * 0.4 * logoSoundReact;
-    const finalOpacity = Math.min(0.97,
-      Math.max(logoBrightness,
-        logoPresence * 1.2 + proximityBoost + soundBoost));
+  const mouseDistFromCenter = Math.sqrt(
+    Math.pow((mx / window.innerWidth) - 0.5, 2) +
+    Math.pow((my / window.innerHeight) - 0.5, 2));
+  const proximityFactor = Math.max(0,
+    Math.min(1, (mouseDistFromCenter - 0.05) / 0.3));
+  const activeBandGlow=activeBand>=0&&activeBand<8?0.15:0;
+  const proximityBoost = (1 - Math.min(1, mouseDistFromCenter / 0.5))
+    * 0.3 * logoProximity;
+  const soundBoost = (activeBandGlow || 0) * 0.4 * logoSoundReact
+    + (noteFlash || 0) * 0.5 * logoSoundReact;
+  const finalOpacity = Math.min(0.97,
+    Math.max(logoBrightness,
+      logoPresence * 1.2 + proximityBoost + soundBoost
+    )
+  );
+  const logoEl = document.getElementById('logo-layer') || logoLayerEl;
+  if (logoEl) {
     if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
       logoEl._lastOp = finalOpacity.toFixed(3);
       logoEl.style.opacity = finalOpacity.toFixed(3);
     }
-    logoEl.style.setProperty('background-color',
-      logoColor === 'black' ? '#000000' : '#ffffff',
-      'important');
+    const bgColor = logoColor === "black" ? "#000000" : "#ffffff";
+    if (logoEl._lastBg !== bgColor) {
+      logoEl._lastBg = bgColor;
+      logoEl.style.background = bgColor;
+    }
     const ca = logoChromatic * finalOpacity;
-    if (ca > 0.1) {
-      const tLogo = performance.now();
-      // Reduced jitter — too much jitter breaks depth perception through glasses
-      const jitterX = Math.sin(tLogo * 0.011) * 0.3 + Math.sin(tLogo * 0.037) * 0.15;
-      const jitterY = Math.sin(tLogo * 0.017) * 0.15;
-      // Slightly larger base offset so depth pops through glasses
-      // Red shifted LEFT, blue shifted RIGHT — correct anaglyph parallax
-      const offX = ca * 1.3 + jitterX;
-      const offY = jitterY;
-      logoWrapEl.style.filter =
-        // Pure red, shifted left (negative X) — seen by LEFT eye through blue lens
-        `drop-shadow(${(-offX).toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(255,0,0,1)) ` +
-        // Pure blue, shifted right (positive X) — seen by RIGHT eye through red lens
-        `drop-shadow(${offX.toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(0,0,255,1))`;
-    } else {
-      logoWrapEl.style.filter = 'none';
+    const caStr = ca > 0.2
+      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,30,0,0.6)) ` +
+        `drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,180,255,0.5))`
+      : "none";
+    if (logoEl._lastCa !== caStr) {
+      logoEl._lastCa = caStr;
+      logoEl.style.filter = caStr;
+    }
+    const u_waveActivity = Math.min(1, Math.abs(totalVel) / 20);
+    const waveShift = (u_waveActivity || 0) * 3 * logoWaveWarp;
+    const transformStr =
+      `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%)`;
+    if (logoEl._lastTf !== transformStr) {
+      logoEl._lastTf = transformStr;
+      logoEl.style.transform = transformStr;
     }
   }
   noteFlash*=0.88;
@@ -2030,6 +2052,7 @@ function frame(t){
   gl.uniform1fv(uSympathetic, sympatheticLevels);
   gl.uniform1f(uDrift, Math.max(0.35, idleBreath * 0.8 + 0.45));
   gl.uniform1f(uLogoPresence, logoPresence);
+  gl.uniform1f(uWaveInfluence, logoWaveInfluence);
   gl.uniform1f(uNoteFlash, noteFlash);
   gl.uniform1f(uSplatIntensity, splatIntensity);
   gl.uniform2f(uSplatPos, splatX, splatY);
