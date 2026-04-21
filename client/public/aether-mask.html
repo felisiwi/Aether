@@ -88,46 +88,32 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
-@keyframes gradShift {
-  0%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-  100%{background-position:0% 50%}
-}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="logo-wrap" style="
-  position:absolute;inset:0;
-  display:flex;align-items:center;
-  justify-content:center;
-  pointer-events:none;">
-  <div id="logo-mask" style="
-    width:62%;
-    aspect-ratio:1048/248;
-    -webkit-mask-image:url('/aether_logo_white.svg');
-    mask-image:url('/aether_logo_white.svg');
-    -webkit-mask-repeat:no-repeat;
-    mask-repeat:no-repeat;
-    -webkit-mask-position:center;
-    mask-position:center;
-    -webkit-mask-size:100% auto;
-    mask-size:100% auto;
-    background:linear-gradient(
-      135deg,
-      #8B1500 0%,
-      #CC3300 25%,
-      #FF6600 50%,
-      #CC3300 75%,
-      #8B1500 100%
-    );
-    background-size:200% 200%;
-    animation:gradShift 4s ease infinite;
-    mix-blend-mode:screen;
-    opacity:0.15;
-  ">
-  </div>
-</div>
+<svg id="logo-svg" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+  <defs>
+    <filter id="logo-distort" x="-20%" y="-50%" width="140%" height="200%" color-interpolation-filters="sRGB">
+      <feTurbulence id="logo-turbulence" type="fractalNoise" baseFrequency="0.015 0.008" numOctaves="3" seed="2" result="noise"/>
+      <feDisplacementMap id="logo-displace" in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <radialGradient id="logoVignette" cx="50%" cy="50%" r="35%" gradientUnits="userSpaceOnUse" gradientTransform="translate(0,0) scale(1,0.3)">
+      <stop offset="0%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.7"/>
+    </radialGradient>
+  </defs>
+  <rect id="logo-dark-bg" x="15%" y="36%" width="70%" height="28%" rx="4" fill="black" opacity="0" style="transition:opacity 0.8s ease;"/>
+  <g id="logo-group" filter="url(#logo-distort)" opacity="0" style="transition:opacity 1.2s ease;">
+    <svg x="15%" y="37%" width="70%" height="26%" viewBox="0 0 1048 248" preserveAspectRatio="xMidYMid meet">
+      <path fill="rgba(255,170,70,0.92)" d="M921.904 243.831V63.2156H981.107L983.448 90.6423H985.79C989.58 81.5001 995.49 74.2532 1003.52 68.9016C1011.77 63.3271 1021.69 60.5398 1033.29 60.5398C1036.18 60.5398 1038.75 60.6513 1040.98 60.8743C1043.43 60.8743 1045.77 60.9858 1048 61.2088V119.741C1045.33 119.072 1042.54 118.627 1039.64 118.404C1036.96 118.181 1034.29 118.069 1031.61 118.069C1022.25 118.069 1014.22 119.63 1007.53 122.752C1001.06 125.873 996.047 130.779 992.479 137.468C989.134 144.158 987.351 153.077 987.128 164.226V243.831H921.904Z"/>
+      <path fill="rgba(255,170,70,0.92)" d="M810.142 246.961C788.566 246.961 770.214 243.181 755.089 235.62C739.963 227.837 728.396 217.052 720.389 203.265C712.381 189.478 708.377 173.355 708.377 154.898C708.377 135.107 712.492 118.207 720.722 104.197C729.175 89.9654 740.964 79.1803 756.09 71.842C771.438 64.2813 789.344 60.501 809.808 60.501C833.387 60.501 852.85 65.0596 868.198 74.1769C883.769 83.0719 895.002 95.636 901.897 111.869C908.793 127.88 911.128 146.559 908.904 167.907H771.438C771.66 175.468 773.44 181.917 776.776 187.254C780.113 192.368 784.784 196.26 790.79 198.928C797.018 201.597 804.136 202.931 812.144 202.931C821.264 202.931 828.938 201.374 835.166 198.261C841.617 195.148 845.732 191.034 847.511 185.92H907.236C905.234 198.595 899.784 209.491 890.887 218.608C882.212 227.726 870.867 234.731 856.854 239.623C843.063 244.515 827.492 246.961 810.142 246.961ZM770.437 137.22L767.434 133.217H851.182L847.511 137.22C847.734 129.659 846.288 123.321 843.174 118.207C840.282 113.092 835.945 109.312 830.161 106.866C824.6 104.197 817.816 102.863 809.808 102.863C801.801 102.863 794.905 104.309 789.122 107.199C783.338 109.868 778.778 113.759 775.442 118.874C772.328 123.989 770.659 130.104 770.437 137.22Z"/>
+      <path fill="rgba(255,170,70,0.92)" d="M486.322 243.83V0H551.546V92.3144H554.556C560.131 82.2802 568.715 74.3644 580.311 68.5668C591.906 62.7693 604.505 59.8706 618.107 59.8706C629.925 59.8706 640.517 61.32 649.882 64.2187C659.471 67.1175 667.721 71.9116 674.634 78.601C681.546 85.0675 686.898 93.7638 690.689 104.69C694.479 115.393 696.375 128.66 696.375 144.492V243.83H631.151V156.199C631.151 146.387 630.037 138.026 627.807 131.113C625.8 123.978 622.12 118.515 616.769 114.724C611.64 110.933 604.393 109.038 595.028 109.038C586.108 109.038 578.304 111.045 571.614 115.059C565.148 118.849 560.131 124.089 556.563 130.779C553.218 137.468 551.546 145.161 551.546 153.857V243.83H486.322Z"/>
+      <path fill="rgba(255,170,70,0.92)" d="M413.019 243.831C396.964 243.831 384.812 239.595 376.561 231.121C368.311 222.648 364.186 210.384 364.186 194.329L364.184 109.099H341.658L341.659 60.5003H364.186V44.6314L428.009 0L428.071 60.5003H471.888L471.886 109.099H428.07L428.071 175.264C428.071 180.616 429.297 184.184 431.75 185.967C434.426 187.751 437.994 188.643 442.454 188.643H471.888V243.831H413.019Z"/>
+      <path fill="rgba(255,170,70,0.92)" d="M65.5578 247.174C44.8201 247.174 28.6537 242.492 17.0584 233.127C5.68613 223.761 0 211.497 0 196.335C0 186.746 2.00687 178.273 6.02061 170.915C10.0344 163.556 15.609 157.536 22.7445 152.853C30.1031 147.948 38.688 144.268 48.4994 141.816C58.5337 139.14 69.5715 137.802 81.6127 137.802H143.826V171.249H95.6608C89.6402 171.249 84.2886 171.807 79.6059 172.922C74.9232 174.037 71.3554 176.043 68.9026 178.942C66.4497 181.618 65.2233 185.297 65.2233 189.98C65.2233 195.554 67.4532 199.791 71.9129 202.69C76.3726 205.588 82.2817 207.038 89.6402 207.038C97.4447 207.038 104.023 205.811 109.374 203.359C114.949 200.906 119.186 197.45 122.085 192.99C125.206 188.307 126.767 183.067 126.767 177.27V127.099C126.767 121.97 125.652 117.734 123.423 114.389C121.416 111.044 118.182 108.591 113.723 107.031C109.486 105.247 104.023 104.355 97.3332 104.355C91.9816 104.355 86.9644 105.024 82.2817 106.362C77.822 107.476 74.1427 109.483 71.2439 112.382C68.3451 115.058 66.7842 118.96 66.5612 124.089H4.6827C5.79763 110.71 10.3688 99.2262 18.3963 89.6379C26.4238 80.0497 37.2386 72.6913 50.8407 67.5628C64.4429 62.4342 80.0518 59.8699 97.6677 59.8699C112.162 59.6469 125.429 61.5423 137.471 65.5559C149.512 69.3466 158.766 74.3637 165.232 80.6072H167.239C175.267 74.1407 185.301 69.1236 197.342 65.5559C209.384 61.9882 221.982 60.2044 235.138 60.2044C253.869 60.2044 270.259 62.7687 284.307 67.8972C298.578 73.0258 310.173 80.3842 319.092 89.9724C328.235 99.5606 334.701 111.044 338.492 124.423C342.506 137.579 343.621 152.407 341.837 168.908H171.587V134.123H276.279C275.833 127.433 273.826 121.859 270.259 117.399C266.914 112.717 262.231 109.149 256.211 106.696C250.19 104.243 242.943 103.017 234.469 103.017C225.104 103.017 217.188 104.689 210.721 108.034C204.255 111.379 199.238 116.061 195.67 122.082C192.325 127.879 190.653 134.792 190.653 142.819V160.881C190.653 168.016 191.656 174.148 193.663 179.277C195.893 184.405 199.015 188.642 203.028 191.987C207.265 195.331 212.171 197.896 217.745 199.679C223.543 201.24 230.01 202.021 237.145 202.021C246.511 202.021 254.761 200.46 261.897 197.338C269.255 193.993 273.938 189.868 275.945 184.963H340.165C337.712 198.119 331.691 209.379 322.103 218.744C312.514 227.887 300.027 234.91 284.641 239.816C269.478 244.722 252.42 247.174 233.466 247.174C214.735 247.174 198.123 244.61 183.629 239.482C169.135 234.353 156.87 226.214 146.836 215.065H145.498C139.478 222.424 132.23 228.444 123.757 233.127C115.284 237.809 106.141 241.377 96.3298 243.83C86.5184 246.06 76.2611 247.174 65.5578 247.174Z"/>
+    </svg>
+  </g>
+</svg>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
 </div>
@@ -138,6 +124,10 @@ MOVE IN CIRCLES TO PLAY
 </div>
 <script>
 const canvas = document.getElementById("c");
+const logoGroupEl = document.getElementById("logo-group");
+const logoDarkBgEl = document.getElementById("logo-dark-bg");
+const logoTurbulenceEl = document.getElementById("logo-turbulence");
+const logoDisplaceEl = document.getElementById("logo-displace");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: true
 });
@@ -207,14 +197,15 @@ void main() {
   vec2 uvA = vec2(uv.x * aspect, uv.y);
   vec2 mA = vec2(m.x * aspect, m.y);
   float mouseDist = length(uvA - mA);
-  float ripple = sin(mouseDist * 18.0 - t * 4.0)
+  float rippleFreq = 12.0 + u_rippleStrength * 8.0;
+  float ripple = sin(mouseDist * rippleFreq - t * 4.0)
                  * exp(-mouseDist / u_mouseRadius * 1.2)
-                 * u_rippleStrength;
+                 * u_rippleStrength * 1.5;
   vec2 m2A = vec2(m2.x * aspect, m2.y);
   float mouseDist2 = length(uvA - m2A);
-  float ripple2 = sin(mouseDist2 * 14.0 - t * 3.0)
+  float ripple2 = sin(mouseDist2 * (rippleFreq * 0.8) - t * 3.0)
                   * exp(-mouseDist2 / u_mouseRadius * 1.05)
-                  * u_rippleStrength * 0.5;
+                  * u_rippleStrength * 0.8;
   vec2 smokeUV = uvRefracted * 2.5 + vec2(t * 0.04);
   float eps = 0.005;
   float fx0 = fbm(smokeUV - vec2(eps, 0.0));
@@ -237,8 +228,8 @@ void main() {
     float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
     float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
                   * 0.03 * (1.0 + float(i) * 0.1);
-    waveX += ripple * 0.04 * sin(float(i) * 1.3);
-    waveX += ripple2 * 0.025 * cos(float(i) * 0.9);
+    waveX += ripple * 0.12 * sin(float(i) * 1.3);
+    waveX += ripple2 * 0.07 * cos(float(i) * 0.9);
     float logoWarp = logoZone * 0.05 *
       sin(uv.x * 8.0 + t + float(i) * 1.3);
     waveX += logoWarp;
@@ -251,9 +242,13 @@ void main() {
     float activeWidth = 1.0 + isActive * ACTIVE_BAND_GLOW * 0.4;
     float band = exp(-dy * dy * (u_waveSharpness / activeWidth)) * flicker;
     band *= 1.0 + isActive * ACTIVE_BAND_GLOW * 1.4;
+    float isOdd = mod(float(i), 2.0);
     float altFactor = 1.0 + u_waveAlt *
-      sin(float(i) * 3.14159);
-    band *= altFactor;
+      (isOdd * 2.0 - 1.0) * 1.5;
+    band *= max(0.05, altFactor);
+    float mouseBand = exp(-mouseDist * mouseDist /
+      (u_mouseRadius * u_mouseRadius)) * 0.6;
+    band *= 1.0 + mouseBand;
     float glowHalo = exp(-dy * dy * (u_waveSharpness * 0.05))
                      * u_waveGlow * flicker;
     float isWell = 0.0;
@@ -317,7 +312,7 @@ void main() {
   float baseV = clamp(smoke * u_noiseAmount * 0.6 + waves + smokeTrail * 0.4, 0.0, 0.85);
   float glowV = glow * 0.9 + splat * 0.8;
   float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
-  vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
+  vec3 col = mix(vec3(0.04, 0.012, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
   col = mix(col, vec3(0.75, 0.2, 0.02),
@@ -331,6 +326,7 @@ void main() {
   vec3 amberTone = vec3(0.9, 0.45, 0.05);
   vec3 tempShift = mix(redTone, amberTone, u_waveTemp);
   col = mix(col, col * (tempShift * 2.0), 0.3);
+  col *= (u_darkness * 8.0 + 0.3);
   float grain = (hash(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
   col += grain;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -439,14 +435,10 @@ function applyTweakUniforms() {
 }
 
 const sliderDefs = [
-  { key: "u_glowCoreRadius", label: "glow core radius", min: 0.005, max: 0.15, step: 0.001 },
-  { key: "u_glowCoreIntensity", label: "glow core intensity", min: 0.0, max: 6.0, step: 0.05 },
-  { key: "u_glowWideRadius", label: "glow wide radius", min: 0.05, max: 1.2, step: 0.01 },
-  { key: "u_glowWideIntensity", label: "glow wide intensity", min: 0.0, max: 2.0, step: 0.01 },
-  { key: "u_trailLag", label: "trail lag", min: 0.001, max: 0.08, step: 0.001 },
+  { key: "u_trailLag", label: "trail speed", min: 0.001, max: 0.15, step: 0.001 },
   { key: "u_warpStrength", label: "warp strength", min: 0.0, max: 2.0, step: 0.01 },
   { key: "u_noiseAmount", label: "noise amount", min: 0.0, max: 1.0, step: 0.01 },
-  { key: "u_darkness", label: "darkness", min: 0.01, max: 0.15, step: 0.001 },
+  { key: "u_darkness", label: "brightness", min: 0.01, max: 0.15, step: 0.001 },
   { key: "u_waveCount", label: "wave count", min: 2, max: 12, step: 1 },
   { key: "u_waveFreq", label: "wave frequency", min: 2, max: 20, step: 0.5 },
   { key: "u_waveSpeed", label: "wave speed", min: 0, max: 3, step: 0.1 },
@@ -506,6 +498,8 @@ let soundVolume = 0.3;
 let portamentoSensitivity = 0.85;
 let vibratoDepthControl = 0.6;
 let vibratoSpeedControl = 3.5;
+let glowSize = 0.3;
+let glowIntensity = 1.0;
 let releaseTime = 4.0;
 let velocityThreshold = 5;
 let sustainLevel = 0.45;
@@ -519,6 +513,9 @@ let sympatheticOscs = [];
 let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
+let logoDisplacement = 0;
+let logoBlur = 8;
+let logoOpacityTarget = 0.15;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -602,6 +599,29 @@ scaleSelect.addEventListener("change", () => {
 scaleWrap.appendChild(scaleHead);
 scaleWrap.appendChild(scaleSelect);
 panel.appendChild(scaleWrap);
+
+appendSoundSlider(
+  "glow size",
+  0.05,
+  1.5,
+  0.01,
+  () => glowSize,
+  (v) => {
+    glowSize = v;
+  },
+  "glowSize",
+);
+appendSoundSlider(
+  "glow intensity",
+  0.0,
+  4.0,
+  0.05,
+  () => glowIntensity,
+  (v) => {
+    glowIntensity = v;
+  },
+  "glowIntensity",
+);
 
 function appendSoundSlider(label, min, max, step, getVal, setVal, settingKey) {
   const row = document.createElement("div");
@@ -905,6 +925,8 @@ function refreshPanelFromState() {
     else if (k === "portamentoSensitivity") v = portamentoSensitivity;
     else if (k === "vibratoDepthControl") v = vibratoDepthControl;
     else if (k === "vibratoSpeedControl") v = vibratoSpeedControl;
+    else if (k === "glowSize") v = glowSize;
+    else if (k === "glowIntensity") v = glowIntensity;
     else if (k === "gravityStrength") v = gravityStrength;
     else if (k === "octaveMix") v = octaveMix;
     else if (k === "sympatheticMix") v = sympatheticMix;
@@ -920,6 +942,12 @@ function applyImportedSettings(o) {
   if (!o || typeof o !== "object") return;
   const n = (x) => typeof x === "number" && !Number.isNaN(x);
   for (const key of Object.keys(tweak)) {
+    if (
+      key === "u_glowCoreRadius" ||
+      key === "u_glowCoreIntensity" ||
+      key === "u_glowWideRadius" ||
+      key === "u_glowWideIntensity"
+    ) continue;
     if (n(o[key])) tweak[key] = o[key];
   }
   if (n(o.releaseTime)) releaseTime = o.releaseTime;
@@ -932,6 +960,8 @@ function applyImportedSettings(o) {
   if (n(o.portamentoSensitivity)) portamentoSensitivity = o.portamentoSensitivity;
   if (n(o.vibratoDepthControl)) vibratoDepthControl = o.vibratoDepthControl;
   if (n(o.vibratoSpeedControl)) vibratoSpeedControl = o.vibratoSpeedControl;
+  if (n(o.glowSize)) glowSize = o.glowSize;
+  if (n(o.glowIntensity)) glowIntensity = o.glowIntensity;
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
   if (n(o.octaveMix)) octaveMix = o.octaveMix;
@@ -951,10 +981,8 @@ copyBtn.id = "tweak-copy";
 copyBtn.textContent = "Copy values";
 copyBtn.addEventListener("click", () => {
   const o = {
-    u_glowCoreRadius: tweak.u_glowCoreRadius,
-    u_glowCoreIntensity: tweak.u_glowCoreIntensity,
-    u_glowWideRadius: tweak.u_glowWideRadius,
-    u_glowWideIntensity: tweak.u_glowWideIntensity,
+    glowSize,
+    glowIntensity,
     u_trailLag: tweak.u_trailLag,
     u_warpStrength: tweak.u_warpStrength,
     u_noiseAmount: tweak.u_noiseAmount,
@@ -1308,6 +1336,10 @@ window.addEventListener(
 function frame(t){
   const tmx=tx;
   const tmy=ty;
+  tweak.u_glowCoreRadius = glowSize * 0.25;
+  tweak.u_glowWideRadius = glowSize * 1.2;
+  tweak.u_glowCoreIntensity = glowIntensity * 1.8;
+  tweak.u_glowWideIntensity = glowIntensity * 0.45;
   scrollSemitones = targetScrollSemitones;
   smoothScrollSemitones+=
     (targetScrollSemitones-smoothScrollSemitones)*0.03;
@@ -1402,10 +1434,31 @@ function frame(t){
       logoPresence+=(0.0-logoPresence)*0.008;
     }
   }
-  const logoMask = document.getElementById("logo-mask");
-  if (logoMask) {
-    logoMask.style.opacity = Math.max(0.15,
-      Math.min(logoPresence * 0.9, 0.85)).toFixed(3);
+  const turbulenceEl = logoTurbulenceEl;
+  const displaceEl = logoDisplaceEl;
+  const logoGroupNode = logoGroupEl;
+  const logoDarkEl = logoDarkBgEl;
+  if (turbulenceEl && displaceEl && logoGroupNode) {
+    const velForLogo = Math.min(smoothVelocity + smoothVelX, 30);
+    const targetDisplacement = velForLogo * 0.8 +
+      noteFlash * 12.0 +
+      splatIntensity * 8.0;
+    const targetBlur = velForLogo * 0.25 +
+      noteFlash * 3.0;
+    logoDisplacement += (targetDisplacement - logoDisplacement) * 0.08;
+    logoBlur += (targetBlur - logoBlur) * 0.06;
+    logoOpacityTarget = Math.max(0.15,
+      Math.min(logoPresence * 1.2, 0.92));
+    displaceEl.setAttribute("scale", logoDisplacement.toFixed(2));
+    logoGroupNode.style.filter =
+      `url(#logo-distort) blur(${Math.min(logoBlur, 6).toFixed(1)}px)`;
+    logoGroupNode.style.opacity = logoOpacityTarget.toFixed(3);
+    if (logoDarkEl) {
+      logoDarkEl.style.opacity = (logoOpacityTarget * 0.75).toFixed(3);
+    }
+    const bf = 0.015 + Math.sin(Date.now() * 0.0003) * 0.005;
+    turbulenceEl.setAttribute("baseFrequency",
+      `${bf.toFixed(4)} 0.008`);
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
