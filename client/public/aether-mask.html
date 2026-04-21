@@ -1018,6 +1018,13 @@ document.getElementById("tweak-toggle").addEventListener("click", () => {
   const open = root.classList.toggle("collapsed");
   document.getElementById("tweak-toggle").setAttribute("aria-expanded", open ? "false" : "true");
 });
+document.getElementById("tweak-root").addEventListener(
+  "wheel",
+  (e) => {
+    e.stopPropagation();
+  },
+  { passive: false },
+);
 
 let audioCtx = null;
 let lastBand = -1;
