@@ -198,7 +198,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   <canvas id="lens-canvas" style="
   position:absolute;
   top:50%;left:50%;
-  transform:translate(-50%,-50%);
+  transform:translate(-50%,-50%) scaleY(-1);
   width:100%;
   aspect-ratio:2096/495;
   -webkit-mask-image:url('/aether_logo_white.png');
@@ -214,7 +214,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   will-change:opacity;
   z-index:0;
 "></canvas>
-  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
+  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0;will-change:opacity,background;"></div>
   <canvas id="sand-canvas" style="
   position:absolute;
   top:50%;left:50%;
@@ -244,6 +244,32 @@ const startOverlay = document.getElementById("start-overlay");
 const logoLayerEl = document.getElementById("logo-layer");
 const logoWrapEl = document.getElementById("logo-wrap");
 const logoVideoMaskEl = document.getElementById("logo-video-mask");
+function logLogoLayerDiagnostics() {
+  const lens = document.getElementById("lens-canvas");
+  const layer = document.getElementById("logo-layer");
+  const vidStage = document.getElementById("logo-video-stage");
+  if (!lens || !layer) return;
+  const cl = getComputedStyle(lens);
+  const ly = getComputedStyle(layer);
+  const vs = vidStage ? getComputedStyle(vidStage) : null;
+  console.log("[aether-mask logo diagnostics]", {
+    lensCanvas: {
+      opacity: cl.opacity,
+      transform: cl.transform,
+      display: cl.display,
+      visibility: cl.visibility,
+    },
+    logoLayer: { opacity: ly.opacity },
+    logoVideoStage: vs
+      ? {
+          opacity: vs.opacity,
+          display: vs.display,
+          visibility: vs.visibility,
+          zIndex: vs.zIndex,
+        }
+      : null,
+  });
+}
 function logLogoLayerSizes() {
   if (!logoVideoMaskEl || !logoWrapEl) return;
   const vr = logoVideoMaskEl.getBoundingClientRect();
@@ -258,7 +284,10 @@ function logLogoLayerSizes() {
   });
 }
 addEventListener("load", () => {
-  requestAnimationFrame(logLogoLayerSizes);
+  requestAnimationFrame(() => {
+    logLogoLayerDiagnostics();
+    logLogoLayerSizes();
+  });
 });
 addEventListener("resize", () => {
   requestAnimationFrame(logLogoLayerSizes);
