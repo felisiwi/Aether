@@ -1890,8 +1890,8 @@ function frame(t){
       Math.pow((mx / window.innerWidth) - 0.5, 2) +
       Math.pow((my / window.innerHeight) - 0.5, 2));
     const proximityBoost =
-      (1 - Math.min(1, mouseDistFromCenter / 0.4))
-      * 0.35 * logoProximity;
+      Math.pow(Math.max(0, 1 - mouseDistFromCenter / 0.6), 2)
+      * 0.8 * logoProximity;
     const soundBoost = noteFlash * 0.4 * logoSoundReact;
     const finalOpacity = Math.min(0.97,
       (logoPresence * 0.9 + proximityBoost + soundBoost)
@@ -1903,6 +1903,12 @@ function frame(t){
     logoEl.style.setProperty('background-color',
       logoColor === 'black' ? '#000000' : '#ffffff',
       'important');
+    const waveShift = smoothVelocity * 0.8 * logoWaveWarp;
+    const waveScale = 1.0 + (smoothVelocity * 0.003
+      * logoWaveWarp);
+    const transformStr =
+      `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%) scaleX(${waveScale.toFixed(4)})`;
+    logoWrapEl.style.transform = transformStr;
     const ca = logoChromatic * finalOpacity;
     if (ca > 0.1) {
       const tLogo = performance.now();
