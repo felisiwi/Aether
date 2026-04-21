@@ -1894,13 +1894,18 @@ function frame(t){
     const ca = logoChromatic * finalOpacity;
     if (ca > 0.1) {
       const tLogo = performance.now();
-      const jitterX = Math.sin(tLogo * 0.011) * 0.6 + Math.sin(tLogo * 0.037) * 0.3;
-      const jitterY = Math.sin(tLogo * 0.017) * 0.4;
-      const offX = ca + jitterX;
+      // Reduced jitter — too much jitter breaks depth perception through glasses
+      const jitterX = Math.sin(tLogo * 0.011) * 0.3 + Math.sin(tLogo * 0.037) * 0.15;
+      const jitterY = Math.sin(tLogo * 0.017) * 0.15;
+      // Slightly larger base offset so depth pops through glasses
+      // Red shifted LEFT, blue shifted RIGHT — correct anaglyph parallax
+      const offX = ca * 1.3 + jitterX;
       const offY = jitterY;
       logoWrapEl.style.filter =
-        `drop-shadow(${offX.toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(255,0,0,1)) ` +
-        `drop-shadow(${(-offX).toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(0,200,255,1))`;
+        // Pure red, shifted left (negative X) — seen by LEFT eye through blue lens
+        `drop-shadow(${(-offX).toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(255,0,0,1)) ` +
+        // Pure blue, shifted right (positive X) — seen by RIGHT eye through red lens
+        `drop-shadow(${offX.toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(0,0,255,1))`;
     } else {
       logoWrapEl.style.filter = 'none';
     }
