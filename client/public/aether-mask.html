@@ -1886,8 +1886,20 @@ function frame(t){
   }
   const logoEl = document.getElementById('logo-layer');
   if (logoEl && logoWrapEl) {
-    const finalOpacity = logoBrightness;
-    logoEl.style.opacity = finalOpacity.toFixed(3);
+    const mouseDistFromCenter = Math.sqrt(
+      Math.pow((mx / window.innerWidth) - 0.5, 2) +
+      Math.pow((my / window.innerHeight) - 0.5, 2));
+    const proximityBoost =
+      (1 - Math.min(1, mouseDistFromCenter / 0.4))
+      * 0.35 * logoProximity;
+    const soundBoost = noteFlash * 0.4 * logoSoundReact;
+    const finalOpacity = Math.min(0.97,
+      Math.max(logoBrightness,
+        logoPresence * 1.2 + proximityBoost + soundBoost));
+    if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
+      logoEl._lastOp = finalOpacity.toFixed(3);
+      logoEl.style.opacity = finalOpacity.toFixed(3);
+    }
     logoEl.style.setProperty('background-color',
       logoColor === 'black' ? '#000000' : '#ffffff',
       'important');
