@@ -490,21 +490,7 @@ copyBtn.addEventListener("click", () => {
     vibratoDepthControl,
     vibratoSpeedControl,
   };
-  const text = JSON.stringify(o, null, 2);
-  navigator.clipboard.writeText(text).then(() => {
-    copyBtn.textContent = "Copied!";
-    copyBtn.style.background = "rgba(255,120,40,0.3)";
-    setTimeout(() => {
-      copyBtn.textContent = "Copy values";
-      copyBtn.style.background = "";
-    }, 1500);
-  }).catch(() => {
-    copyBtn.textContent = "Open console (F12) for values";
-    console.log(JSON.stringify(o, null, 2));
-    setTimeout(() => {
-      copyBtn.textContent = "Copy values";
-    }, 2000);
-  });
+  console.log(o);
 });
 panel.appendChild(copyBtn);
 
@@ -612,7 +598,6 @@ let mouseVelX=0;
 let smoothVelX=0;
 let dwellTime=0;
 let lastBandY=-1;
-let mouseStillTime=0;
 let mx2=mx,my2=my;
 let lastMoveTime=performance.now();
 let idleBreath=0;
@@ -642,13 +627,6 @@ function frame(t){
   prevTmx=tmx;
   mouseVelX=rawVelX;
   smoothVelX+=(rawVelX-smoothVelX)*0.15;
-  const totalVel=smoothVelocity+smoothVelX;
-  const isMoving=totalVel>1.5;
-  if (isMoving) {
-    mouseStillTime=0;
-  } else {
-    mouseStillTime+=0.016;
-  }
   mx+=(tx-mx)*.08;my+=(ty-my)*.08;
   const lag=tweak.u_trailLag;
   mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
@@ -657,16 +635,13 @@ function frame(t){
   const normY=1.0-tmy/window.innerHeight;
   const rawBand=normY*8;
   const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
-  const bandFraction=rawBand-Math.floor(rawBand);
-  const inDeadZone=bandFraction<0.15||bandFraction>0.85;
-  const shouldTrigger=!inDeadZone||smoothVelocity>8;
   const sensitivity=portamentoSensitivity;
   const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
   const clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
   smoothBandY+=(normY-smoothBandY)*clampedGlide;
   const velocityThreshold=3+portamentoSensitivity*8;
   const isSettling=smoothVelocity<velocityThreshold;
-  if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
+  if (clampedBand!==lastBand&&isSettling) {
     lastBand=clampedBand;
     const velVolume=soundVolume*(0.4+Math.min(smoothVelocity/15.0,0.6));
     playNoteWithVolume(clampedBand,velVolume);
@@ -678,6 +653,7 @@ function frame(t){
   const freqGlide=0.03+(1.0-sensitivity)*0.08;
   if (glideOsc1&&audioCtx) {
     currentFreq+=(targetFreq-currentFreq)*freqGlide;
+    const isMoving=Math.abs(tx-mx)+Math.abs(ty-my)>2;
     if (clampedBand===lastBand) {
       const vibratoDepth=smoothVelX*0.4*vibratoDepthControl;
       const vibratoFreq=vibratoSpeedControl;
@@ -688,14 +664,10 @@ function frame(t){
       glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
       glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
     }
-    const releaseTime=1.5;
-    const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
     const holdingNote=clampedBand===lastBand;
     const sustainBoost=holdingNote?Math.min(smoothVelX/10.0,0.3):0.0;
-    const targetGlideVol=soundVolume*(0.15+sustainBoost)*sustainFade;
-    if (glideGain&&audioCtx) {
-      glideGain.gain.setTargetAtTime(targetGlideVol,audioCtx.currentTime,0.3);
-    }
+    const targetGlideVol=(isMoving||holdingNote)?soundVolume*(0.15+sustainBoost):0.0;
+    glideGain.gain.setTargetAtTime(targetGlideVol,audioCtx.currentTime,0.1);
     const blend=mouseX;
     glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
     glideG2.gain.setValueAtTime(blend*0.4,audioCtx.currentTime);
