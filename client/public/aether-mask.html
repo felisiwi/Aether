@@ -187,6 +187,7 @@ uniform float u_velocity;
 uniform float u_velX;
 uniform float u_drift;
 uniform float u_logoPresence;
+uniform float u_waveInfluence;
 uniform float u_noteFlash;
 uniform float u_activeBandNorm;
 uniform float u_hangDrum;
@@ -335,8 +336,12 @@ void main() {
   } else {
     edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
   }
+  float letterX = 0.5 + sin(t * 0.7) * 0.02;
+  float letterGlow = smoothstep(0.25, 0.0,
+    abs(uv.x - letterX)) * logoZoneY *
+    u_logoPresence * u_waveInfluence;
   float baseV = clamp(smoke * u_noiseAmount * 0.6 + waves + smokeTrail * 0.4, 0.0, 0.85);
-  float glowV = glow * 0.9 + splat * 0.8;
+  float glowV = glow * 0.9 + splat * 0.8 + letterGlow * 0.35;
   float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
   vec3 col = mix(vec3(0.04, 0.012, 0.0),
                  vec3(0.4, 0.08, 0.01),
@@ -402,6 +407,7 @@ const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
 const uDrift=gl.getUniformLocation(p,"u_drift");
 const uLogoPresence=gl.getUniformLocation(p,"u_logoPresence");
+const uWaveInfluence=gl.getUniformLocation(p,"u_waveInfluence");
 const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
 const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
 const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
@@ -542,10 +548,16 @@ let sympatheticMix = 0.15;
 let logoDisplacement = 0;
 let logoBlur = 0;
 let logoDistortAmount = 8;
+let logoDistortBase = 0;
 let logoBlurAmount = 0.0;
+let logoBlurBase = 0;
 let logoSharpness = 1.4;
 let logoBrightness = 0.25;
 let logoInvertBlur = false;
+let logoChromatic = 0;
+let logoWaveInfluence = 0.5;
+let logoTurbFreq = 0.012;
+let logoTurbSpeed = 0.3;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -821,7 +833,7 @@ const logoSectionHead = document.createElement("div");
 logoSectionHead.className = "tweak-head";
 const logoSectionLab = document.createElement("span");
 logoSectionLab.className = "tweak-label";
-logoSectionLab.textContent = "logo";
+logoSectionLab.textContent = "── LOGO ──";
 logoSectionHead.appendChild(logoSectionLab);
 logoSection.appendChild(logoSectionHead);
 panel.appendChild(logoSection);
@@ -849,6 +861,17 @@ appendSoundSlider(
   "logoDistortAmount",
 );
 appendSoundSlider(
+  "logo distort base",
+  0,
+  20,
+  0.5,
+  () => logoDistortBase,
+  (v) => {
+    logoDistortBase = v;
+  },
+  "logoDistortBase",
+);
+appendSoundSlider(
   "logo blur",
   0,
   6,
@@ -860,6 +883,17 @@ appendSoundSlider(
   "logoBlurAmount",
 );
 appendSoundSlider(
+  "logo blur base",
+  0,
+  4,
+  0.1,
+  () => logoBlurBase,
+  (v) => {
+    logoBlurBase = v;
+  },
+  "logoBlurBase",
+);
+appendSoundSlider(
   "logo sharpness",
   0.5,
   3.0,
@@ -869,6 +903,50 @@ appendSoundSlider(
     logoSharpness = v;
   },
   "logoSharpness",
+);
+appendSoundSlider(
+  "logo chromatic",
+  0,
+  8,
+  0.1,
+  () => logoChromatic,
+  (v) => {
+    logoChromatic = v;
+  },
+  "logoChromatic",
+);
+appendSoundSlider(
+  "logo wave infl.",
+  0,
+  1,
+  0.01,
+  () => logoWaveInfluence,
+  (v) => {
+    logoWaveInfluence = v;
+  },
+  "logoWaveInfluence",
+);
+appendSoundSlider(
+  "logo turb freq",
+  0.001,
+  0.05,
+  0.001,
+  () => logoTurbFreq,
+  (v) => {
+    logoTurbFreq = v;
+  },
+  "logoTurbFreq",
+);
+appendSoundSlider(
+  "logo turb speed",
+  0,
+  2,
+  0.05,
+  () => logoTurbSpeed,
+  (v) => {
+    logoTurbSpeed = v;
+  },
+  "logoTurbSpeed",
 );
 
 const logoBlurToggleRow = document.createElement("div");
@@ -1050,8 +1128,14 @@ function refreshPanelFromState() {
     else if (k === "glowIntensity") v = glowIntensity;
     else if (k === "logoBrightness") v = logoBrightness;
     else if (k === "logoDistortAmount") v = logoDistortAmount;
+    else if (k === "logoDistortBase") v = logoDistortBase;
     else if (k === "logoBlurAmount") v = logoBlurAmount;
+    else if (k === "logoBlurBase") v = logoBlurBase;
     else if (k === "logoSharpness") v = logoSharpness;
+    else if (k === "logoChromatic") v = logoChromatic;
+    else if (k === "logoWaveInfluence") v = logoWaveInfluence;
+    else if (k === "logoTurbFreq") v = logoTurbFreq;
+    else if (k === "logoTurbSpeed") v = logoTurbSpeed;
     else if (k === "gravityStrength") v = gravityStrength;
     else if (k === "octaveMix") v = octaveMix;
     else if (k === "sympatheticMix") v = sympatheticMix;
@@ -1089,8 +1173,14 @@ function applyImportedSettings(o) {
   if (n(o.glowIntensity)) glowIntensity = o.glowIntensity;
   if (n(o.logoBrightness)) logoBrightness = o.logoBrightness;
   if (n(o.logoDistortAmount)) logoDistortAmount = o.logoDistortAmount;
+  if (n(o.logoDistortBase)) logoDistortBase = o.logoDistortBase;
   if (n(o.logoBlurAmount)) logoBlurAmount = o.logoBlurAmount;
+  if (n(o.logoBlurBase)) logoBlurBase = o.logoBlurBase;
   if (n(o.logoSharpness)) logoSharpness = o.logoSharpness;
+  if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
+  if (n(o.logoWaveInfluence)) logoWaveInfluence = o.logoWaveInfluence;
+  if (n(o.logoTurbFreq)) logoTurbFreq = o.logoTurbFreq;
+  if (n(o.logoTurbSpeed)) logoTurbSpeed = o.logoTurbSpeed;
   if (typeof o.logoInvertBlur === "boolean") logoInvertBlur = o.logoInvertBlur;
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
@@ -1116,8 +1206,14 @@ copyBtn.addEventListener("click", () => {
     glowIntensity,
     logoBrightness,
     logoDistortAmount,
+    logoDistortBase,
     logoBlurAmount,
+    logoBlurBase,
     logoSharpness,
+    logoChromatic,
+    logoWaveInfluence,
+    logoTurbFreq,
+    logoTurbSpeed,
     logoInvertBlur,
     u_trailLag: tweak.u_trailLag,
     u_warpStrength: tweak.u_warpStrength,
@@ -1221,6 +1317,8 @@ document.getElementById("tweak-root").addEventListener(
 );
 
 let audioCtx = null;
+let pageFocused = true;
+let pageFadeGain = null;
 let lastBand = -1;
 let activeGain = null;
 let activeBand = -1;
@@ -1255,7 +1353,7 @@ function initSympathetic() {
     filter.frequency.value = freq;
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(pageFadeGain || audioCtx.destination);
     osc.start();
     sympatheticOscs.push(osc);
     sympatheticGains.push(gain);
@@ -1285,7 +1383,7 @@ function initGlide() {
   glideOsc2.connect(glideG2);
   glideG2.connect(glideFilter);
   glideFilter.connect(glideGain);
-  glideGain.connect(audioCtx.destination);
+  glideGain.connect(pageFadeGain || audioCtx.destination);
   glideOsc1.start();
   glideOsc2.start();
 }
@@ -1312,7 +1410,7 @@ function initOctaveLayer() {
   octaveLayerOsc2.connect(og2);
   og2.connect(octFilter);
   octFilter.connect(octaveLayerGainNode);
-  octaveLayerGainNode.connect(audioCtx.destination);
+  octaveLayerGainNode.connect(pageFadeGain || audioCtx.destination);
 
   octaveLayerG1 = og1;
   octaveLayerG2 = og2;
@@ -1325,10 +1423,37 @@ function initOctaveLayer() {
 function initAudio() {
   if (!audioCtx) audioCtx = new AudioContext();
   if (audioCtx.state === "suspended") audioCtx.resume();
+  if (!pageFadeGain) {
+    pageFadeGain = audioCtx.createGain();
+    pageFadeGain.gain.value = 1.0;
+    pageFadeGain.connect(audioCtx.destination);
+  }
   initGlide();
   initOctaveLayer();
   initSympathetic();
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = !document.hidden;
+  if (document.hidden) {
+    pageFadeGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.5);
+  } else {
+    pageFadeGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+  }
+});
+
+window.addEventListener("blur", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = false;
+  pageFadeGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.8);
+});
+
+window.addEventListener("focus", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = true;
+  pageFadeGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+});
 
 function playNoteWithVolume(bandIndex, vol) {
   if (!audioCtx) return;
@@ -1363,7 +1488,7 @@ function playNoteWithVolume(bandIndex, vol) {
   osc2.connect(gain2);
   gain2.connect(filter);
   filter.connect(master);
-  master.connect(audioCtx.destination);
+  master.connect(pageFadeGain || audioCtx.destination);
   osc1.start();
   osc2.start();
   osc1.stop(t0 + soundDecay / 1000 + 0.1);
@@ -1575,15 +1700,16 @@ function frame(t){
   const logoGroupNode = logoGroupEl;
   if (turbulenceEl && displaceEl && logoGroupNode) {
     const velForLogo = Math.min(smoothVelocity + smoothVelX, 25);
-    const targetDisplacement = velForLogo * (logoDistortAmount / 25) +
+    const targetDisplacement = logoDistortBase +
+      velForLogo * (logoDistortAmount / 25) +
       noteFlash * 15.0 +
       splatIntensity * 6.0;
     let targetBlur;
     if (logoInvertBlur) {
-      targetBlur = logoBlurAmount +
+      targetBlur = logoBlurBase +
         Math.max(0, 3.0 - velForLogo * 0.2);
     } else {
-      targetBlur = logoBlurAmount +
+      targetBlur = logoBlurBase +
         velForLogo * 0.15 + noteFlash * 2.0;
     }
     logoDisplacement += (targetDisplacement - logoDisplacement) * 0.07;
@@ -1597,10 +1723,16 @@ function frame(t){
     }
     const logoOpacity = Math.max(logoBrightness,
       Math.min(logoPresence * 1.3, 0.95));
+    const ca = logoChromatic * logoOpacity;
+    logoGroupNode.style.filter = ca > 0.1
+      ? `url(#logo-distort) drop-shadow(${ca}px 0 0 rgba(255,0,60,0.5)) drop-shadow(${-ca}px 0 0 rgba(0,200,255,0.4))`
+      : "url(#logo-distort)";
     logoGroupNode.style.opacity = logoOpacity.toFixed(3);
-    const bf = 0.012 + Math.sin(Date.now() * 0.0003) * 0.004;
+    const bfAnim = Math.sin(Date.now() *
+      logoTurbSpeed * 0.001) * 0.005;
+    const bf = logoTurbFreq + bfAnim;
     turbulenceEl.setAttribute("baseFrequency",
-      `${bf.toFixed(4)} 0.006`);
+      `${bf.toFixed(4)} ${(bf * 0.5).toFixed(4)}`);
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
@@ -1698,6 +1830,7 @@ function frame(t){
   gl.uniform1fv(uSympathetic, sympatheticLevels);
   gl.uniform1f(uDrift, Math.max(0.35, idleBreath * 0.8 + 0.45));
   gl.uniform1f(uLogoPresence, logoPresence);
+  gl.uniform1f(uWaveInfluence, logoWaveInfluence);
   gl.uniform1f(uNoteFlash, noteFlash);
   gl.uniform1f(uSplatIntensity, splatIntensity);
   gl.uniform2f(uSplatPos, splatX, splatY);
