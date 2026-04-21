@@ -1899,8 +1899,8 @@ function frame(t){
       const offX = ca + jitterX;
       const offY = jitterY;
       logoWrapEl.style.filter =
-        `drop-shadow(${offX.toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(80,0,140,1)) ` +
-        `drop-shadow(${(-offX).toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(255,200,50,1))`;
+        `drop-shadow(${offX.toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(255,0,0,1)) ` +
+        `drop-shadow(${(-offX).toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(0,200,255,1))`;
     } else {
       logoWrapEl.style.filter = 'none';
     }
