@@ -76,7 +76,6 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
 </div>
-<div id="zone-indicator" style="position:absolute;bottom:56px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:10px;letter-spacing:0.14em;color:rgba(255,150,80,0.35);pointer-events:none;user-select:none;transition:opacity 0.5s;opacity:0.2;">HOME</div>
 <div class="logo-wrap">
 <video autoplay muted loop playsinline>
 <source src="aether-bg.mp4" type="video/mp4">
@@ -113,11 +112,6 @@ uniform float u_octaveAmount;
 uniform float u_octaveDirection;
 uniform float u_velocity;
 uniform float u_velX;
-uniform float u_zoneHueShift;
-uniform float u_zoneDarkness;
-uniform float u_zoneScroll;
-uniform float u_zoneWaveSpeedMul;
-uniform float u_zoneFlow;
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
 }
@@ -128,12 +122,6 @@ float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*sn(p);p*=2.;a*=.5;}r
 const float ACTIVE_BAND_GLOW = 1.0;
 float wrapAng(float a) {
   return atan(sin(a), cos(a));
-}
-vec3 applyHueShift(vec3 col, float shift) {
-  col.r = clamp(col.r + shift * 0.3, 0.0, 1.0);
-  col.g = clamp(col.g + shift * 0.5, 0.0, 1.0);
-  col.b = clamp(col.b - shift * 0.1, 0.0, 1.0);
-  return col;
 }
 void main() {
   vec2 uv = gl_FragCoord.xy / u_res;
@@ -166,9 +154,9 @@ void main() {
   for (int i = 0; i < 12; i++) {
     if (float(i) >= wc) break;
     float fi = float(i) / wc;
-    float bandAngle = (fi - 0.5) * PI * 2.0 + u_zoneFlow;
+    float bandAngle = (fi - 0.5) * PI * 2.0;
     float harmonic = 1.0 + float(i) * 0.5;
-    float phase = fi * 6.28 + t * u_waveSpeed * u_zoneWaveSpeedMul * harmonic * 0.3;
+    float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
     float wobble = sin(dist * u_waveFreq * harmonic + phase)
                    * 0.04 * u_rippleStrength;
     float da = angle - bandAngle + wobble;
@@ -221,7 +209,7 @@ void main() {
     edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
   }
   float v = clamp(smoke * 0.7 + waves + glow * 0.7 + rings + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
-  vec3 col = mix(vec3(u_zoneDarkness, u_zoneDarkness * 0.3, 0.0),
+  vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
   col = mix(col, vec3(0.75, 0.2, 0.02),
@@ -231,7 +219,6 @@ void main() {
   col = mix(col, vec3(1.0, 0.9, 0.7),
             smoothstep(0.8, 1.0, v));
   col = mix(col, col * vec3(1.0, 0.85, 0.6), u_mouseX * 0.3);
-  col = applyHueShift(col, u_zoneHueShift);
   float grain = (hash(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
   col += grain;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -275,11 +262,6 @@ const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
 const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
 const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
-const uZoneHueShift=gl.getUniformLocation(p,"u_zoneHueShift");
-const uZoneDarkness=gl.getUniformLocation(p,"u_zoneDarkness");
-const uZoneScroll=gl.getUniformLocation(p,"u_zoneScroll");
-const uZoneWaveSpeedMul=gl.getUniformLocation(p,"u_zoneWaveSpeedMul");
-const uZoneFlow=gl.getUniformLocation(p,"u_zoneFlow");
 
 const tweak = {
   u_glowCoreRadius: 0.09,
@@ -378,69 +360,6 @@ let gravityStrength = 0.3;
 let gravityEnabled = true;
 let octaveMix = 0.6;
 let oscType = "sine";
-
-let currentZone = 0;
-let targetZone = 0;
-let zoneTransition = 0;
-let zoneScrollAccum = 0;
-let zoneFreqMult = 1;
-
-const ZONE_CONFIGS = [
-  {
-    name: "DEEP",
-    semitoneShift: -7,
-    hueShift: -0.15,
-    waveSpeed: 0.2,
-    darkness: 0.12,
-    description: "low / resonant",
-  },
-  {
-    name: "LOW",
-    semitoneShift: -5,
-    hueShift: -0.08,
-    waveSpeed: 0.3,
-    darkness: 0.09,
-    description: "warm / grounded",
-  },
-  {
-    name: "HOME",
-    semitoneShift: 0,
-    hueShift: 0,
-    waveSpeed: 0.4,
-    darkness: 0.07,
-    description: "balanced",
-  },
-  {
-    name: "HIGH",
-    semitoneShift: 5,
-    hueShift: 0.08,
-    waveSpeed: 0.6,
-    darkness: 0.05,
-    description: "bright / open",
-  },
-  {
-    name: "BRILLIANT",
-    semitoneShift: 7,
-    hueShift: 0.15,
-    waveSpeed: 0.8,
-    darkness: 0.03,
-    description: "high / crystalline",
-  },
-];
-
-function getZoneConfig(zone) {
-  return ZONE_CONFIGS[zone + 2];
-}
-
-function flashZoneIndicator() {
-  const el = document.getElementById("zone-indicator");
-  if (!el) return;
-  el.textContent = getZoneConfig(targetZone).name;
-  el.style.opacity = "0.6";
-  setTimeout(() => {
-    el.style.opacity = "0.2";
-  }, 1500);
-}
 
 function angleDiff(target, current) {
   let d = target - current;
@@ -983,7 +902,7 @@ function initAudio() {
 
 function playNoteWithVolume(bandIndex, vol) {
   if (!audioCtx) return;
-  const freq = currentScale[bandIndex] * zoneFreqMult;
+  const freq = currentScale[bandIndex];
   const osc1 = audioCtx.createOscillator();
   const osc2 = audioCtx.createOscillator();
   const gain1 = audioCtx.createGain();
@@ -1053,29 +972,6 @@ document.addEventListener("mousemove", (e) => {
 });
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);}
 window.addEventListener("resize",resize);resize();
-window.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-    initAudio();
-    let moved = false;
-    zoneScrollAccum += e.deltaY;
-    while (zoneScrollAccum > 120) {
-      zoneScrollAccum -= 120;
-      const prev = targetZone;
-      targetZone = Math.max(-2, Math.min(2, targetZone - 1));
-      if (targetZone !== prev) moved = true;
-    }
-    while (zoneScrollAccum < -120) {
-      zoneScrollAccum += 120;
-      const prev = targetZone;
-      targetZone = Math.max(-2, Math.min(2, targetZone + 1));
-      if (targetZone !== prev) moved = true;
-    }
-    if (moved) flashZoneIndicator();
-  },
-  { passive: false },
-);
 function frame(t){
   const tmx=tx;
   const tmy=ty;
@@ -1099,28 +995,6 @@ function frame(t){
   mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
   const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
   idleBreath+=(idle-idleBreath)*0.02;
-  const zoneChanged = targetZone !== currentZone;
-  if (zoneChanged) {
-    zoneTransition += 0.02;
-    if (zoneTransition >= 1.0) {
-      currentZone = targetZone;
-      zoneTransition = 0.0;
-    }
-  }
-  const fromZ = getZoneConfig(currentZone);
-  const toZ = getZoneConfig(targetZone);
-  const zt = zoneTransition;
-  const zoneSemitones =
-    fromZ.semitoneShift * (1 - zt) + toZ.semitoneShift * zt;
-  zoneFreqMult = Math.pow(2, zoneSemitones / 12);
-  const zoneWaveSpeedMul =
-    (fromZ.waveSpeed * (1 - zt) + toZ.waveSpeed * zt) / 0.4;
-  const zoneDarkness =
-    fromZ.darkness * (1 - zt) + toZ.darkness * zt;
-  const zoneHueShift =
-    fromZ.hueShift * (1 - zt) + toZ.hueShift * zt;
-  const zoneFlow =
-    zoneTransition * 0.3 * Math.sign(targetZone - currentZone);
   const cx=window.innerWidth/2;
   const cy=window.innerHeight/2;
   const dx=tmx-cx;
@@ -1164,10 +1038,9 @@ function frame(t){
   }
   const targetBand=Math.max(0,Math.min(7,Math.floor(smoothBandY*8)));
   const targetFreq=currentScale[targetBand];
-  const zonedTargetFreq=targetFreq*zoneFreqMult;
   const freqGlide=0.03+(1.0-sensitivity)*0.08;
   if (glideOsc1&&audioCtx) {
-    currentFreq+=(zonedTargetFreq-currentFreq)*freqGlide;
+    currentFreq+=(targetFreq-currentFreq)*freqGlide;
     const distPressure=smoothDist>0.9?(smoothDist-0.9)*10.0:0.0;
     octaveAmount+=(distPressure-octaveAmount)*0.04;
     octaveDirection=smoothDist>=0.5?1:-1;
@@ -1226,11 +1099,6 @@ function frame(t){
   gl.uniform1f(uOctaveDirection, octaveDirection);
   gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
   gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
-  gl.uniform1f(uZoneHueShift, zoneHueShift);
-  gl.uniform1f(uZoneDarkness, zoneDarkness);
-  gl.uniform1f(uZoneScroll, zoneTransition);
-  gl.uniform1f(uZoneWaveSpeedMul, zoneWaveSpeedMul);
-  gl.uniform1f(uZoneFlow, zoneFlow);
   if (activeBand>=0&&activeBand<8) {
     const hints=HARMONIC_HINTS[activeBand];
     gl.uniform1f(uHintBand0,hints[0]);
