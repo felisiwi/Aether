@@ -5,7 +5,7 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a0500; width: 100vw; height: 100vh; overflow: hidden; }
-canvas { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 #tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
 #tweak-toggle {
   position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
@@ -114,8 +114,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; will-change: t
 <body>
 <canvas id="c"></canvas>
 <div id="logo-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-  <img id="logo-white" src="/aether_logo_white.png" style="width:62%;height:auto;mix-blend-mode:screen;opacity:0;pointer-events:none;will-change:opacity,filter;">
-  <img id="logo-black" src="/aether_logo_black.png" style="position:absolute;width:62%;height:auto;mix-blend-mode:multiply;opacity:0;pointer-events:none;will-change:opacity,filter;">
+  <div id="logo-glass" style="width:62%;aspect-ratio:2096/495;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;backdrop-filter:blur(8px) brightness(1.6);-webkit-backdrop-filter:blur(8px) brightness(1.6);opacity:0;will-change:opacity,filter;"></div>
+  <div id="logo-screen" style="position:absolute;width:62%;aspect-ratio:2096/495;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background:rgba(255,200,100,0.9);mix-blend-mode:screen;opacity:0;will-change:opacity;"></div>
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -131,8 +131,8 @@ MOVE IN CIRCLES TO PLAY
 </div>
 <script>
 const canvas = document.getElementById("c");
-const logoWhiteEl = document.getElementById("logo-white");
-const logoBlackEl = document.getElementById("logo-black");
+const logoGlassEl = document.getElementById("logo-glass");
+const logoScreenEl = document.getElementById("logo-screen");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -537,10 +537,11 @@ let sympatheticOscs = [];
 let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
-let logoBrightness = 0.15;
+let logoBrightness = 0.5;
 let logoChromatic = 0;
 let logoWaveInfluence = 0.5;
-let logoDarkAmount = 0.4;
+let logoGlassBlur = 6;
+let logoGlassBrightness = 1.5;
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
@@ -549,6 +550,8 @@ let fpsLastTime = performance.now();
 let fpsDisplay = 60;
 let lastFrameTime = 0;
 let frameInterval = 1000 / 60;
+let logoPrevOpacity = -1;
+let logoPrevBlur = -1;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -907,7 +910,7 @@ panel.appendChild(logoSection);
 
 appendSoundSlider(
   "logo opacity",
-  0.15,
+  0.0,
   1.0,
   0.01,
   () => logoBrightness,
@@ -939,15 +942,26 @@ appendSoundSlider(
   "logoWaveInfluence",
 );
 appendSoundSlider(
-  "logo dark",
-  0,
+  "logo glass blur",
   1,
-  0.01,
-  () => logoDarkAmount,
+  16,
+  0.5,
+  () => logoGlassBlur,
   (v) => {
-    logoDarkAmount = v;
+    logoGlassBlur = v;
   },
-  "logoDarkAmount",
+  "logoGlassBlur",
+);
+appendSoundSlider(
+  "logo brightness",
+  0.8,
+  2.5,
+  0.05,
+  () => logoGlassBrightness,
+  (v) => {
+    logoGlassBrightness = v;
+  },
+  "logoGlassBrightness",
 );
 
 const gravityRow = document.createElement("div");
@@ -1114,7 +1128,8 @@ function refreshPanelFromState() {
     else if (k === "logoBrightness") v = logoBrightness;
     else if (k === "logoChromatic") v = logoChromatic;
     else if (k === "logoWaveInfluence") v = logoWaveInfluence;
-    else if (k === "logoDarkAmount") v = logoDarkAmount;
+    else if (k === "logoGlassBlur") v = logoGlassBlur;
+    else if (k === "logoGlassBrightness") v = logoGlassBrightness;
     else if (k === "fpsCap") v = fpsCap;
     else if (k === "renderScale") v = renderScale;
     else if (k === "gravityStrength") v = gravityStrength;
@@ -1135,7 +1150,8 @@ function getCurrentSettings() {
     logoBrightness,
     logoChromatic,
     logoWaveInfluence,
-    logoDarkAmount,
+    logoGlassBlur,
+    logoGlassBrightness,
     fpsCap,
     renderScale,
     idleThrottle,
@@ -1199,7 +1215,8 @@ function applySettings(o) {
   if (n(o.logoBrightness)) logoBrightness = o.logoBrightness;
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
   if (n(o.logoWaveInfluence)) logoWaveInfluence = o.logoWaveInfluence;
-  if (n(o.logoDarkAmount)) logoDarkAmount = o.logoDarkAmount;
+  if (n(o.logoGlassBlur)) logoGlassBlur = o.logoGlassBlur;
+  if (n(o.logoGlassBrightness)) logoGlassBrightness = o.logoGlassBrightness;
   if (n(o.fpsCap)) fpsCap = o.fpsCap;
   if (n(o.renderScale)) {
     renderScale = o.renderScale;
@@ -1813,39 +1830,47 @@ function frame(t){
   } else {
     logoPresence += (0.0 - logoPresence) * 0.005;
   }
-  const cx = mx / window.innerWidth;
-  const cy = my / window.innerHeight;
   const distToLogo = Math.sqrt(
-    Math.pow(cx - 0.5, 2) +
-    Math.pow(cy - 0.5, 2));
+    Math.pow((mx / window.innerWidth) - 0.5, 2) +
+    Math.pow((my / window.innerHeight) - 0.5, 2));
   const proximityFactor = Math.max(0,
     Math.min(1, (distToLogo - 0.05) / 0.3));
   const proximityBoost = (1.0 - proximityFactor)
-    * 0.3;
+    * 0.35;
   const finalOpacity = Math.min(0.97,
     Math.max(logoBrightness,
-      logoPresence * 1.8 + proximityBoost));
-  if (logoWhiteEl) {
-    const w = finalOpacity.toFixed(2);
-    if (logoWhiteEl._last !== w) {
-      logoWhiteEl._last = w;
-      logoWhiteEl.style.opacity = w;
-    }
-    const ca = logoChromatic * finalOpacity;
-    const caStr = ca > 0.2
-      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,30,0,0.6)) drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,180,255,0.5))`
-      : "none";
-    if (logoWhiteEl._lastCa !== caStr) {
-      logoWhiteEl._lastCa = caStr;
-      logoWhiteEl.style.filter = caStr;
+      logoPresence * 1.6 + proximityBoost));
+  const baseBlur = logoGlassBlur;
+  const velocityBlur = Math.min(totalVel * 0.3, 4);
+  const proximityBlur = (1.0 - proximityFactor) * -3;
+  const finalBlur = Math.max(1,
+    baseBlur + velocityBlur + proximityBlur);
+  const opacityStr = finalOpacity.toFixed(2);
+  const blurStr = finalBlur.toFixed(1);
+  if (logoGlassEl && logoPrevBlur !== blurStr) {
+    logoPrevBlur = blurStr;
+    logoGlassEl.style.backdropFilter =
+      `blur(${blurStr}px) brightness(${logoGlassBrightness})`;
+    logoGlassEl.style.webkitBackdropFilter =
+      `blur(${blurStr}px) brightness(${logoGlassBrightness})`;
+  }
+  if (logoGlassEl && logoPrevOpacity !== opacityStr) {
+    logoPrevOpacity = opacityStr;
+    logoGlassEl.style.opacity = opacityStr;
+    if (logoScreenEl) {
+      logoScreenEl.style.opacity =
+        (finalOpacity * logoBrightness * 0.6)
+          .toFixed(2);
     }
   }
-  if (logoBlackEl) {
-    const b = (logoPresence * logoDarkAmount)
-      .toFixed(2);
-    if (logoBlackEl._last !== b) {
-      logoBlackEl._last = b;
-      logoBlackEl.style.opacity = b;
+  if (logoScreenEl) {
+    const ca = logoChromatic * finalOpacity;
+    const caStr = ca > 0.2
+      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,0,60,0.5)) drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,200,255,0.4))`
+      : "none";
+    if (logoScreenEl._lastCa !== caStr) {
+      logoScreenEl._lastCa = caStr;
+      logoScreenEl.style.filter = caStr;
     }
   }
   noteFlash*=0.88;
