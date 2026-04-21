@@ -133,6 +133,8 @@ uniform float u_octaveDirection;
 uniform float u_velocity;
 uniform float u_velX;
 uniform float u_drift;
+uniform float u_speedOctave;
+uniform float u_edgeMorph;
 uniform float u_logoPresence;
 uniform float u_noteFlash;
 uniform float u_activeBandNorm;
@@ -200,6 +202,8 @@ void main() {
     float activeWidth = 1.0 + isActive * ACTIVE_BAND_GLOW * 0.4;
     float band = exp(-dy * dy * (u_waveSharpness / activeWidth)) * flicker;
     band *= 1.0 + isActive * ACTIVE_BAND_GLOW * 1.4;
+    float speedBoost = isActive * (u_speedOctave - 1.0) * 0.5;
+    band *= 1.0 + speedBoost;
     float isWell = 0.0;
     if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
     if (abs(float(i) - 1.0) < 0.5) isWell = 1.0;
@@ -211,6 +215,23 @@ void main() {
     float driftWobble = u_drift * 0.03 *
       sin(t * 3.0 + float(i) * 1.7);
     band *= 1.0 + driftWobble;
+    float scaleDeg = float(i);
+    if (u_hangDrum > 0.5) {
+      if (i == 0) scaleDeg = 0.0;
+      else if (i == 1) scaleDeg = 4.0;
+      else if (i == 2) scaleDeg = 2.0;
+      else if (i == 3) scaleDeg = 6.0;
+      else if (i == 4) scaleDeg = 7.0;
+      else if (i == 5) scaleDeg = 3.0;
+      else if (i == 6) scaleDeg = 5.0;
+      else scaleDeg = 1.0;
+    }
+    float isMorphBand = 0.0;
+    if (abs(scaleDeg - 3.0) < 0.01) isMorphBand = 1.0;
+    if (abs(scaleDeg - 6.0) < 0.01) isMorphBand = 1.0;
+    float morphShimmer = isMorphBand * u_edgeMorph * 0.2 *
+      sin(t * 6.0 + fi * 4.0);
+    band *= 1.0 + morphShimmer;
     float sympLevel = 0.0;
     if (i == 0) sympLevel = u_sympathetic[0];
     if (i == 1) sympLevel = u_sympathetic[1];
@@ -255,9 +276,7 @@ void main() {
   float logoEdge = logoZoneX * logoZoneY *
     (1.0 - logoZoneX * logoZoneY * 0.8) *
     u_logoPresence * 0.15;
-  float baseV = clamp(smoke * 0.5 + waves, 0.0, 0.85);
-  float glowV = glow * 0.9;
-  float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow + logoBrightness + logoEdge, 0.0, 1.0);
+  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine + velBurst + edgeGlow + logoBrightness + logoEdge, 0.0, 1.0);
   vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
@@ -310,6 +329,8 @@ const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
 const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
 const uDrift=gl.getUniformLocation(p,"u_drift");
+const uSpeedOctave=gl.getUniformLocation(p,"u_speedOctave");
+const uEdgeMorph=gl.getUniformLocation(p,"u_edgeMorph");
 const uLogoPresence=gl.getUniformLocation(p,"u_logoPresence");
 const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
 const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
@@ -420,6 +441,13 @@ let deadZoneSize = 0.35;
 let gravityStrength = 0.55;
 let gravityEnabled = true;
 let octaveMix = 0.6;
+let speedOctave = 1.0;
+let speedOctaveThreshold = 25;
+let edgeMorphAmount = 0.0;
+let harmonicOffset = 0;
+let directionHarmonyAmount = 0.5;
+let harmonyLastTx = window.innerWidth / 2;
+let harmonyLastTy = window.innerHeight / 2;
 let oscType = "sine";
 let sympatheticGains = [];
 let sympatheticOscs = [];
@@ -427,19 +455,31 @@ let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
 
-let scrollSemitones = 0;
 let targetScrollSemitones = 0;
 let smoothScrollSemitones = 0;
 let zoneScrollAccum = 0;
 let scrollFreqMult = 1;
 
-function noteFreqForBand(bandIndex) {
-  const degree = hangDrumEnabled ?
-    HANG_DRUM_MAP[bandIndex] : bandIndex;
-  return currentScale[degree] * scrollFreqMult;
+function getMorphedFreq(bandIndex) {
+  const degree = getScaleDegree(bandIndex);
+  const base = currentScale[degree] * scrollFreqMult;
+  if (degree === 3 || degree === 6) {
+    const raised = base * Math.pow(2, 1 / 12);
+    return (
+      base * (1 - edgeMorphAmount * 0.7) + raised * edgeMorphAmount * 0.7
+    );
+  }
+  return base;
 }
 
-currentFreq = noteFreqForBand(4);
+function noteFreqForBand(bandIndex) {
+  const morphed = getMorphedFreq(bandIndex);
+  const oct = morphed * speedOctave;
+  const scaledOffset = harmonicOffset * directionHarmonyAmount;
+  return oct * Math.pow(2, scaledOffset / 12);
+}
+
+currentFreq = getMorphedFreq(4);
 
 function angleDiff(target, current) {
   let d = target - current;
@@ -661,6 +701,28 @@ appendSoundSlider(
   "octaveMix",
 );
 appendSoundSlider(
+  "speed octave threshold",
+  5,
+  60,
+  1,
+  () => speedOctaveThreshold,
+  (v) => {
+    speedOctaveThreshold = v;
+  },
+  "speedOctaveThreshold",
+);
+appendSoundSlider(
+  "direction harmony",
+  0.0,
+  1.0,
+  0.01,
+  () => directionHarmonyAmount,
+  (v) => {
+    directionHarmonyAmount = v;
+  },
+  "directionHarmonyAmount",
+);
+appendSoundSlider(
   "sympathetic",
   0.0,
   0.5,
@@ -814,6 +876,8 @@ function refreshPanelFromState() {
     else if (k === "vibratoSpeedControl") v = vibratoSpeedControl;
     else if (k === "gravityStrength") v = gravityStrength;
     else if (k === "octaveMix") v = octaveMix;
+    else if (k === "speedOctaveThreshold") v = speedOctaveThreshold;
+    else if (k === "directionHarmonyAmount") v = directionHarmonyAmount;
     else if (k === "sympatheticMix") v = sympatheticMix;
     else return;
     inp.value = String(v);
@@ -842,6 +906,9 @@ function applyImportedSettings(o) {
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
   if (n(o.octaveMix)) octaveMix = o.octaveMix;
+  if (n(o.speedOctaveThreshold)) speedOctaveThreshold = o.speedOctaveThreshold;
+  if (n(o.directionHarmonyAmount))
+    directionHarmonyAmount = o.directionHarmonyAmount;
   if (n(o.sympatheticMix)) sympatheticMix = o.sympatheticMix;
   if (typeof o.hangDrumEnabled === "boolean")
     hangDrumEnabled = o.hangDrumEnabled;
@@ -883,6 +950,8 @@ copyBtn.addEventListener("click", () => {
     gravityStrength,
     gravityEnabled,
     octaveMix,
+    speedOctaveThreshold,
+    directionHarmonyAmount,
     sympatheticMix,
     hangDrumEnabled,
     targetScrollSemitones,
@@ -984,7 +1053,7 @@ function initSympathetic() {
     const gain = audioCtx.createGain();
     const filter = audioCtx.createBiquadFilter();
     osc.type = "sine";
-    const freq = noteFreqForBand(i);
+    const freq = getMorphedFreq(i);
     osc.frequency.value = freq;
     gain.gain.value = 0.0;
     filter.type = "bandpass";
@@ -1153,14 +1222,14 @@ window.addEventListener(
       zoneScrollAccum -= 80;
       targetScrollSemitones = Math.max(
         -12,
-        Math.min(12, targetScrollSemitones + 1),
+        Math.min(12, targetScrollSemitones - 1),
       );
     }
     while (zoneScrollAccum < -80) {
       zoneScrollAccum += 80;
       targetScrollSemitones = Math.max(
         -12,
-        Math.min(12, targetScrollSemitones - 1),
+        Math.min(12, targetScrollSemitones + 1),
       );
     }
     const noteNames = [
@@ -1193,7 +1262,18 @@ window.addEventListener(
 function frame(t){
   const tmx=tx;
   const tmy=ty;
-  scrollSemitones = targetScrollSemitones;
+  const moveDxHarm=tmx-harmonyLastTx;
+  const moveDyHarm=tmy-harmonyLastTy;
+  harmonyLastTx=tmx;
+  harmonyLastTy=tmy;
+  if (Math.abs(moveDxHarm)+Math.abs(moveDyHarm)>3) {
+    const moveAngle=Math.atan2(-moveDyHarm,moveDxHarm);
+    const sector=Math.round(moveAngle/(Math.PI/4));
+    const harmonicMap=[0,2,5,7,0,-2,-5,-7];
+    const sectorIndex=((sector%8)+8)%8;
+    const targetOff=harmonicMap[sectorIndex];
+    harmonicOffset+=(targetOff-harmonicOffset)*0.05;
+  }
   smoothScrollSemitones+=
     (targetScrollSemitones-smoothScrollSemitones)*0.03;
   scrollFreqMult=Math.pow(2,smoothScrollSemitones/12);
@@ -1228,6 +1308,11 @@ function frame(t){
   smoothDist+=(polarDist-smoothDist)*0.05;
   const screenCentreX=window.innerWidth/2;
   const screenCentreY=window.innerHeight/2;
+  const centreDistX=Math.abs(tmx-screenCentreX)/screenCentreX;
+  const centreDistY=Math.abs(tmy-screenCentreY)/screenCentreY;
+  const centreDist=Math.min(1.0,
+    Math.sqrt(centreDistX*centreDistX+centreDistY*centreDistY));
+  edgeMorphAmount+=(centreDist-edgeMorphAmount)*0.03;
   const normY=1.0-tmy/window.innerHeight;
   const rawBand=normY*8;
   const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
@@ -1253,7 +1338,9 @@ function frame(t){
     smoothBandY=Math.max(0,Math.min(1,smoothBandY));
   }
   const targetBand=Math.max(0,Math.min(7,Math.floor(smoothBandY*8)));
-  const targetFreq = noteFreqForBand(targetBand);
+  const isSpeedJump=smoothVelocity>speedOctaveThreshold;
+  const targetSpeedOctave=isSpeedJump?2.0:1.0;
+  speedOctave+=(targetSpeedOctave-speedOctave)*0.1;
   const isSettling=smoothVelocity<
     velocityThreshold+portamentoSensitivity*8;
   if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
@@ -1286,7 +1373,7 @@ function frame(t){
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
   const freqGlide=0.03+(1.0-sensitivity)*0.08;
   if (glideOsc1&&audioCtx) {
-    currentFreq+=(targetFreq-currentFreq)*freqGlide;
+    currentFreq+=(noteFreqForBand(targetBand)-currentFreq)*freqGlide;
     const distPressure=smoothDist>0.9?(smoothDist-0.9)*10.0:0.0;
     octaveAmount+=(distPressure-octaveAmount)*0.04;
     octaveDirection=smoothDist>=0.5?1:-1;
@@ -1328,7 +1415,7 @@ function frame(t){
   }
   if (sympatheticOscs.length>0&&audioCtx) {
     for (let i=0;i<8;i++) {
-      const freq=noteFreqForBand(i);
+      const freq=getMorphedFreq(i);
       sympatheticOscs[i].frequency.setValueAtTime(
         freq,
         audioCtx.currentTime,
@@ -1376,7 +1463,9 @@ function frame(t){
   gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
   gl.uniform1f(uHangDrum, hangDrumEnabled ? 1.0 : 0.0);
   gl.uniform1fv(uSympathetic, sympatheticLevels);
-  gl.uniform1f(uDrift, Math.max(0.35, idleBreath * 0.8 + 0.45));
+  gl.uniform1f(uDrift, Math.max(0.35, edgeMorphAmount * 1.1 + 0.45));
+  gl.uniform1f(uSpeedOctave, speedOctave);
+  gl.uniform1f(uEdgeMorph, edgeMorphAmount);
   gl.uniform1f(uLogoPresence, logoPresence);
   gl.uniform1f(uNoteFlash, noteFlash);
   gl.uniform1f(uActiveBandNorm, clampedBand / 7.0);
