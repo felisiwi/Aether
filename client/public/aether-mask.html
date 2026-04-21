@@ -88,10 +88,36 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
+.logo-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.logo-mask {
+  width: 60%;
+  aspect-ratio: 1048 / 248;
+  background: rgba(255, 200, 120, 0.08);
+  -webkit-mask-image: url('aether_logo_white.svg');
+  mask-image: url('aether_logo_white.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% auto;
+  mask-size: 100% auto;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div class="logo-wrap">
+  <div class="logo-mask"></div>
+</div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
 </div>
@@ -1303,6 +1329,10 @@ function frame(t){
     if (logoIdleTime>2.0) {
       logoPresence+=(0.0-logoPresence)*0.008;
     }
+  }
+  const logoEl = document.querySelector(".logo-mask");
+  if (logoEl) {
+    logoEl.style.opacity = Math.min(logoPresence * 1.2, 0.95).toFixed(3);
   }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
