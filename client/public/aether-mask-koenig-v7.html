@@ -106,8 +106,6 @@ uniform float u_flickerSpeed;
 uniform float u_flickerAmount;
 uniform float u_waveSharpness;
 uniform float u_gravityStrength;
-uniform float u_octaveAmount;
-uniform float u_octaveDirection;
 uniform float u_velocity;
 uniform float u_velX;
 float hash(vec2 p) {
@@ -184,13 +182,7 @@ void main() {
   float velBurst = u_velocity * exp(-mouseDist * mouseDist * 80.0) * 0.3;
   float glow = glowWide + glowCore + glowTrail;
   float cursorLine = exp(-pow((uv.y - u_smoothBandY) * 20.0, 2.0)) * 0.15;
-  float edgeGlow = 0.0;
-  if (u_octaveDirection > 0.0) {
-    edgeGlow = u_octaveAmount * exp(-pow((uv.y - 1.0) * 8.0, 2.0)) * 0.6;
-  } else {
-    edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
-  }
-  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
+  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine + velBurst, 0.0, 1.0);
   vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
@@ -238,8 +230,6 @@ const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
 const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
 const uWaveSharpness=gl.getUniformLocation(p,"u_waveSharpness");
 const uGravityStrength=gl.getUniformLocation(p,"u_gravityStrength");
-const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
-const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
 const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
 
@@ -334,7 +324,6 @@ let sustainLevel = 0.15;
 let deadZoneSize = 0.15;
 let gravityStrength = 0.3;
 let gravityEnabled = true;
-let octaveMix = 0.6;
 let oscType = "sine";
 
 function getWellPositions() {
@@ -538,17 +527,6 @@ appendSoundSlider(
   },
   "deadZoneSize",
 );
-appendSoundSlider(
-  "octave mix",
-  0.0,
-  1.0,
-  0.01,
-  () => octaveMix,
-  (v) => {
-    octaveMix = v;
-  },
-  "octaveMix",
-);
 
 const gravityRow = document.createElement("div");
 gravityRow.className = "tweak-row";
@@ -656,7 +634,6 @@ function refreshPanelFromState() {
     else if (k === "vibratoDepthControl") v = vibratoDepthControl;
     else if (k === "vibratoSpeedControl") v = vibratoSpeedControl;
     else if (k === "gravityStrength") v = gravityStrength;
-    else if (k === "octaveMix") v = octaveMix;
     else return;
     inp.value = String(v);
     const row = inp.closest(".tweak-row");
@@ -683,7 +660,6 @@ function applyImportedSettings(o) {
   if (n(o.vibratoSpeedControl)) vibratoSpeedControl = o.vibratoSpeedControl;
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
-  if (n(o.octaveMix)) octaveMix = o.octaveMix;
   syncGravityToggleButtons();
   refreshPanelFromState();
 }
@@ -718,7 +694,6 @@ copyBtn.addEventListener("click", () => {
     vibratoSpeedControl,
     gravityStrength,
     gravityEnabled,
-    octaveMix,
   };
   const text = JSON.stringify(o, null, 2);
   navigator.clipboard.writeText(text).then(() => {
@@ -794,14 +769,6 @@ let glideGain = null;
 let glideG1 = null;
 let glideG2 = null;
 let glideNode = null;
-let octaveLayerGain = null;
-let octaveLayerOsc1 = null;
-let octaveLayerOsc2 = null;
-let octaveLayerGainNode = null;
-let octaveLayerG1 = null;
-let octaveLayerG2 = null;
-let octaveDirection = 0;
-let octaveAmount = 0.0;
 
 function initGlide() {
   if (!audioCtx || glideOsc1) return;
@@ -830,43 +797,10 @@ function initGlide() {
   glideOsc2.start();
 }
 
-function initOctaveLayer() {
-  if (!audioCtx || octaveLayerOsc1) return;
-  octaveLayerOsc1 = audioCtx.createOscillator();
-  octaveLayerOsc2 = audioCtx.createOscillator();
-  const og1 = audioCtx.createGain();
-  const og2 = audioCtx.createGain();
-  octaveLayerGainNode = audioCtx.createGain();
-  const octFilter = audioCtx.createBiquadFilter();
-
-  octaveLayerOsc1.type = "sine";
-  octaveLayerOsc2.type = "sawtooth";
-  og1.gain.value = 0.7;
-  og2.gain.value = 0.15;
-  octaveLayerGainNode.gain.value = 0.0;
-  octFilter.type = "lowpass";
-  octFilter.frequency.value = 600;
-
-  octaveLayerOsc1.connect(og1);
-  og1.connect(octFilter);
-  octaveLayerOsc2.connect(og2);
-  og2.connect(octFilter);
-  octFilter.connect(octaveLayerGainNode);
-  octaveLayerGainNode.connect(audioCtx.destination);
-
-  octaveLayerG1 = og1;
-  octaveLayerG2 = og2;
-  octaveLayerGain = octaveLayerGainNode;
-
-  octaveLayerOsc1.start();
-  octaveLayerOsc2.start();
-}
-
 function initAudio() {
   if (!audioCtx) audioCtx = new AudioContext();
   if (audioCtx.state === "suspended") audioCtx.resume();
   initGlide();
-  initOctaveLayer();
 }
 
 function playNoteWithVolume(bandIndex, vol) {
@@ -1038,32 +972,6 @@ function frame(t){
     const blend=mouseX;
     glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
     glideG2.gain.setValueAtTime(blend*0.4,audioCtx.currentTime);
-
-    const rawNormY = 1.0 - tmy / window.innerHeight;
-    const boundaryPressure =
-      rawNormY < 0.05
-        ? -(0.05 - rawNormY) * 20.0
-        : rawNormY > 0.95
-          ? (rawNormY - 0.95) * 20.0
-          : 0.0;
-    const targetOctave = Math.max(0, Math.min(1, Math.abs(boundaryPressure)));
-    octaveAmount += (targetOctave - octaveAmount) * 0.04;
-    octaveDirection = boundaryPressure < 0 ? -1 : 1;
-
-    if (octaveLayerOsc1 && audioCtx) {
-      const octFreq =
-        octaveDirection > 0 ? currentFreq * 2.0 : currentFreq * 0.5;
-      octaveLayerOsc1.frequency.setValueAtTime(octFreq, audioCtx.currentTime);
-      octaveLayerOsc2.frequency.setValueAtTime(octFreq, audioCtx.currentTime);
-      const octBlend = mouseX;
-      if (octaveLayerG1 && octaveLayerG2) {
-        octaveLayerG1.gain.setValueAtTime(1.0 - octBlend * 0.8, audioCtx.currentTime);
-        octaveLayerG2.gain.setValueAtTime(octBlend * 0.4, audioCtx.currentTime);
-      }
-      const octVol =
-        octaveAmount * soundVolume * sustainFade * octaveMix;
-      octaveLayerGainNode.gain.setTargetAtTime(octVol, audioCtx.currentTime, 0.15);
-    }
   }
   gl.uniform2f(ur,canvas.width,canvas.height);
   gl.uniform2f(um,mx,canvas.height-my);
@@ -1077,8 +985,6 @@ function frame(t){
     uGravityStrength,
     gravityEnabled ? gravityStrength : 0.0
   );
-  gl.uniform1f(uOctaveAmount, octaveAmount);
-  gl.uniform1f(uOctaveDirection, octaveDirection);
   gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
   gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
   if (activeBand>=0&&activeBand<8) {
