@@ -1880,9 +1880,9 @@ function frame(t){
     noteFlash > 0.05;
   const mouseActive = totalVel > 0.5;
   if (soundActive || mouseActive) {
-    logoPresence += (1.0 - logoPresence) * 0.07;
+    logoPresence += (1.0 - logoPresence) * 0.025;
   } else {
-    logoPresence += (0.0 - logoPresence) * 0.005;
+    logoPresence += (0.0 - logoPresence) * 0.03;
   }
   const logoEl = document.getElementById('logo-layer');
   if (logoEl && logoWrapEl) {
@@ -1894,8 +1894,8 @@ function frame(t){
       * 0.35 * logoProximity;
     const soundBoost = noteFlash * 0.4 * logoSoundReact;
     const finalOpacity = Math.min(0.97,
-      Math.max(logoBrightness,
-        logoPresence * 1.2 + proximityBoost + soundBoost));
+      (logoPresence * 0.9 + proximityBoost + soundBoost)
+      * logoBrightness * 4.0);
     if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
       logoEl._lastOp = finalOpacity.toFixed(3);
       logoEl.style.opacity = finalOpacity.toFixed(3);
