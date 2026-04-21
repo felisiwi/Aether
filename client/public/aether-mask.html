@@ -32,6 +32,22 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
   border: 1px solid rgba(255,255,255,.2); border-radius: 4px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.8); cursor: pointer;
 }
 #tweak-copy:hover { background: rgba(255,255,255,.14); }
+#sound-osc-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+#sound-osc-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#sound-osc-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
 </style>
 </head>
 <body>
@@ -206,6 +222,25 @@ const sliderDefs = [
   { key: "u_rippleStrength", label: "ripple strength", min: 0, max: 2, step: 0.1 },
 ];
 
+const SCALES = {
+  "C Major": [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
+  Pentatonic: [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25],
+  "Whole Tone": [261.63, 293.66, 329.63, 369.99, 415.3, 466.16, 523.25, 587.33],
+  Overtone: [130.81, 261.63, 392.0, 523.25, 654.06, 784.88, 915.69, 1046.5],
+  Dorian: [261.63, 293.66, 311.13, 349.23, 392.0, 440.0, 466.16, 523.25],
+  Phrygian: [261.63, 277.18, 311.13, 349.23, 392.0, 415.3, 466.16, 523.25],
+  Lydian: [261.63, 293.66, 329.63, 369.99, 392.0, 440.0, 493.88, 523.25],
+  Mixolydian: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 466.16, 523.25],
+  Minor: [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 466.16, 523.25],
+  "Harmonic Min": [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 493.88, 523.25],
+  Chromatic: [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.0],
+};
+let currentScale = SCALES["C Major"];
+let soundAttack = 20;
+let soundDecay = 400;
+let soundVolume = 0.3;
+let oscType = "sine";
+
 const panel = document.getElementById("tweak-panel");
 const readouts = {};
 sliderDefs.forEach((def) => {
@@ -237,6 +272,124 @@ sliderDefs.forEach((def) => {
   row.appendChild(input);
   panel.appendChild(row);
 });
+
+const scaleWrap = document.createElement("div");
+scaleWrap.style.marginBottom = "12px";
+const scaleHead = document.createElement("div");
+scaleHead.style.cssText =
+  "display:flex;justify-content:space-between;font-size:10px;letter-spacing:0.1em;color:rgba(255,150,80,0.6);margin-bottom:4px;";
+const scaleLabel = document.createElement("span");
+scaleLabel.textContent = "SCALE";
+scaleHead.appendChild(scaleLabel);
+const scaleSelect = document.createElement("select");
+scaleSelect.id = "scaleSelect";
+scaleSelect.style.cssText =
+  "width:100%;background:#1a0800;color:rgba(255,150,80,0.9);border:1px solid rgba(255,100,40,0.3);font-family:'Courier New',monospace;font-size:11px;padding:4px;";
+Object.keys(SCALES).forEach((name) => {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  scaleSelect.appendChild(opt);
+});
+scaleSelect.addEventListener("change", () => {
+  currentScale = SCALES[scaleSelect.value];
+});
+scaleWrap.appendChild(scaleHead);
+scaleWrap.appendChild(scaleSelect);
+panel.appendChild(scaleWrap);
+
+function appendSoundSlider(label, min, max, step, getVal, setVal) {
+  const row = document.createElement("div");
+  row.className = "tweak-row";
+  const head = document.createElement("div");
+  head.className = "tweak-head";
+  const lab = document.createElement("span");
+  lab.className = "tweak-label";
+  lab.textContent = label;
+  const val = document.createElement("span");
+  val.className = "tweak-val";
+  val.textContent = String(getVal());
+  head.appendChild(lab);
+  head.appendChild(val);
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(getVal());
+  input.addEventListener("input", () => {
+    const x = parseFloat(input.value);
+    setVal(x);
+    val.textContent = String(x);
+  });
+  row.appendChild(head);
+  row.appendChild(input);
+  panel.appendChild(row);
+}
+appendSoundSlider(
+  "attack ms",
+  1,
+  500,
+  1,
+  () => soundAttack,
+  (v) => {
+    soundAttack = v;
+  },
+);
+appendSoundSlider(
+  "decay ms",
+  50,
+  2000,
+  10,
+  () => soundDecay,
+  (v) => {
+    soundDecay = v;
+  },
+);
+appendSoundSlider(
+  "volume",
+  0,
+  1,
+  0.01,
+  () => soundVolume,
+  (v) => {
+    soundVolume = v;
+  },
+);
+
+const oscBlock = document.createElement("div");
+oscBlock.style.marginBottom = "12px";
+const oscHead = document.createElement("div");
+oscHead.className = "tweak-head";
+oscHead.style.marginBottom = "4px";
+const oscLab = document.createElement("span");
+oscLab.className = "tweak-label";
+oscLab.textContent = "osc type";
+oscHead.appendChild(oscLab);
+oscBlock.appendChild(oscHead);
+const oscRow = document.createElement("div");
+oscRow.id = "sound-osc-row";
+const oscTypes = [
+  { type: "sine", text: "SINE" },
+  { type: "triangle", text: "TRIANGLE" },
+  { type: "sawtooth", text: "SAW" },
+  { type: "square", text: "SQUARE" },
+];
+oscTypes.forEach(({ type, text }) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = text;
+  if (type === oscType) b.classList.add("selected");
+  b.addEventListener("click", () => {
+    oscType = type;
+    oscRow.querySelectorAll("button").forEach((btn) => btn.classList.remove("selected"));
+    b.classList.add("selected");
+  });
+  oscRow.appendChild(b);
+});
+oscBlock.appendChild(oscRow);
+panel.appendChild(oscBlock);
+
 const copyBtn = document.createElement("button");
 copyBtn.type = "button";
 copyBtn.id = "tweak-copy";
@@ -266,7 +419,6 @@ document.getElementById("tweak-toggle").addEventListener("click", () => {
   document.getElementById("tweak-toggle").setAttribute("aria-expanded", open ? "false" : "true");
 });
 
-const SCALE_FREQS = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
 let audioCtx = null;
 let lastBand = -1;
 let activeGain = null;
@@ -280,27 +432,31 @@ function initAudio() {
 
 function playNote(bandIndex) {
   if (!audioCtx) return;
-  const freq = SCALE_FREQS[bandIndex];
+  const freq = currentScale[bandIndex];
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   const filter = audioCtx.createBiquadFilter();
   filter.type = "bandpass";
   filter.frequency.value = freq * 2;
   filter.Q.value = 2;
-  osc.type = "sine";
+  osc.type = oscType;
   osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+  const t0 = audioCtx.currentTime;
+  gain.gain.setValueAtTime(0.0, t0);
+  gain.gain.linearRampToValueAtTime(soundVolume, t0 + soundAttack / 1000);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + soundDecay / 1000);
   osc.connect(filter);
   filter.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
-  osc.stop(audioCtx.currentTime + 0.5);
+  osc.stop(t0 + soundDecay / 1000 + 0.1);
   activeBand = bandIndex;
-  setTimeout(() => {
-    if (activeBand === bandIndex) activeBand = -1;
-  }, 300);
+  setTimeout(
+    () => {
+      if (activeBand === bandIndex) activeBand = -1;
+    },
+    Math.max(300, soundDecay + 150),
+  );
 }
 
 let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
