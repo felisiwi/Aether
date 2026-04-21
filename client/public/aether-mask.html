@@ -20,7 +20,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   -webkit-mask-size: 60% auto;
   mask-size: 60% auto;
   opacity: 0;
-  transition: opacity 0.5s ease;
 }
 #tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
 #tweak-toggle {
@@ -1316,7 +1315,7 @@ function frame(t){
   const mouseActive=totalVel>0.5;
   if (soundActive||mouseActive) {
     logoIdleTime=0;
-    logoPresence+=(1.0-logoPresence)*0.015;
+    logoPresence+=(1.0-logoPresence)*0.04;
   } else {
     logoIdleTime+=0.016;
     if (logoIdleTime>2.0) {
@@ -1444,17 +1443,9 @@ function frame(t){
   applyTweakUniforms();
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   logoCtx.clearRect(0, 0, logoCanvas.width, logoCanvas.height);
-  const offsetX = Math.sin(Date.now() * 0.0005) * 4;
-  const offsetY = Math.cos(Date.now() * 0.0007) * 3;
-  logoCtx.globalAlpha = 0.6;
-  logoCtx.filter = "brightness(2.5) saturate(1.3)";
-  logoCtx.drawImage(canvas, offsetX, offsetY);
-  logoCtx.globalAlpha = 0.8;
-  logoCtx.filter = "brightness(3.0) saturate(1.2)";
-  logoCtx.drawImage(canvas, 0, 0);
   logoCtx.globalAlpha = 1.0;
-  logoCtx.filter = "none";
-  logoCanvas.style.opacity = Math.min(logoPresence * 1.3, 1.0).toFixed(3);
+  logoCtx.drawImage(canvas, 0, 0);
+  logoCanvas.style.opacity = Math.max(0.08, Math.min(logoPresence * 2.0, 0.95)).toFixed(3);
   requestAnimationFrame(frame);
 }
 applyTweakUniforms();
