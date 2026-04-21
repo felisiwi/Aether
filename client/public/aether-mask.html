@@ -52,7 +52,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   flex-wrap: wrap;
   margin-top: 4px;
 }
-#perf-throttle-row {
+#perf-throttle-row,
+#perf-sound-row {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
@@ -75,7 +76,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   border: 1px solid rgba(255,100,40,0.4);
   cursor: pointer;
 }
-#perf-throttle-row button {
+#perf-throttle-row button,
+#perf-sound-row button {
   flex: 1;
   min-width: 0;
   padding: 4px 2px;
@@ -101,7 +103,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
-#perf-throttle-row button.selected {
+#perf-throttle-row button.selected,
+#perf-sound-row button.selected {
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
@@ -133,6 +136,25 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </style>
 </head>
 <body>
+<div id="start-overlay" style="
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.0);
+  z-index:500;
+  cursor:pointer;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding-bottom:40px;">
+  <div id="start-hint" style="
+    font-family:'Courier New',monospace;
+    font-size:11px;
+    letter-spacing:0.2em;
+    color:rgba(255,150,50,0.4);
+    pointer-events:none;
+    transition:opacity 0.5s ease;">
+    CLICK TO PLAY
+  </div>
+</div>
 <canvas id="c"></canvas>
 <div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
   <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
@@ -151,6 +173,7 @@ MOVE IN CIRCLES TO PLAY
 </div>
 <script>
 const canvas = document.getElementById("c");
+const startOverlay = document.getElementById("start-overlay");
 const logoLayerEl = document.getElementById("logo-layer");
 const logoWrapEl = document.getElementById("logo-wrap");
 const gl = canvas.getContext("webgl", {
@@ -564,11 +587,14 @@ let logoWaveWarp = 1;
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
+let soundEnabled = true;
 let fpsFrameCount = 0;
 let fpsLastTime = performance.now();
 let fpsDisplay = 60;
 let lastFrameTime = 0;
 let frameInterval = 1000 / 60;
+let startOverlayPageTime = performance.now();
+let startOverlayAutoDismissed = false;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -606,6 +632,52 @@ perfLab.textContent = "── PERFORMANCE ──";
 perfHead.appendChild(perfLab);
 perfSection.appendChild(perfHead);
 panel.appendChild(perfSection);
+
+const perfSoundRow = document.createElement("div");
+perfSoundRow.className = "tweak-row";
+const perfSoundHead = document.createElement("div");
+perfSoundHead.className = "tweak-head";
+const perfSoundLab = document.createElement("span");
+perfSoundLab.className = "tweak-label";
+perfSoundLab.textContent = "sound";
+perfSoundHead.appendChild(perfSoundLab);
+perfSoundRow.appendChild(perfSoundHead);
+const perfSoundWrap = document.createElement("div");
+perfSoundWrap.id = "perf-sound-row";
+const perfSoundOn = document.createElement("button");
+perfSoundOn.type = "button";
+perfSoundOn.textContent = "SOUND ON";
+const perfSoundOff = document.createElement("button");
+perfSoundOff.type = "button";
+perfSoundOff.textContent = "SOUND OFF";
+function syncMasterGainFromSoundEnabled() {
+  if (!audioCtx || !masterGain) return;
+  const t = audioCtx.currentTime;
+  if (soundEnabled) {
+    masterGain.gain.setTargetAtTime(0.8, t, 0.3);
+  } else {
+    masterGain.gain.setTargetAtTime(0, t, 0.3);
+  }
+}
+function syncPerfSoundButtons() {
+  perfSoundOn.classList.toggle("selected", soundEnabled);
+  perfSoundOff.classList.toggle("selected", !soundEnabled);
+}
+perfSoundOn.addEventListener("click", () => {
+  soundEnabled = true;
+  syncPerfSoundButtons();
+  syncMasterGainFromSoundEnabled();
+});
+perfSoundOff.addEventListener("click", () => {
+  soundEnabled = false;
+  syncPerfSoundButtons();
+  syncMasterGainFromSoundEnabled();
+});
+syncPerfSoundButtons();
+perfSoundWrap.appendChild(perfSoundOn);
+perfSoundWrap.appendChild(perfSoundOff);
+perfSoundRow.appendChild(perfSoundWrap);
+panel.appendChild(perfSoundRow);
 
 appendSoundSlider(
   "fps cap",
@@ -1207,6 +1279,7 @@ function getCurrentSettings() {
     fpsCap,
     renderScale,
     idleThrottle,
+    soundEnabled,
     u_trailLag: tweak.u_trailLag,
     u_warpStrength: tweak.u_warpStrength,
     u_noiseAmount: tweak.u_noiseAmount,
@@ -1276,6 +1349,7 @@ function applySettings(o) {
     resize();
   }
   if (typeof o.idleThrottle === "boolean") idleThrottle = o.idleThrottle;
+  if (typeof o.soundEnabled === "boolean") soundEnabled = o.soundEnabled;
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
   if (n(o.octaveMix)) octaveMix = o.octaveMix;
@@ -1288,6 +1362,8 @@ function applySettings(o) {
   syncHangDrumToggleButtons();
   syncLogoColorButtons();
   syncPerfThrottleButtons();
+  syncPerfSoundButtons();
+  syncMasterGainFromSoundEnabled();
   refreshPanelFromState();
 }
 
@@ -1470,6 +1546,7 @@ document.getElementById("tweak-root").addEventListener(
 
 let audioCtx = null;
 let pageFocused = true;
+let masterGain = null;
 let pageFadeGain = null;
 let lastBand = -1;
 let activeGain = null;
@@ -1575,14 +1652,39 @@ function initOctaveLayer() {
 function initAudio() {
   if (!audioCtx) audioCtx = new AudioContext();
   if (audioCtx.state === "suspended") audioCtx.resume();
+  if (!masterGain) {
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = soundEnabled ? 0.8 : 0;
+    masterGain.connect(audioCtx.destination);
+  }
   if (!pageFadeGain) {
     pageFadeGain = audioCtx.createGain();
     pageFadeGain.gain.value = 1.0;
-    pageFadeGain.connect(audioCtx.destination);
+    pageFadeGain.connect(masterGain);
   }
   initGlide();
   initOctaveLayer();
   initSympathetic();
+  syncMasterGainFromSoundEnabled();
+}
+
+if (startOverlay) {
+  startOverlay.addEventListener(
+    "click",
+    () => {
+      startOverlayAutoDismissed = true;
+      initAudio();
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      startOverlay.style.transition = "opacity 0.8s ease";
+      startOverlay.style.opacity = "0";
+      setTimeout(() => {
+        startOverlay.style.display = "none";
+      }, 800);
+    },
+    { once: true },
+  );
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -1749,6 +1851,20 @@ window.addEventListener(
 );
 function frame(t){
   const now = performance.now();
+  if (
+    !startOverlayAutoDismissed &&
+    startOverlay &&
+    startOverlay.style.display !== "none" &&
+    audioCtx &&
+    now - startOverlayPageTime >= 3000
+  ) {
+    startOverlayAutoDismissed = true;
+    startOverlay.style.transition = "opacity 0.8s ease";
+    startOverlay.style.opacity = "0";
+    setTimeout(() => {
+      startOverlay.style.display = "none";
+    }, 800);
+  }
   frameInterval = 1000 / fpsCap;
   if (now - lastFrameTime < frameInterval - 1) {
     requestAnimationFrame(frame);
