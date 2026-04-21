@@ -194,12 +194,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
     </video>
   </div>
 </div>
-<div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
+<div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:55vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
   <canvas id="lens-canvas" style="
   position:absolute;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
-  width:66%;
+  width:100%;
   aspect-ratio:2096/495;
   -webkit-mask-image:url('/aether_logo_white.png');
   mask-image:url('/aether_logo_white.png');
@@ -219,7 +219,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   position:absolute;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
-  width:62%;
+  width:100%;
   aspect-ratio:2096/495;
   pointer-events:none;
   opacity:0.85;
@@ -2159,13 +2159,13 @@ function resize(){
   canvas.height=window.innerHeight * devicePixelRatio * renderScale;
   gl.viewport(0,0,canvas.width,canvas.height);
   if (sandCanvas) {
-    const logoW = window.innerWidth * 0.62;
+    const logoW = window.innerWidth * 0.55;
     const logoH = logoW * 495 / 2096;
     sandCanvas.width = Math.round(logoW);
     sandCanvas.height = Math.round(logoH);
   }
   if (lensCanvas && lensGl) {
-    const lw = Math.round(window.innerWidth * 0.66);
+    const lw = Math.round(window.innerWidth * 0.55);
     const lh = Math.round(lw * 495 / 2096);
     lensCanvas.width = lw;
     lensCanvas.height = lh;
