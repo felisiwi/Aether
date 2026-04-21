@@ -58,6 +58,12 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   flex-wrap: wrap;
   margin-top: 4px;
 }
+#perf-throttle-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
 #gravity-toggle-row button {
   flex: 1;
   min-width: 0;
@@ -80,11 +86,26 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   border: 1px solid rgba(255,100,40,0.4);
   cursor: pointer;
 }
+#perf-throttle-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
 #gravity-toggle-row button.selected {
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
 #logo-blur-toggle-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+#perf-throttle-row button.selected {
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
@@ -144,6 +165,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 MOVE IN CIRCLES TO PLAY
 </div>
 <div id="zone-indicator" style="position:absolute;bottom:48px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;color:rgba(255,150,80,0.15);pointer-events:none;user-select:none;transition:opacity 1.2s;">C</div>
+<div id="fps-counter" style="position:fixed;top:8px;left:8px;font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,150,50,0.35);pointer-events:none;z-index:200;line-height:1.6;">
+  <div id="fps-value">60 fps</div>
+  <div id="gpu-hint" style="color:rgba(255,150,50,0.2);font-size:8px;"></div>
+</div>
 <div id="tweak-root">
 <button type="button" id="tweak-toggle" aria-expanded="true" title="Toggle controls">≡</button>
 <div id="tweak-panel"></div>
@@ -569,6 +594,14 @@ let logoChromatic = 0;
 let logoWaveInfluence = 0.5;
 let logoTurbFreq = 0.012;
 let logoTurbSpeed = 0.3;
+let fpsCap = 60;
+let renderScale = 1.0;
+let idleThrottle = false;
+let fpsFrameCount = 0;
+let fpsLastTime = performance.now();
+let fpsDisplay = 60;
+let lastFrameTime = 0;
+let frameInterval = 1000 / 60;
 
 let scrollSemitones = 0;
 let targetScrollSemitones = 0;
@@ -596,6 +629,75 @@ function getWellPositions() {
 }
 
 const panel = document.getElementById("tweak-panel");
+const perfSection = document.createElement("div");
+perfSection.className = "tweak-row";
+const perfHead = document.createElement("div");
+perfHead.className = "tweak-head";
+const perfLab = document.createElement("span");
+perfLab.className = "tweak-label";
+perfLab.textContent = "── PERFORMANCE ──";
+perfHead.appendChild(perfLab);
+perfSection.appendChild(perfHead);
+panel.appendChild(perfSection);
+
+appendSoundSlider(
+  "fps cap",
+  10,
+  60,
+  5,
+  () => fpsCap,
+  (v) => {
+    fpsCap = v;
+  },
+  "fpsCap",
+);
+appendSoundSlider(
+  "render scale",
+  0.3,
+  1.0,
+  0.05,
+  () => renderScale,
+  (v) => {
+    renderScale = v;
+    resize();
+  },
+  "renderScale",
+);
+const perfThrottleRow = document.createElement("div");
+perfThrottleRow.className = "tweak-row";
+const perfThrottleHead = document.createElement("div");
+perfThrottleHead.className = "tweak-head";
+const perfThrottleLab = document.createElement("span");
+perfThrottleLab.className = "tweak-label";
+perfThrottleLab.textContent = "idle throttle";
+perfThrottleHead.appendChild(perfThrottleLab);
+perfThrottleRow.appendChild(perfThrottleHead);
+const perfThrottleWrap = document.createElement("div");
+perfThrottleWrap.id = "perf-throttle-row";
+const perfThrottleOn = document.createElement("button");
+perfThrottleOn.type = "button";
+perfThrottleOn.textContent = "THROTTLE ON";
+const perfThrottleOff = document.createElement("button");
+perfThrottleOff.type = "button";
+perfThrottleOff.textContent = "THROTTLE OFF";
+function syncPerfThrottleButtons() {
+  perfThrottleOn.classList.toggle("selected", idleThrottle);
+  perfThrottleOff.classList.toggle("selected", !idleThrottle);
+}
+perfThrottleOn.addEventListener("click", () => {
+  idleThrottle = true;
+  syncPerfThrottleButtons();
+});
+perfThrottleOff.addEventListener("click", () => {
+  idleThrottle = false;
+  syncPerfThrottleButtons();
+});
+syncPerfThrottleButtons();
+perfThrottleWrap.appendChild(perfThrottleOn);
+perfThrottleWrap.appendChild(perfThrottleOff);
+perfThrottleRow.appendChild(perfThrottleWrap);
+panel.appendChild(perfThrottleRow);
+
 const readouts = {};
 sliderDefs.forEach((def) => {
   const row = document.createElement("div");
@@ -1173,6 +1275,8 @@ function refreshPanelFromState() {
     else if (k === "logoWaveInfluence") v = logoWaveInfluence;
     else if (k === "logoTurbFreq") v = logoTurbFreq;
     else if (k === "logoTurbSpeed") v = logoTurbSpeed;
+    else if (k === "fpsCap") v = fpsCap;
+    else if (k === "renderScale") v = renderScale;
     else if (k === "gravityStrength") v = gravityStrength;
     else if (k === "octaveMix") v = octaveMix;
     else if (k === "sympatheticMix") v = sympatheticMix;
@@ -1198,6 +1302,9 @@ function getCurrentSettings() {
     logoWaveInfluence,
     logoTurbFreq,
     logoTurbSpeed,
+    fpsCap,
+    renderScale,
+    idleThrottle,
     logoInvertBlur,
     u_trailLag: tweak.u_trailLag,
     u_warpStrength: tweak.u_warpStrength,
@@ -1266,6 +1373,12 @@ function applySettings(o) {
   if (n(o.logoWaveInfluence)) logoWaveInfluence = o.logoWaveInfluence;
   if (n(o.logoTurbFreq)) logoTurbFreq = o.logoTurbFreq;
   if (n(o.logoTurbSpeed)) logoTurbSpeed = o.logoTurbSpeed;
+  if (n(o.fpsCap)) fpsCap = o.fpsCap;
+  if (n(o.renderScale)) {
+    renderScale = o.renderScale;
+    resize();
+  }
+  if (typeof o.idleThrottle === "boolean") idleThrottle = o.idleThrottle;
   if (typeof o.logoInvertBlur === "boolean") logoInvertBlur = o.logoInvertBlur;
   if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
   if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
@@ -1278,6 +1391,7 @@ function applySettings(o) {
   syncGravityToggleButtons();
   syncHangDrumToggleButtons();
   syncLogoBlurToggleButtons();
+  syncPerfThrottleButtons();
   refreshPanelFromState();
 }
 
@@ -1686,8 +1800,8 @@ document.addEventListener("mousemove", (e) => {
   lastMoveTime = performance.now();
 });
 function resize(){
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
+  canvas.width=window.innerWidth * devicePixelRatio * renderScale;
+  canvas.height=window.innerHeight * devicePixelRatio * renderScale;
   gl.viewport(0,0,canvas.width,canvas.height);
 }
 window.addEventListener("resize",resize);resize();
@@ -1739,6 +1853,46 @@ window.addEventListener(
   { passive: false },
 );
 function frame(t){
+  const now = performance.now();
+  frameInterval = 1000 / fpsCap;
+  if (now - lastFrameTime < frameInterval - 1) {
+    requestAnimationFrame(frame);
+    return;
+  }
+  if (idleThrottle && mouseStillTime > 3.0) {
+    if (now - lastFrameTime < 66 - 1) {
+      requestAnimationFrame(frame);
+      return;
+    }
+  }
+  lastFrameTime = now;
+  fpsFrameCount++;
+  const fpsNow = performance.now();
+  if (fpsNow - fpsLastTime >= 500) {
+    fpsDisplay = Math.round(
+      fpsFrameCount / (fpsNow - fpsLastTime) * 1000);
+    fpsFrameCount = 0;
+    fpsLastTime = fpsNow;
+    const fpsEl = document.getElementById("fps-value");
+    if (fpsEl) fpsEl.textContent = fpsDisplay + " fps";
+    const fpsCounter = document.getElementById("fps-counter");
+    if (fpsCounter) {
+      if (fpsDisplay >= fpsCap * 0.9) {
+        fpsCounter.style.color = "rgba(100,220,100,0.5)";
+      } else if (fpsDisplay >= fpsCap * 0.6) {
+        fpsCounter.style.color = "rgba(255,200,80,0.5)";
+      } else {
+        fpsCounter.style.color = "rgba(255,80,60,0.5)";
+      }
+    }
+    const gpuEl = document.getElementById("gpu-hint");
+    if (gpuEl) {
+      gpuEl.textContent =
+        Math.round(canvas.width) + "×" +
+        Math.round(canvas.height) +
+        " · " + Math.round(renderScale * 100) + "%";
+    }
+  }
   const tmx=tx;
   const tmy=ty;
   tweak.u_glowCoreRadius = glowSize * 0.25;
