@@ -156,9 +156,7 @@ const logoDisplaceEl = document.getElementById("logo-displace");
 const logoBlurEl = document.getElementById("logo-blur");
 if (logoTurbulenceEl) logoTurbulenceEl.setAttribute("numOctaves", "6");
 const gl = canvas.getContext("webgl", {
-  preserveDrawingBuffer: false,
-  powerPreference: "high-performance",
-  antialias: false
+  preserveDrawingBuffer: true
 });
 const vert = `attribute vec2 a; void main(){gl_Position=vec4(a,0,1);}`;
 const frag = `precision mediump float;
@@ -195,15 +193,18 @@ uniform float u_noteFlash;
 uniform float u_activeBandNorm;
 uniform float u_hangDrum;
 uniform float u_sympathetic[8];
-uniform vec2 u_trail[10];
-uniform float u_trailAge[10];
+uniform vec2 u_trail[20];
+uniform float u_trailAge[20];
 uniform int u_trailLen;
 uniform float u_splatIntensity;
 uniform vec2 u_splatPos;
 uniform float u_splatAge;
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
+}
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
 float sn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*sn(p);p*=2.;a*=.5;}return v;}
+float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*sn(p);p*=2.;a*=.5;}return v;}
 const float ACTIVE_BAND_GLOW = 1.0;
 void main() {
   vec2 uv = gl_FragCoord.xy / u_res;
@@ -234,11 +235,12 @@ void main() {
                   * exp(-mouseDist2 / u_mouseRadius * 1.05)
                   * u_rippleStrength * 0.8;
   vec2 smokeUV = uvRefracted * 2.5 + vec2(t * 0.04);
-  float curlNoise = fbm(smokeUV + vec2(1.3, 0.7));
-  vec2 curl = vec2(
-    cos(curlNoise * 6.28),
-    sin(curlNoise * 6.28)
-  ) * 0.4;
+  float eps = 0.005;
+  float fx0 = fbm(smokeUV - vec2(eps, 0.0));
+  float fx1 = fbm(smokeUV + vec2(eps, 0.0));
+  float fy0 = fbm(smokeUV - vec2(0.0, eps));
+  float fy1 = fbm(smokeUV + vec2(0.0, eps));
+  vec2 curl = vec2(fy1 - fy0, fx0 - fx1) / (2.0 * eps);
   vec2 sd = vec2(fbm(smokeUV + curl * 0.8),
                  fbm(smokeUV + curl * 0.8 + vec2(1.7)));
   float smoke = fbm(uvRefracted * 1.8 + sd * u_warpStrength * 0.4 + t * 0.06 + curl * 0.3);
@@ -321,13 +323,12 @@ void main() {
   float splat = exp(-splatDist * splatDist /
     (splatRadius * splatRadius)) * u_splatIntensity * 1.8;
   float smokeTrail = 0.0;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 20; i++) {
     if (i >= u_trailLen) break;
     vec2 tp = u_trail[i] / u_res;
     float td = length(uv - tp);
     float fade = 1.0 - clamp(u_trailAge[i] / 1.2, 0.0, 1.0);
-    float warp = 0.5 + 0.5 * sin(
-      td * 12.0 + u_time * 0.8 + float(i) * 1.1);
+    float warp = fbm(uv * 3.0 + u_time * 0.1 + float(i) * 0.3);
     smokeTrail += exp(-td * td * 80.0) * fade * warp * 0.5;
   }
   smokeTrail = clamp(smokeTrail, 0.0, 1.0);
@@ -362,7 +363,7 @@ void main() {
   vec3 amberTone = vec3(0.9, 0.45, 0.05);
   vec3 tempShift = mix(redTone, amberTone, u_waveTemp);
   col = mix(col, col * (tempShift * 2.0), 0.3);
-  float grain = (h(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
+  float grain = (hash(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
   col += grain;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
@@ -446,35 +447,28 @@ const tweak = {
   u_waveAlt: 0.0,
   u_mouseRadius: 0.3,
 };
-const uniformCache = {};
-
-function setUniform1f(loc, key, val) {
-  if (uniformCache[key] === val) return;
-  uniformCache[key] = val;
-  gl.uniform1f(loc, val);
-}
 
 function applyTweakUniforms() {
-  setUniform1f(uGlowCoreRadius, "u_glowCoreRadius", tweak.u_glowCoreRadius);
-  setUniform1f(uGlowCoreIntensity, "u_glowCoreIntensity", tweak.u_glowCoreIntensity);
-  setUniform1f(uGlowWideRadius, "u_glowWideRadius", tweak.u_glowWideRadius);
-  setUniform1f(uGlowWideIntensity, "u_glowWideIntensity", tweak.u_glowWideIntensity);
-  setUniform1f(uWarpStrength, "u_warpStrength", tweak.u_warpStrength);
-  setUniform1f(uNoiseAmount, "u_noiseAmount", tweak.u_noiseAmount);
-  setUniform1f(uDarkness, "u_darkness", tweak.u_darkness);
-  setUniform1f(uWaveCount, "u_waveCount", tweak.u_waveCount);
-  setUniform1f(uWaveFreq, "u_waveFreq", tweak.u_waveFreq);
-  setUniform1f(uWaveSpeed, "u_waveSpeed", tweak.u_waveSpeed);
-  setUniform1f(uRippleStrength, "u_rippleStrength", tweak.u_rippleStrength);
-  setUniform1f(uFlickerSpeed, "u_flickerSpeed", tweak.u_flickerSpeed);
-  setUniform1f(uFlickerAmount, "u_flickerAmount", tweak.u_flickerAmount);
-  setUniform1f(uWaveSharpness, "u_waveSharpness", tweak.u_waveSharpness);
-  setUniform1f(uWaveBrightness, "u_waveBrightness", tweak.u_waveBrightness);
-  setUniform1f(uWaveGlow, "u_waveGlow", tweak.u_waveGlow);
-  setUniform1f(uWaveTemp, "u_waveTemp", tweak.u_waveTemp);
-  setUniform1f(uWaveSpacing, "u_waveSpacing", tweak.u_waveSpacing);
-  setUniform1f(uWaveAlt, "u_waveAlt", tweak.u_waveAlt);
-  setUniform1f(uMouseRadius, "u_mouseRadius", tweak.u_mouseRadius);
+  gl.uniform1f(uGlowCoreRadius, tweak.u_glowCoreRadius);
+  gl.uniform1f(uGlowCoreIntensity, tweak.u_glowCoreIntensity);
+  gl.uniform1f(uGlowWideRadius, tweak.u_glowWideRadius);
+  gl.uniform1f(uGlowWideIntensity, tweak.u_glowWideIntensity);
+  gl.uniform1f(uWarpStrength, tweak.u_warpStrength);
+  gl.uniform1f(uNoiseAmount, tweak.u_noiseAmount);
+  gl.uniform1f(uDarkness, tweak.u_darkness);
+  gl.uniform1f(uWaveCount, tweak.u_waveCount);
+  gl.uniform1f(uWaveFreq, tweak.u_waveFreq);
+  gl.uniform1f(uWaveSpeed, tweak.u_waveSpeed);
+  gl.uniform1f(uRippleStrength, tweak.u_rippleStrength);
+  gl.uniform1f(uFlickerSpeed, tweak.u_flickerSpeed);
+  gl.uniform1f(uFlickerAmount, tweak.u_flickerAmount);
+  gl.uniform1f(uWaveSharpness, tweak.u_waveSharpness);
+  gl.uniform1f(uWaveBrightness, tweak.u_waveBrightness);
+  gl.uniform1f(uWaveGlow, tweak.u_waveGlow);
+  gl.uniform1f(uWaveTemp, tweak.u_waveTemp);
+  gl.uniform1f(uWaveSpacing, tweak.u_waveSpacing);
+  gl.uniform1f(uWaveAlt, tweak.u_waveAlt);
+  gl.uniform1f(uMouseRadius, tweak.u_mouseRadius);
 }
 
 const sliderDefs = [
@@ -1648,7 +1642,7 @@ function playNote(b) {
 let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
 let mouseX=0.5;
 const trail = [];
-const TRAIL_LENGTH = 10;
+const TRAIL_LENGTH = 20;
 let prevTmy=ty;
 let prevTmx=tx;
 let mouseVelocity=0;
@@ -2019,7 +2013,7 @@ function frame(t){
   }
   gl.uniform2fv(uTrail, trailPos);
   gl.uniform1fv(uTrailAge, trailAge);
-  gl.uniform1i(uTrailLen, Math.min(trail.length, 10));
+  gl.uniform1i(uTrailLen, trail.length);
   if (activeBand>=0&&activeBand<8) {
     const hints=HARMONIC_HINTS[activeBand];
     gl.uniform1f(uHintBand0,hints[0]);
