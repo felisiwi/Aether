@@ -83,8 +83,6 @@ uniform float u_hintBand0;
 uniform float u_hintBand1;
 uniform float u_flickerSpeed;
 uniform float u_flickerAmount;
-uniform float u_velocity;
-uniform float u_velX;
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
 }
@@ -125,13 +123,11 @@ void main() {
                   * (1.0 + float(i) * 0.1);
     waveX += ripple * 0.04 * sin(float(i) * 1.3);
     waveX += ripple2 * 0.025 * cos(float(i) * 0.9);
-    float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
-    float hWobble = isActive * u_velX * 0.003 * sin(uv.x * 20.0 + t * 8.0);
-    waveX += hWobble;
     float dy = uv.y - bandY - waveX;
     float flicker = 1.0 + u_flickerAmount * sin(t * u_flickerSpeed * harmonic + fi * 12.0)
                             + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
     float band = exp(-dy * dy * 180.0) * flicker;
+    float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
     band *= 1.0 + isActive * 1.5;
     float isHint0 = 1.0 - step(0.5, abs(float(i) - u_hintBand0));
     float isHint1 = 1.0 - step(0.5, abs(float(i) - u_hintBand1));
@@ -151,10 +147,9 @@ void main() {
   float glowCore = pow(max(0., 1. - dg / u_glowCoreRadius), 3.0)
                    * u_glowCoreIntensity;
   float glowTrail = pow(max(0., 1. - dg2 / 0.22), 2.0) * 0.2;
-  float velBurst = u_velocity * exp(-mouseDist * mouseDist * 80.0) * 0.3;
   float glow = glowWide + glowCore + glowTrail;
   float cursorLine = exp(-pow((uv.y - u_smoothBandY) * 20.0, 2.0)) * 0.15;
-  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine + velBurst, 0.0, 1.0);
+  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine, 0.0, 1.0);
   vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
@@ -200,8 +195,6 @@ const uHintBand0=gl.getUniformLocation(p,"u_hintBand0");
 const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
 const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
 const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
-const uVelocity=gl.getUniformLocation(p,"u_velocity");
-const uVelX=gl.getUniformLocation(p,"u_velX");
 
 const tweak = {
   u_glowCoreRadius: 0.09,
@@ -282,9 +275,6 @@ const HARMONIC_HINTS = [
 let soundAttack = 20;
 let soundDecay = 400;
 let soundVolume = 0.3;
-let portamentoSensitivity = 0.5;
-let vibratoDepthControl = 1.0;
-let vibratoSpeedControl = 5.5;
 let oscType = "sine";
 
 const panel = document.getElementById("tweak-panel");
@@ -402,36 +392,6 @@ appendSoundSlider(
     soundVolume = v;
   },
 );
-appendSoundSlider(
-  "portamento",
-  0,
-  1,
-  0.01,
-  () => portamentoSensitivity,
-  (v) => {
-    portamentoSensitivity = v;
-  },
-);
-appendSoundSlider(
-  "vibrato depth",
-  0,
-  3,
-  0.1,
-  () => vibratoDepthControl,
-  (v) => {
-    vibratoDepthControl = v;
-  },
-);
-appendSoundSlider(
-  "vibrato speed",
-  2,
-  12,
-  0.1,
-  () => vibratoSpeedControl,
-  (v) => {
-    vibratoSpeedControl = v;
-  },
-);
 
 const oscBlock = document.createElement("div");
 oscBlock.style.marginBottom = "12px";
@@ -486,9 +446,6 @@ copyBtn.addEventListener("click", () => {
     u_rippleStrength: tweak.u_rippleStrength,
     u_flickerSpeed: tweak.u_flickerSpeed,
     u_flickerAmount: tweak.u_flickerAmount,
-    portamentoSensitivity,
-    vibratoDepthControl,
-    vibratoSpeedControl,
   };
   console.log(o);
 });
@@ -545,7 +502,7 @@ function initAudio() {
   initGlide();
 }
 
-function playNoteWithVolume(bandIndex, vol) {
+function playNote(bandIndex) {
   if (!audioCtx) return;
   const freq = currentScale[bandIndex];
   const osc1 = audioCtx.createOscillator();
@@ -566,7 +523,7 @@ function playNoteWithVolume(bandIndex, vol) {
   filter.Q.value = 1.5;
   const t0 = audioCtx.currentTime;
   master.gain.setValueAtTime(0.0, t0);
-  master.gain.linearRampToValueAtTime(vol, t0 + soundAttack / 1000);
+  master.gain.linearRampToValueAtTime(soundVolume, t0 + soundAttack / 1000);
   master.gain.exponentialRampToValueAtTime(0.001, t0 + soundDecay / 1000);
   osc1.connect(gain1);
   gain1.connect(filter);
@@ -584,20 +541,8 @@ function playNoteWithVolume(bandIndex, vol) {
   }, 300);
 }
 
-function playNote(b) {
-  playNoteWithVolume(b, soundVolume);
-}
-
 let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
 let mouseX=0.5;
-let prevTmy=ty;
-let prevTmx=tx;
-let mouseVelocity=0;
-let smoothVelocity=0;
-let mouseVelX=0;
-let smoothVelX=0;
-let dwellTime=0;
-let lastBandY=-1;
 let mx2=mx,my2=my;
 let lastMoveTime=performance.now();
 let idleBreath=0;
@@ -613,60 +558,33 @@ document.addEventListener("mousemove", (e) => {
   ty = e.clientY;
   mouseX = e.clientX / window.innerWidth;
   lastMoveTime = performance.now();
+  const bandIndex = Math.floor((1.0 - e.clientY / window.innerHeight) * 8);
+  const clampedBand = Math.max(0, Math.min(7, bandIndex));
+  if (clampedBand !== lastBand) {
+    lastBand = clampedBand;
+    playNote(clampedBand);
+  }
 });
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);}
 window.addEventListener("resize",resize);resize();
 function frame(t){
-  const tmx=tx;
-  const tmy=ty;
-  const rawVel=Math.abs(tmy-prevTmy);
-  prevTmy=tmy;
-  mouseVelocity=rawVel;
-  smoothVelocity+=(rawVel-smoothVelocity)*0.15;
-  const rawVelX=Math.abs(tmx-prevTmx);
-  prevTmx=tmx;
-  mouseVelX=rawVelX;
-  smoothVelX+=(rawVelX-smoothVelX)*0.15;
   mx+=(tx-mx)*.08;my+=(ty-my)*.08;
   const lag=tweak.u_trailLag;
   mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
   const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
   idleBreath+=(idle-idleBreath)*0.02;
-  const normY=1.0-tmy/window.innerHeight;
-  const rawBand=normY*8;
-  const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
-  const sensitivity=portamentoSensitivity;
-  const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
-  const clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
-  smoothBandY+=(normY-smoothBandY)*clampedGlide;
-  const velocityThreshold=3+portamentoSensitivity*8;
-  const isSettling=smoothVelocity<velocityThreshold;
-  if (clampedBand!==lastBand&&isSettling) {
-    lastBand=clampedBand;
-    const velVolume=soundVolume*(0.4+Math.min(smoothVelocity/15.0,0.6));
-    playNoteWithVolume(clampedBand,velVolume);
-  }
+  const targetY=1.0-ty/window.innerHeight;
+  smoothBandY+=(targetY-smoothBandY)*0.04;
   let targetBand=Math.floor(smoothBandY*8);
   if (targetBand>7) targetBand=7;
   if (targetBand<0) targetBand=0;
   const targetFreq=currentScale[targetBand];
-  const freqGlide=0.03+(1.0-sensitivity)*0.08;
-  if (glideOsc1&&audioCtx) {
-    currentFreq+=(targetFreq-currentFreq)*freqGlide;
+  if (glideOsc1 && audioCtx) {
+    currentFreq+=(targetFreq-currentFreq)*0.06;
+    glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
+    glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
     const isMoving=Math.abs(tx-mx)+Math.abs(ty-my)>2;
-    if (clampedBand===lastBand) {
-      const vibratoDepth=smoothVelX*0.4*vibratoDepthControl;
-      const vibratoFreq=vibratoSpeedControl;
-      const vibrato=Math.sin(performance.now()*0.001*vibratoFreq)*vibratoDepth;
-      glideOsc1.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
-      glideOsc2.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
-    } else {
-      glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
-      glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
-    }
-    const holdingNote=clampedBand===lastBand;
-    const sustainBoost=holdingNote?Math.min(smoothVelX/10.0,0.3):0.0;
-    const targetGlideVol=(isMoving||holdingNote)?soundVolume*(0.15+sustainBoost):0.0;
+    const targetGlideVol=isMoving?soundVolume*0.15:0.0;
     glideGain.gain.setTargetAtTime(targetGlideVol,audioCtx.currentTime,0.1);
     const blend=mouseX;
     glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
@@ -680,8 +598,6 @@ function frame(t){
   gl.uniform1f(uActiveBand,activeBand);
   gl.uniform1f(uMouseX,mouseX);
   gl.uniform1f(uSmoothBandY,smoothBandY);
-  gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
-  gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
   if (activeBand>=0&&activeBand<8) {
     const hints=HARMONIC_HINTS[activeBand];
     gl.uniform1f(uHintBand0,hints[0]);
