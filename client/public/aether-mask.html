@@ -1178,7 +1178,55 @@ function refreshPanelFromState() {
   });
 }
 
-function applyImportedSettings(o) {
+function getCurrentSettings() {
+  return {
+    glowSize,
+    glowIntensity,
+    logoBrightness,
+    logoDistortAmount,
+    logoDistortBase,
+    logoBlurAmount,
+    logoBlurBase,
+    logoSharpness,
+    logoChromatic,
+    logoWaveInfluence,
+    logoTurbFreq,
+    logoTurbSpeed,
+    logoInvertBlur,
+    u_trailLag: tweak.u_trailLag,
+    u_warpStrength: tweak.u_warpStrength,
+    u_noiseAmount: tweak.u_noiseAmount,
+    u_darkness: tweak.u_darkness,
+    u_waveCount: tweak.u_waveCount,
+    u_waveFreq: tweak.u_waveFreq,
+    u_waveSpeed: tweak.u_waveSpeed,
+    u_rippleStrength: tweak.u_rippleStrength,
+    u_flickerSpeed: tweak.u_flickerSpeed,
+    u_flickerAmount: tweak.u_flickerAmount,
+    u_waveSharpness: tweak.u_waveSharpness,
+    u_waveBrightness: tweak.u_waveBrightness,
+    u_waveGlow: tweak.u_waveGlow,
+    u_waveTemp: tweak.u_waveTemp,
+    u_waveSpacing: tweak.u_waveSpacing,
+    u_waveAlt: tweak.u_waveAlt,
+    u_mouseRadius: tweak.u_mouseRadius,
+    releaseTime,
+    velocityThreshold,
+    sustainLevel,
+    deadZoneSize,
+    portamentoSensitivity,
+    vibratoDepthControl,
+    vibratoSpeedControl,
+    gravityStrength,
+    gravityEnabled,
+    octaveMix,
+    sympatheticMix,
+    hangDrumEnabled,
+    targetScrollSemitones,
+  };
+}
+
+function applySettings(o) {
   if (!o || typeof o !== "object") return;
   const n = (x) => typeof x === "number" && !Number.isNaN(x);
   for (const key of Object.keys(tweak)) {
@@ -1227,56 +1275,61 @@ function applyImportedSettings(o) {
   refreshPanelFromState();
 }
 
+function getPresets() {
+  try {
+    return JSON.parse(localStorage.getItem("aether_presets") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function savePresets(presets) {
+  localStorage.setItem("aether_presets", JSON.stringify(presets));
+}
+
+function renderPresetList() {
+  const list = document.getElementById("preset-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const presets = getPresets();
+  if (presets.length === 0) {
+    list.innerHTML = '<div style="font-size:9px;color:rgba(255,255,255,0.2);padding:4px 0;">No saved presets</div>';
+    return;
+  }
+  presets.forEach((preset, index) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:4px;align-items:center;";
+    const nameBtn = document.createElement("button");
+    nameBtn.textContent = preset.name;
+    nameBtn.style.cssText = "flex:1;text-align:left;padding:5px 7px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:3px;color:rgba(255,200,120,0.85);font-family:inherit;font-size:10px;cursor:pointer;";
+    nameBtn.title = preset.name;
+    nameBtn.addEventListener("click", () => {
+      applySettings(preset.data);
+      document.querySelectorAll("#preset-list button:first-child")
+        .forEach((b) => (b.style.background = "rgba(255,255,255,0.05)"));
+      nameBtn.style.background = "rgba(255,150,80,0.2)";
+    });
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "×";
+    delBtn.style.cssText = "padding:4px 7px;background:rgba(255,60,60,0.08);border:1px solid rgba(255,60,60,0.2);border-radius:3px;color:rgba(255,100,80,0.7);font-family:inherit;font-size:11px;cursor:pointer;flex-shrink:0;";
+    delBtn.addEventListener("click", () => {
+      const items = getPresets();
+      items.splice(index, 1);
+      savePresets(items);
+      renderPresetList();
+    });
+    row.appendChild(nameBtn);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  });
+}
+
 const copyBtn = document.createElement("button");
 copyBtn.type = "button";
 copyBtn.id = "tweak-copy";
 copyBtn.textContent = "Copy values";
 copyBtn.addEventListener("click", () => {
-  const o = {
-    glowSize,
-    glowIntensity,
-    logoBrightness,
-    logoDistortAmount,
-    logoDistortBase,
-    logoBlurAmount,
-    logoBlurBase,
-    logoSharpness,
-    logoChromatic,
-    logoWaveInfluence,
-    logoTurbFreq,
-    logoTurbSpeed,
-    logoInvertBlur,
-    u_trailLag: tweak.u_trailLag,
-    u_warpStrength: tweak.u_warpStrength,
-    u_noiseAmount: tweak.u_noiseAmount,
-    u_darkness: tweak.u_darkness,
-    u_waveCount: tweak.u_waveCount,
-    u_waveFreq: tweak.u_waveFreq,
-    u_waveSpeed: tweak.u_waveSpeed,
-    u_rippleStrength: tweak.u_rippleStrength,
-    u_flickerSpeed: tweak.u_flickerSpeed,
-    u_flickerAmount: tweak.u_flickerAmount,
-    u_waveSharpness: tweak.u_waveSharpness,
-    u_waveBrightness: tweak.u_waveBrightness,
-    u_waveGlow: tweak.u_waveGlow,
-    u_waveTemp: tweak.u_waveTemp,
-    u_waveSpacing: tweak.u_waveSpacing,
-    u_waveAlt: tweak.u_waveAlt,
-    u_mouseRadius: tweak.u_mouseRadius,
-    releaseTime,
-    velocityThreshold,
-    sustainLevel,
-    deadZoneSize,
-    portamentoSensitivity,
-    vibratoDepthControl,
-    vibratoSpeedControl,
-    gravityStrength,
-    gravityEnabled,
-    octaveMix,
-    sympatheticMix,
-    hangDrumEnabled,
-    targetScrollSemitones,
-  };
+  const o = getCurrentSettings();
   const text = JSON.stringify(o, null, 2);
   navigator.clipboard.writeText(text).then(() => {
     copyBtn.textContent = "Copied!";
@@ -1307,7 +1360,7 @@ importInput.addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const o = JSON.parse(String(reader.result));
-      applyImportedSettings(o);
+      applySettings(o);
       importBtn.textContent = "Imported!";
       importBtn.style.background = "rgba(80,200,120,0.25)";
       setTimeout(() => {
@@ -1333,6 +1386,58 @@ importBtn.style.marginLeft = "8px";
 importBtn.addEventListener("click", () => importInput.click());
 panel.appendChild(importBtn);
 panel.appendChild(importInput);
+
+const presetSection = document.createElement("div");
+presetSection.id = "preset-section";
+presetSection.style.cssText = "margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;";
+const presetHeader = document.createElement("div");
+presetHeader.style.cssText = "font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3);margin-bottom:8px;";
+presetHeader.textContent = "Presets";
+const presetSaveRow = document.createElement("div");
+presetSaveRow.style.cssText = "display:flex;gap:4px;margin-bottom:8px;";
+const presetNameInput = document.createElement("input");
+presetNameInput.id = "preset-name-input";
+presetNameInput.type = "text";
+presetNameInput.placeholder = "preset name";
+presetNameInput.style.cssText = "flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:5px 7px;color:rgba(255,255,255,0.8);font-family:inherit;font-size:10px;outline:none;min-width:0;";
+const presetSaveBtn = document.createElement("button");
+presetSaveBtn.id = "preset-save-btn";
+presetSaveBtn.style.cssText = "padding:5px 8px;background:rgba(255,150,80,0.15);border:1px solid rgba(255,150,80,0.3);border-radius:3px;color:rgba(255,180,100,0.9);font-family:inherit;font-size:10px;cursor:pointer;white-space:nowrap;";
+presetSaveBtn.textContent = "Save";
+presetSaveRow.appendChild(presetNameInput);
+presetSaveRow.appendChild(presetSaveBtn);
+const presetList = document.createElement("div");
+presetList.id = "preset-list";
+presetList.style.cssText = "display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;";
+presetSection.appendChild(presetHeader);
+presetSection.appendChild(presetSaveRow);
+presetSection.appendChild(presetList);
+panel.appendChild(presetSection);
+
+presetSaveBtn.addEventListener("click", () => {
+  const name = presetNameInput.value.trim();
+  if (!name) {
+    presetNameInput.style.borderColor = "rgba(255,80,80,0.5)";
+    setTimeout(() => {
+      presetNameInput.style.borderColor = "rgba(255,255,255,0.15)";
+    }, 800);
+    return;
+  }
+  const presets = getPresets();
+  const existing = presets.findIndex((p) => p.name === name);
+  if (existing >= 0) presets[existing].data = getCurrentSettings();
+  else presets.push({ name, data: getCurrentSettings() });
+  savePresets(presets);
+  presetNameInput.value = "";
+  renderPresetList();
+});
+
+presetNameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") presetSaveBtn.click();
+  e.stopPropagation();
+});
+
+renderPresetList();
 
 document.getElementById("tweak-toggle").addEventListener("click", () => {
   const root = document.getElementById("tweak-root");
