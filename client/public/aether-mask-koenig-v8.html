@@ -74,7 +74,7 @@ video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.sv
 <body>
 <canvas id="c"></canvas>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
-MOVE IN CIRCLES TO PLAY
+MOVE MOUSE TO PLAY
 </div>
 <div class="logo-wrap">
 <video autoplay muted loop playsinline>
@@ -99,9 +99,7 @@ uniform float u_waveCount, u_waveFreq, u_waveSpeed, u_rippleStrength;
 uniform float u_idle;
 uniform float u_activeBand;
 uniform float u_mouseX;
-uniform float u_polarAngle;
-uniform float u_polarDist;
-uniform float u_octaveDist;
+uniform float u_smoothBandY;
 uniform float u_hintBand0;
 uniform float u_hintBand1;
 uniform float u_flickerSpeed;
@@ -118,11 +116,6 @@ float hash(vec2 p) {
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
 float sn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*sn(p);p*=2.;a*=.5;}return v;}
-#define PI 3.14159265358979
-const float ACTIVE_BAND_GLOW = 1.0;
-float wrapAng(float a) {
-  return atan(sin(a), cos(a));
-}
 void main() {
   vec2 uv = gl_FragCoord.xy / u_res;
   vec2 m = u_mouse / u_res;
@@ -144,42 +137,37 @@ void main() {
   vec2 sd = vec2(fbm(smokeUV), fbm(smokeUV + vec2(1.7)));
   float smoke = fbm(uv * 1.8 + sd * u_warpStrength * 0.4 + t * 0.06);
   smoke = clamp(smoke * u_noiseAmount * 0.6, 0.0, 1.0);
-  vec2 centre = vec2(0.5, 0.5);
-  vec2 fromCentre = uv - centre;
-  fromCentre.x *= aspect;
-  float angle = atan(fromCentre.y, fromCentre.x);
-  float dist = length(fromCentre);
   float waves = 0.0;
   float wc = u_waveCount;
   for (int i = 0; i < 12; i++) {
     if (float(i) >= wc) break;
     float fi = float(i) / wc;
-    float bandAngle = (fi - 0.5) * PI * 2.0;
+    float bandY = fi;
     float harmonic = 1.0 + float(i) * 0.5;
     float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
-    float wobble = sin(dist * u_waveFreq * harmonic + phase)
-                   * 0.04 * u_rippleStrength;
-    float da = angle - bandAngle + wobble;
-    da = wrapAng(da);
-    float flicker = 1.0 + u_flickerAmount *
-      sin(t * u_flickerSpeed * harmonic + fi * 12.0)
-      + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
+    float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
+                  * 0.03
+                  * (1.0 + float(i) * 0.1);
+    waveX += ripple * 0.04 * sin(float(i) * 1.3);
+    waveX += ripple2 * 0.025 * cos(float(i) * 0.9);
     float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
-    float warmGlow = isActive * ACTIVE_BAND_GLOW * 1.4;
-    float activeWidth = 1.0 + isActive * ACTIVE_BAND_GLOW * 0.4;
-    float band = exp(-da * da * (u_waveSharpness * 0.1 / activeWidth)) * flicker;
-    band *= 1.0 + warmGlow;
+    float hWobble = isActive * u_velX * 0.003 * sin(uv.x * 20.0 + t * 8.0);
+    waveX += hWobble;
+    float dy = uv.y - bandY - waveX;
+    float flicker = 1.0 + u_flickerAmount * sin(t * u_flickerSpeed * harmonic + fi * 12.0)
+                            + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
+    float band = exp(-dy * dy * u_waveSharpness) * flicker;
+    band *= 1.0 + isActive * 1.5;
     float isWell = 0.0;
     if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
     if (abs(float(i) - 4.0) < 0.5) isWell = 1.0;
     if (abs(float(i) - 7.0) < 0.5) isWell = 1.0;
-    band *= 1.0 + isWell * u_gravityStrength * 0.35;
+    band *= 1.0 + isWell * u_gravityStrength * 0.3;
     float isHint0 = 1.0 - step(0.5, abs(float(i) - u_hintBand0));
     float isHint1 = 1.0 - step(0.5, abs(float(i) - u_hintBand1));
-    band *= 1.0 + (isHint0 + isHint1) * 0.4;
-    float radialFade = smoothstep(0.05, 0.25, dist) *
-                       smoothstep(0.95, 0.7, dist);
-    waves += band * radialFade;
+    float hintGlow = (isHint0 + isHint1) * 0.4;
+    band *= 1.0 + hintGlow;
+    waves += band;
   }
   waves = clamp(waves * u_noiseAmount, 0.0, 1.0);
   vec2 smokeOff = vec2(
@@ -195,20 +183,14 @@ void main() {
   float glowTrail = pow(max(0., 1. - dg2 / 0.22), 2.0) * 0.2;
   float velBurst = u_velocity * exp(-mouseDist * mouseDist * 80.0) * 0.3;
   float glow = glowWide + glowCore + glowTrail;
-  float ring1 = exp(-pow((dist - 0.33) * 20.0, 2.0)) * 0.08;
-  float ring2 = exp(-pow((dist - 0.66) * 20.0, 2.0)) * 0.08;
-  float rings = (ring1 + ring2) * u_polarDist;
-  float cursorAngle = u_polarAngle;
-  float dAngle = wrapAng(angle - cursorAngle);
-  dAngle = abs(dAngle);
-  float cursorLine = exp(-pow(dAngle * 12.0, 2.0)) * 0.12 * smoothstep(0.05, 0.15, dist);
+  float cursorLine = exp(-pow((uv.y - u_smoothBandY) * 20.0, 2.0)) * 0.15;
   float edgeGlow = 0.0;
   if (u_octaveDirection > 0.0) {
     edgeGlow = u_octaveAmount * exp(-pow((uv.y - 1.0) * 8.0, 2.0)) * 0.6;
   } else {
     edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
   }
-  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + rings + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
+  float v = clamp(smoke * 0.7 + waves + glow * 0.7 + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
   vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
@@ -249,9 +231,7 @@ const uRippleStrength=gl.getUniformLocation(p,"u_rippleStrength");
 const uIdle=gl.getUniformLocation(p,"u_idle");
 const uActiveBand=gl.getUniformLocation(p,"u_activeBand");
 const uMouseX=gl.getUniformLocation(p,"u_mouseX");
-const uPolarAngle=gl.getUniformLocation(p,"u_polarAngle");
-const uPolarDist=gl.getUniformLocation(p,"u_polarDist");
-const uOctaveDist=gl.getUniformLocation(p,"u_octaveDist");
+const uSmoothBandY=gl.getUniformLocation(p,"u_smoothBandY");
 const uHintBand0=gl.getUniformLocation(p,"u_hintBand0");
 const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
 const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
@@ -331,12 +311,7 @@ const SCALES = {
 };
 let currentScale = SCALES["C Major"];
 let currentFreq = currentScale[4];
-let polarAngle = 0;
-let polarDist = 0;
-let smoothAngle = 0;
-let smoothDist = 0;
-let lastAngleBand = -1;
-let prevSmoothAngleSnapshot = 0;
+let smoothBandY = 0.5;
 const HARMONIC_HINTS = [
   [2, 4],
   [0, 3],
@@ -362,11 +337,8 @@ let gravityEnabled = true;
 let octaveMix = 0.6;
 let oscType = "sine";
 
-function angleDiff(target, current) {
-  let d = target - current;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
+function getWellPositions() {
+  return [0, 4, 7].map((degree) => (degree + 0.5) / 8.0);
 }
 
 const panel = document.getElementById("tweak-panel");
@@ -812,6 +784,7 @@ document.getElementById("tweak-toggle").addEventListener("click", () => {
 });
 
 let audioCtx = null;
+let lastBand = -1;
 let activeGain = null;
 let activeBand = -1;
 let hintFaded = false;
@@ -980,8 +953,8 @@ function frame(t){
   mouseVelX=rawVelX;
   smoothVelX+=(rawVelX-smoothVelX)*0.15;
   const totalVel=smoothVelocity+smoothVelX;
-  const isMovingPolar=totalVel>1.5;
-  if (isMovingPolar) {
+  const isMoving=totalVel>1.5;
+  if (isMoving) {
     mouseStillTime=0;
   } else {
     mouseStillTime+=0.016;
@@ -991,91 +964,106 @@ function frame(t){
   mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
   const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
   idleBreath+=(idle-idleBreath)*0.02;
-  const prevAngForVib=prevSmoothAngleSnapshot;
-  const cx=window.innerWidth/2;
-  const cy=window.innerHeight/2;
-  const dx=tmx-cx;
-  const dy=tmy-cy;
-  const maxDist=Math.min(cx,cy)*0.85;
-  polarAngle=Math.atan2(dy,dx);
-  polarDist=maxDist>0?Math.min(Math.sqrt(dx*dx+dy*dy)/maxDist,1.0):0;
-  smoothAngle+=angleDiff(polarAngle,smoothAngle)*0.06;
-  smoothDist+=(polarDist-smoothDist)*0.05;
+  const normY=1.0-tmy/window.innerHeight;
+  const rawBand=normY*8;
+  const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
+  const bandFraction=rawBand-Math.floor(rawBand);
+  const inDeadZone=bandFraction<deadZoneSize||bandFraction>(1-deadZoneSize);
+  const shouldTrigger=!inDeadZone||smoothVelocity>8;
+  const sensitivity=portamentoSensitivity;
+  const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
+  let clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
   if (gravityEnabled) {
-    const wellAngles=[0,4,7].map((d)=>(d/8.0)*Math.PI*2-Math.PI);
-    let totalAngPull=0;
-    wellAngles.forEach((wellA)=>{
-      const adist=Math.abs(angleDiff(wellA,smoothAngle));
-      const pull=gravityStrength*Math.exp(-adist*4.0)*0.3;
-      totalAngPull+=angleDiff(wellA,smoothAngle)*-pull;
+    const wellsRes = getWellPositions();
+    const nearestWell = wellsRes.reduce((a, b) =>
+      Math.abs(a - smoothBandY) < Math.abs(b - smoothBandY) ? a : b
+    );
+    const movingTowardWell =
+      (normY - smoothBandY) * (nearestWell - smoothBandY) > 0;
+    const resistanceMultiplier = movingTowardWell ? 1.4 : 0.7;
+    clampedGlide = Math.max(
+      0.01,
+      Math.min(0.12, glideSpeed * resistanceMultiplier)
+    );
+  }
+  smoothBandY += (normY - smoothBandY) * clampedGlide;
+  if (gravityEnabled) {
+    const wells = getWellPositions();
+    let totalPull = 0;
+    wells.forEach((wellY) => {
+      const dist = Math.abs(smoothBandY - wellY);
+      // Softer falloff — exp(-dist * 6) instead of 12
+      // so pull starts earlier and builds more gradually
+      const pull = gravityStrength * Math.exp(-dist * 6.0) * 0.4;
+      const direction = wellY - smoothBandY;
+      totalPull += direction * pull;
     });
-    const maxAngularPull=0.02;
-    smoothAngle+=Math.max(-maxAngularPull,Math.min(maxAngularPull,totalAngPull));
+    // Cap max movement per frame so it never snaps suddenly
+    const maxPullPerFrame = 0.004;
+    smoothBandY += Math.max(-maxPullPerFrame,
+      Math.min(maxPullPerFrame, totalPull));
+    smoothBandY = Math.max(0, Math.min(1, smoothBandY));
   }
-  const normalised=(smoothAngle+Math.PI)/(Math.PI*2);
-  const rawAngleBand=normalised*8;
-  const angleBand=Math.max(0,Math.min(7,Math.floor(rawAngleBand)));
-  const angleFraction=rawAngleBand-Math.floor(rawAngleBand);
-  const octaveShift=Math.floor(smoothDist*3)-1;
-  const baseFreq=currentScale[angleBand];
-  const targetFreq=baseFreq*Math.pow(2,octaveShift);
-  const angleDeadZone=deadZoneSize;
-  const inAngleDeadZone=angleFraction<angleDeadZone||
-    angleFraction>(1-angleDeadZone);
-  const shouldTriggerAngle=!inAngleDeadZone||
-    smoothVelocity>velocityThreshold;
-  const isSettlingPolar=smoothVelocity<
-    velocityThreshold+portamentoSensitivity*8;
-  if (angleBand!==lastAngleBand&&isSettlingPolar&&shouldTriggerAngle) {
-    lastAngleBand=angleBand;
-    const velVolume=soundVolume*
-      (0.4+Math.min(smoothVelocity/15.0,0.6));
-    playNoteWithVolume(angleBand,velVolume);
+  const velocityGate=velocityThreshold+portamentoSensitivity*8;
+  const isSettling=smoothVelocity<velocityGate;
+  if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
+    lastBand=clampedBand;
+    const velVolume=soundVolume*(0.4+Math.min(smoothVelocity/15.0,0.6));
+    playNoteWithVolume(clampedBand,velVolume);
   }
-  const angularVel=Math.abs(angleDiff(smoothAngle,prevAngForVib))*60.0;
-  prevSmoothAngleSnapshot=smoothAngle;
-  const freqGlide=0.03+(1.0-portamentoSensitivity)*0.08;
+  let targetBand=Math.floor(smoothBandY*8);
+  if (targetBand>7) targetBand=7;
+  if (targetBand<0) targetBand=0;
+  const targetFreq=currentScale[targetBand];
+  const freqGlide=0.03+(1.0-sensitivity)*0.08;
   if (glideOsc1&&audioCtx) {
     currentFreq+=(targetFreq-currentFreq)*freqGlide;
-    const distPressure=smoothDist>0.9?(smoothDist-0.9)*10.0:0.0;
-    octaveAmount+=(distPressure-octaveAmount)*0.04;
-    octaveDirection=smoothDist>=0.5?1:-1;
-    if (octaveLayerOsc1&&audioCtx) {
-      const octFreq=currentFreq*2.0;
-      octaveLayerOsc1.frequency.setValueAtTime(octFreq,audioCtx.currentTime);
-      octaveLayerOsc2.frequency.setValueAtTime(octFreq,audioCtx.currentTime);
-      const octBlend=mouseX;
-      if (octaveLayerG1&&octaveLayerG2) {
-        octaveLayerG1.gain.setValueAtTime(1.0-octBlend*0.8,audioCtx.currentTime);
-        octaveLayerG2.gain.setValueAtTime(octBlend*0.4,audioCtx.currentTime);
-      }
-    }
-    const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
-    if (octaveLayerOsc1&&audioCtx&&octaveLayerGainNode) {
-      const octVol=octaveAmount*soundVolume*sustainFade*octaveMix;
-      octaveLayerGainNode.gain.setTargetAtTime(octVol,audioCtx.currentTime,0.15);
-    }
-    if (angleBand===lastAngleBand) {
-      const vibratoDepth=angularVel*0.4*vibratoDepthControl;
-      const vibrato=Math.sin(performance.now()*0.001*
-        vibratoSpeedControl)*vibratoDepth;
+    if (clampedBand===lastBand) {
+      const vibratoDepth=smoothVelX*0.4*vibratoDepthControl;
+      const vibratoFreq=vibratoSpeedControl;
+      const vibrato=Math.sin(performance.now()*0.001*vibratoFreq)*vibratoDepth;
       glideOsc1.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
       glideOsc2.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
     } else {
       glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
       glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
     }
-    const holdingAngle=angleBand===lastAngleBand;
-    const sustainBoost=holdingAngle?
-      Math.min(angularVel/10.0,0.3):0.0;
-    const targetGlideVol=soundVolume*
-      (sustainLevel+sustainBoost)*sustainFade;
+    const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
+    const holdingNote=clampedBand===lastBand;
+    const sustainBoost=holdingNote?Math.min(smoothVelX/10.0,0.3):0.0;
+    const targetGlideVol=soundVolume*(sustainLevel+sustainBoost)*sustainFade;
     if (glideGain&&audioCtx) {
       glideGain.gain.setTargetAtTime(targetGlideVol,audioCtx.currentTime,0.3);
     }
     const blend=mouseX;
     glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
     glideG2.gain.setValueAtTime(blend*0.4,audioCtx.currentTime);
+
+    const rawNormY = 1.0 - tmy / window.innerHeight;
+    const boundaryPressure =
+      rawNormY < 0.05
+        ? -(0.05 - rawNormY) * 20.0
+        : rawNormY > 0.95
+          ? (rawNormY - 0.95) * 20.0
+          : 0.0;
+    const targetOctave = Math.max(0, Math.min(1, Math.abs(boundaryPressure)));
+    octaveAmount += (targetOctave - octaveAmount) * 0.04;
+    octaveDirection = boundaryPressure < 0 ? -1 : 1;
+
+    if (octaveLayerOsc1 && audioCtx) {
+      const octFreq =
+        octaveDirection > 0 ? currentFreq * 2.0 : currentFreq * 0.5;
+      octaveLayerOsc1.frequency.setValueAtTime(octFreq, audioCtx.currentTime);
+      octaveLayerOsc2.frequency.setValueAtTime(octFreq, audioCtx.currentTime);
+      const octBlend = mouseX;
+      if (octaveLayerG1 && octaveLayerG2) {
+        octaveLayerG1.gain.setValueAtTime(1.0 - octBlend * 0.8, audioCtx.currentTime);
+        octaveLayerG2.gain.setValueAtTime(octBlend * 0.4, audioCtx.currentTime);
+      }
+      const octVol =
+        octaveAmount * soundVolume * sustainFade * octaveMix;
+      octaveLayerGainNode.gain.setTargetAtTime(octVol, audioCtx.currentTime, 0.15);
+    }
   }
   gl.uniform2f(ur,canvas.width,canvas.height);
   gl.uniform2f(um,mx,canvas.height-my);
@@ -1084,9 +1072,7 @@ function frame(t){
   gl.uniform1f(uIdle,idleBreath);
   gl.uniform1f(uActiveBand,activeBand);
   gl.uniform1f(uMouseX,mouseX);
-  gl.uniform1f(uPolarAngle,smoothAngle);
-  gl.uniform1f(uPolarDist,smoothDist);
-  gl.uniform1f(uOctaveDist,smoothDist);
+  gl.uniform1f(uSmoothBandY,smoothBandY);
   gl.uniform1f(
     uGravityStrength,
     gravityEnabled ? gravityStrength : 0.0
