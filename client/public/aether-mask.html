@@ -190,50 +190,29 @@ const sandCanvas = document.getElementById(
   'sand-canvas');
 const sandCtx = sandCanvas
   ? sandCanvas.getContext('2d') : null;
-// Load logo PNG to sample letter edges for sand spray
-const logoSampleImg = new Image();
+// Load logo PNG to sample letter shape pixels
+const logoImg = new Image();
+let logoPixels = null;
 let logoPixelCanvas = null;
-let edgePixels = [];
-function buildEdgePixelsFromImageData(imageData) {
-  const w = imageData.width;
-  const h = imageData.height;
-  const d = imageData.data;
-  const edges = [];
-  const alphaAt = (x, y) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return 0;
-    return d[(y * w + x) * 4 + 3];
-  };
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (alphaAt(x, y) <= 128) continue;
-      if (
-        alphaAt(x - 1, y) <= 128 ||
-        alphaAt(x + 1, y) <= 128 ||
-        alphaAt(x, y - 1) <= 128 ||
-        alphaAt(x, y + 1) <= 128
-      ) {
-        edges.push({
-          nx: (x + 0.5) / w,
-          ny: (y + 0.5) / h,
-        });
-      }
-    }
-  }
-  return edges;
-}
-logoSampleImg.onload = () => {
+logoImg.onload = () => {
   logoPixelCanvas = document.createElement('canvas');
   logoPixelCanvas.width = 200;
   logoPixelCanvas.height = Math.round(200 * 495 / 2096);
   const pCtx = logoPixelCanvas.getContext('2d');
-  pCtx.drawImage(logoSampleImg, 0, 0,
+  pCtx.drawImage(logoImg, 0, 0,
     logoPixelCanvas.width, logoPixelCanvas.height);
-  const id = pCtx.getImageData(0, 0,
+  logoPixels = pCtx.getImageData(0, 0,
     logoPixelCanvas.width,
     logoPixelCanvas.height);
-  edgePixels = buildEdgePixelsFromImageData(id);
 };
-logoSampleImg.src = '/aether_logo_white.png';
+logoImg.src = '/aether_logo_white.png';
+function isInsideLetter(nx, ny) {
+  if (!logoPixels) return false;
+  const px = Math.floor(nx * (logoPixels.width - 1));
+  const py = Math.floor(ny * (logoPixels.height - 1));
+  const i = (py * logoPixels.width + px) * 4;
+  return logoPixels.data[i + 3] > 128;
+}
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -643,7 +622,13 @@ let logoProximity = 1;
 let logoSoundReact = 1;
 let logoWaveWarp = 1;
 let sandDissolve = 0.6;
-let sandEnergy = 0;
+let sandSize = 1.0;
+let sandSpeed = 1.0;
+let sandLife = 1.0;
+let sandGravity = 0.3;
+let sandSpread = 1.0;
+let sandCount = 300;
+let particles = [];
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
@@ -1149,13 +1134,82 @@ appendSoundSlider(
 appendSoundSlider(
   "logo sand",
   0,
-  1,
-  0.01,
+  3,
+  0.05,
   () => sandDissolve,
   (v) => {
     sandDissolve = v;
   },
   "sandDissolve",
+);
+appendSoundSlider(
+  "logo sand size",
+  0.1,
+  5,
+  0.1,
+  () => sandSize,
+  (v) => {
+    sandSize = v;
+  },
+  "sandSize",
+);
+appendSoundSlider(
+  "logo sand speed",
+  0.1,
+  5,
+  0.1,
+  () => sandSpeed,
+  (v) => {
+    sandSpeed = v;
+  },
+  "sandSpeed",
+);
+appendSoundSlider(
+  "logo sand life",
+  0.1,
+  5,
+  0.1,
+  () => sandLife,
+  (v) => {
+    sandLife = v;
+  },
+  "sandLife",
+);
+appendSoundSlider(
+  "logo sand grav",
+  0,
+  3,
+  0.05,
+  () => sandGravity,
+  (v) => {
+    sandGravity = v;
+  },
+  "sandGravity",
+);
+appendSoundSlider(
+  "logo sand spread",
+  0,
+  1,
+  0.05,
+  () => sandSpread,
+  (v) => {
+    sandSpread = v;
+  },
+  "sandSpread",
+);
+appendSoundSlider(
+  "logo sand max",
+  50,
+  2000,
+  50,
+  () => sandCount,
+  (v) => {
+    sandCount = Math.round(v);
+    if (particles.length > sandCount) {
+      particles = particles.slice(-sandCount);
+    }
+  },
+  "sandCount",
 );
 
 const gravityRow = document.createElement("div");
@@ -1325,6 +1379,12 @@ function refreshPanelFromState() {
     else if (k === "logoChromatic") v = logoChromatic;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
     else if (k === "sandDissolve") v = sandDissolve;
+    else if (k === "sandSize") v = sandSize;
+    else if (k === "sandSpeed") v = sandSpeed;
+    else if (k === "sandLife") v = sandLife;
+    else if (k === "sandGravity") v = sandGravity;
+    else if (k === "sandSpread") v = sandSpread;
+    else if (k === "sandCount") v = sandCount;
     else if (k === "fpsCap") v = fpsCap;
     else if (k === "renderScale") v = renderScale;
     else if (k === "gravityStrength") v = gravityStrength;
@@ -1349,6 +1409,12 @@ function getCurrentSettings() {
     logoChromatic,
     logoWaveWarp,
     sandDissolve,
+    sandSize,
+    sandSpeed,
+    sandLife,
+    sandGravity,
+    sandSpread,
+    sandCount,
     fpsCap,
     renderScale,
     idleThrottle,
@@ -1417,7 +1483,20 @@ function applySettings(o) {
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
   if (n(o.sandDissolve))
-    sandDissolve = Math.max(0, Math.min(1, o.sandDissolve));
+    sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
+  if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
+  if (n(o.sandSpeed)) sandSpeed = Math.max(0.1, Math.min(5, o.sandSpeed));
+  if (n(o.sandLife)) sandLife = Math.max(0.1, Math.min(5, o.sandLife));
+  if (n(o.sandGravity))
+    sandGravity = Math.max(0, Math.min(3, o.sandGravity));
+  if (n(o.sandSpread))
+    sandSpread = Math.max(0, Math.min(1, o.sandSpread));
+  if (n(o.sandCount)) {
+    sandCount = Math.round(Math.max(50, Math.min(2000, o.sandCount)));
+    if (particles.length > sandCount) {
+      particles = particles.slice(-sandCount);
+    }
+  }
   if (n(o.fpsCap)) fpsCap = o.fpsCap;
   if (n(o.renderScale)) {
     renderScale = o.renderScale;
@@ -1624,6 +1703,46 @@ let pageFocused = true;
 let masterGain = null;
 let pageFadeGain = null;
 let lastBand = -1;
+function spawnParticles(count, intensity) {
+  if (!logoPixels) return;
+  let spawned = 0;
+  let attempts = 0;
+  while (spawned < count && attempts < count * 10) {
+    attempts++;
+    const nx = Math.random();
+    const ny = Math.random();
+    if (!isInsideLetter(nx, ny)) continue;
+    const band = Math.max(0, lastBand);
+    const freq = 2 + band * 1.5;
+    const nodal = Math.abs(
+      Math.sin(nx * Math.PI * freq) *
+      Math.sin(ny * Math.PI * freq * 0.7));
+    if (nodal > 0.3) continue;
+    const vx = (Math.random() - 0.5) * 0.008
+      * intensity * sandSpeed;
+    const vy = (Math.random() - 0.3) * 0.006
+      * intensity * sandSpeed;
+    const spreadAngle = (Math.random() - 0.5)
+      * Math.PI * 2 * sandSpread;
+    const cos = Math.cos(spreadAngle);
+    const sin = Math.sin(spreadAngle);
+    const rvx = vx * cos - vy * sin;
+    const rvy = vx * sin + vy * cos;
+    particles.push({
+      x: nx, y: ny,
+      vx: rvx,
+      vy: rvy,
+      life: 1.0,
+      decay: (0.018 + Math.random() * 0.025) / sandLife,
+      size: (0.6 + Math.random() * 1.4) * sandSize,
+    });
+    spawned++;
+  }
+  if (particles.length > sandCount) {
+    particles = particles.slice(
+      particles.length - sandCount);
+  }
+}
 let activeGain = null;
 let activeBand = -1;
 let hintFaded = false;
@@ -2106,52 +2225,49 @@ function frame(t){
     const transformStr =
       `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%) scaleX(${waveScale.toFixed(4)})`;
     logoWrapEl.style.transform = transformStr;
-    if (sandCtx && sandCanvas && sandDissolve > 0) {
-      const W = sandCanvas.width;
-      const H = sandCanvas.height;
-      if (W > 0 && H > 0) {
-        const targetEnergy = Math.min(1.0,
-          noteFlash * 0.8 + smoothVelocity * 0.04);
-        sandEnergy += (targetEnergy - sandEnergy) * 0.12;
-        sandEnergy *= 0.96;
-        sandCtx.globalCompositeOperation = 'destination-out';
-        sandCtx.fillStyle = `rgba(0,0,0,${
-          0.02 + (1 - sandEnergy) * 0.03})`;
-        sandCtx.fillRect(0, 0, W, H);
-        sandCtx.globalCompositeOperation = 'source-over';
-        if (sandEnergy > 0.01 && edgePixels.length > 0) {
-          const dotsPerFrame = Math.floor(
-            sandEnergy * sandDissolve * 120);
-          for (let d = 0; d < dotsPerFrame; d++) {
-            const edge = edgePixels[
-              Math.floor(Math.random() * edgePixels.length)];
-            const dist = Math.pow(Math.random(), 2.5)
-              * 0.04 * sandDissolve;
-            const dx = edge.nx - 0.5;
-            const dy = edge.ny - 0.5;
-            const len = Math.sqrt(dx * dx + dy * dy) || 0.001;
-            const angle = Math.atan2(dy / len, dx / len)
-              + (Math.random() - 0.5) * 1.2;
-            const px = (edge.nx + Math.cos(angle) * dist) * W;
-            const py = (edge.ny + Math.sin(angle) * dist) * H;
-            const size = (0.4 + Math.random() * 1.0)
-              * (1 - dist / 0.04);
-            const isBlack = logoColor === 'black';
-            const alpha = (0.15 + Math.random() * 0.35)
-              * sandEnergy;
+    if (sandCtx && sandCanvas) {
+      if (sandDissolve > 0) {
+        const W = sandCanvas.width;
+        const H = sandCanvas.height;
+        if (W > 0 && H > 0) {
+          const burst = noteFlash * 40 * sandDissolve;
+          const trickle = smoothVelocity * 0.5 * sandDissolve;
+          const spawnCount = Math.floor(burst + trickle);
+          if (spawnCount > 0) {
+            spawnParticles(spawnCount,
+              (noteFlash + smoothVelocity * 0.05)
+              * sandDissolve);
+          }
+          sandCtx.clearRect(0, 0, W, H);
+          const toRemove = [];
+          const logoColor_local = logoColor === 'black'
+            ? '0,0,0' : '255,200,120';
+          particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.0001 * sandGravity;
+            p.life -= p.decay;
+            if (p.life <= 0 || p.x < 0 || p.x > 1
+                || p.y < 0 || p.y > 1) {
+              toRemove.push(i);
+              return;
+            }
+            const px = p.x * W;
+            const py = p.y * H;
             sandCtx.beginPath();
-            sandCtx.arc(px, py, Math.max(0.3, size),
-              0, Math.PI * 2);
-            sandCtx.fillStyle = isBlack
-              ? `rgba(0,0,0,${alpha.toFixed(2)})`
-              : `rgba(255,200,100,${alpha.toFixed(2)})`;
+            sandCtx.arc(px, py, p.size, 0, Math.PI * 2);
+            sandCtx.fillStyle =
+              `rgba(${logoColor_local},${p.life * 0.8})`;
             sandCtx.fill();
+          });
+          for (let i = toRemove.length - 1; i >= 0; i--) {
+            particles.splice(toRemove[i], 1);
           }
         }
+      } else {
+        sandCtx.clearRect(0, 0, sandCanvas.width, sandCanvas.height);
+        particles.length = 0;
       }
-    } else if (sandCtx && sandCanvas) {
-      sandCtx.clearRect(0, 0, sandCanvas.width, sandCanvas.height);
-      sandEnergy = 0;
     }
     const ca = logoChromatic * finalOpacity;
     if (ca > 0.1) {
