@@ -154,7 +154,6 @@ const logoGroupEl = document.getElementById("logo-group");
 const logoTurbulenceEl = document.getElementById("logo-turbulence");
 const logoDisplaceEl = document.getElementById("logo-displace");
 const logoBlurEl = document.getElementById("logo-blur");
-if (logoTurbulenceEl) logoTurbulenceEl.setAttribute("numOctaves", "6");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: true
 });
@@ -256,8 +255,6 @@ void main() {
     float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
     float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
                   * 0.03 * (1.0 + float(i) * 0.1);
-    waveX += sin(uv.x * 1.5 + sd.x * 3.14 + t * 0.2)
-      * u_warpStrength * 0.04 * sin(fi * 6.28);
     waveX += ripple * 0.12 * sin(float(i) * 1.3);
     waveX += ripple2 * 0.07 * cos(float(i) * 0.9);
     float logoWarp = logoZone * 0.05 *
@@ -343,26 +340,24 @@ void main() {
   float letterGlow = smoothstep(0.25, 0.0,
     abs(uv.x - letterX)) * logoZoneY *
     u_logoPresence * u_waveInfluence;
-  float rawV = smoke * u_noiseAmount * 0.45
-    + waves + smokeTrail * 0.35;
-  float baseV = clamp(rawV, 0.0, 0.9);
+  float baseV = clamp(smoke * u_noiseAmount * 0.6 + waves + smokeTrail * 0.4, 0.0, 0.85);
   float glowV = glow * 0.9 + splat * 0.8 + letterGlow * 0.35;
-  baseV = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
-  float br = pow(u_darkness / 0.15, 0.6) * 0.8 + 0.2;
-  vec3 col = mix(vec3(0.04, 0.01, 0.0),
-    vec3(0.4, 0.08, 0.01),
-    smoothstep(0.0, 0.35 / br, baseV));
-  col = mix(col, vec3(0.78, 0.22, 0.02),
-    smoothstep(0.25 / br, 0.65 / br, baseV));
-  col = mix(col, vec3(1.0, 0.62, 0.15),
-    smoothstep(0.55 / br, 0.92 / br, baseV));
-  col = mix(col, vec3(1.0, 0.88, 0.55),
-    smoothstep(0.82 / br, 1.1 / br, baseV));
+  float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
+  vec3 col = mix(vec3(0.04, 0.012, 0.0),
+                 vec3(0.4, 0.08, 0.01),
+                 smoothstep(0.0, 0.25, v));
+  col = mix(col, vec3(0.75, 0.2, 0.02),
+            smoothstep(0.2, 0.55, v));
+  col = mix(col, vec3(1.0, 0.55, 0.1),
+            smoothstep(0.5, 0.85, v));
+  col = mix(col, vec3(1.0, 0.9, 0.7),
+            smoothstep(0.8, 1.0, v));
   col = mix(col, col * vec3(1.0, 0.85, 0.6), u_mouseX * 0.3);
   vec3 redTone  = vec3(0.6, 0.08, 0.0);
   vec3 amberTone = vec3(0.9, 0.45, 0.05);
   vec3 tempShift = mix(redTone, amberTone, u_waveTemp);
   col = mix(col, col * (tempShift * 2.0), 0.3);
+  col *= (u_darkness * 8.0 + 0.3);
   float grain = (hash(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
   col += grain;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -472,12 +467,12 @@ function applyTweakUniforms() {
 }
 
 const sliderDefs = [
-  { key: "u_trailLag", label: "trail speed", min: 0.0001, max: 0.15, step: 0.0001 },
+  { key: "u_trailLag", label: "trail speed", min: 0.001, max: 0.15, step: 0.001 },
   { key: "u_warpStrength", label: "warp strength", min: 0.0, max: 2.0, step: 0.01 },
   { key: "u_noiseAmount", label: "noise amount", min: 0.0, max: 1.0, step: 0.01 },
   { key: "u_darkness", label: "brightness", min: 0.01, max: 0.15, step: 0.001 },
   { key: "u_waveCount", label: "wave count", min: 2, max: 12, step: 1 },
-  { key: "u_waveFreq", label: "wave frequency", min: 0.3, max: 20, step: 0.1 },
+  { key: "u_waveFreq", label: "wave frequency", min: 2, max: 20, step: 0.5 },
   { key: "u_waveSpeed", label: "wave speed", min: 0, max: 3, step: 0.1 },
   { key: "u_rippleStrength", label: "ripple strength", min: 0.0, max: 4.0, step: 0.05 },
   { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
@@ -744,10 +739,10 @@ appendSoundSlider(
   "portamentoSensitivity",
 );
 appendSoundSlider(
-  "vibrato depth (semitones)",
+  "vibrato depth",
   0,
-  3.0,
-  0.05,
+  3,
+  0.1,
   () => vibratoDepthControl,
   (v) => {
     vibratoDepthControl = v;
@@ -755,9 +750,9 @@ appendSoundSlider(
   "vibratoDepthControl",
 );
 appendSoundSlider(
-  "vibrato speed (Hz)",
-  1.0,
-  8.0,
+  "vibrato speed",
+  2,
+  12,
   0.1,
   () => vibratoSpeedControl,
   (v) => {
@@ -810,7 +805,7 @@ appendSoundSlider(
   "deadZoneSize",
 );
 appendSoundSlider(
-  "edge octave (push to screen edge)",
+  "octave mix",
   0.0,
   1.0,
   0.01,
@@ -820,13 +815,6 @@ appendSoundSlider(
   },
   "octaveMix",
 );
-const octaveHint = document.createElement("div");
-octaveHint.className = "tweak-label";
-octaveHint.style.color = "rgba(255,255,255,.35)";
-octaveHint.style.marginTop = "-8px";
-octaveHint.style.marginBottom = "8px";
-octaveHint.textContent = "move mouse to top/bottom 10% of screen";
-panel.appendChild(octaveHint);
 appendSoundSlider(
   "sympathetic",
   0.0,
@@ -864,7 +852,7 @@ appendSoundSlider(
 appendSoundSlider(
   "logo distort",
   0,
-  80,
+  30,
   0.5,
   () => logoDistortAmount,
   (v) => {
@@ -875,7 +863,7 @@ appendSoundSlider(
 appendSoundSlider(
   "logo distort base",
   0,
-  60,
+  20,
   0.5,
   () => logoDistortBase,
   (v) => {
@@ -886,7 +874,7 @@ appendSoundSlider(
 appendSoundSlider(
   "logo blur",
   0,
-  12,
+  6,
   0.1,
   () => logoBlurAmount,
   (v) => {
@@ -897,7 +885,7 @@ appendSoundSlider(
 appendSoundSlider(
   "logo blur base",
   0,
-  8,
+  4,
   0.1,
   () => logoBlurBase,
   (v) => {
@@ -1113,25 +1101,6 @@ oscTypes.forEach(({ type, text }) => {
   if (type === oscType) b.classList.add("selected");
   b.addEventListener("click", () => {
     oscType = type;
-    if (glideOsc1) glideOsc1.type = type;
-    if (glideOsc2 && audioCtx && glideG1 && glideG2) {
-      if (type === "sine") {
-        glideG1.gain.setTargetAtTime(0.7, audioCtx.currentTime, 0.1);
-        glideG2.gain.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
-      } else if (type === "triangle") {
-        glideOsc1.type = "triangle";
-        glideG1.gain.setTargetAtTime(0.6, audioCtx.currentTime, 0.1);
-        glideG2.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.1);
-      } else if (type === "sawtooth") {
-        glideOsc1.type = "sawtooth";
-        glideG1.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);
-        glideG2.gain.setTargetAtTime(0.45, audioCtx.currentTime, 0.1);
-      } else if (type === "square") {
-        glideOsc1.type = "square";
-        glideG1.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.1);
-        glideG2.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);
-      }
-    }
     oscRow.querySelectorAll("button").forEach((btn) => btn.classList.remove("selected"));
     b.classList.add("selected");
   });
@@ -1557,8 +1526,6 @@ let splatIntensity = 0.0;
 let splatX = 0.5;
 let splatY = 0.5;
 let splatAge = 0.0;
-let vibratoPhase = 0;
-let vibratoAmount = 0;
 document.addEventListener("mousemove", (e) => {
   initAudio();
   if (!hintFaded) {
@@ -1704,8 +1671,6 @@ function frame(t){
     velocityThreshold+portamentoSensitivity*8;
   if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
     lastBand=clampedBand;
-    vibratoPhase = 0;
-    vibratoAmount = 0;
     const velVolume=soundVolume*
       (0.4+Math.min(smoothVelocity/15.0,0.6));
     playNoteWithVolume(clampedBand,velVolume);
@@ -1791,26 +1756,16 @@ function frame(t){
       const octVol=octaveAmount*soundVolume*sustainFade*octaveMix;
       octaveLayerGainNode.gain.setTargetAtTime(octVol,audioCtx.currentTime,0.15);
     }
-    const holdTime = mouseStillTime;
-    const vibratoRamp = Math.min(holdTime / 1.5, 1.0);
-    const vibratoRate = vibratoSpeedControl *
-      (0.7 + vibratoRamp * 0.3);
-    vibratoPhase += vibratoRate * 0.016 * Math.PI * 2;
-    vibratoAmount += (vibratoRamp - vibratoAmount) * 0.08;
-    const vibratoDepth = vibratoAmount *
-      vibratoDepthControl * 8.0;
-    const vibrato = Math.sin(vibratoPhase) *
-      vibratoDepth * (currentFreq / 440) * 0.015;
-    const expressiveVib = smoothVelX * 0.15 *
-      vibratoDepthControl;
-    glideOsc1.frequency.setValueAtTime(
-      currentFreq + vibrato + expressiveVib,
-      audioCtx.currentTime
-    );
-    glideOsc2.frequency.setValueAtTime(
-      currentFreq + vibrato + expressiveVib,
-      audioCtx.currentTime
-    );
+    if (clampedBand===lastBand) {
+      const vibratoDepth=smoothVelX*0.4*vibratoDepthControl;
+      const vibrato=Math.sin(performance.now()*0.001*
+        vibratoSpeedControl)*vibratoDepth;
+      glideOsc1.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
+      glideOsc2.frequency.setValueAtTime(currentFreq+vibrato,audioCtx.currentTime);
+    } else {
+      glideOsc1.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
+      glideOsc2.frequency.setValueAtTime(currentFreq,audioCtx.currentTime);
+    }
     const holdingNote=clampedBand===lastBand;
     const sustainBoost=holdingNote?
       Math.min(smoothVelX/10.0,0.3):0.0;
