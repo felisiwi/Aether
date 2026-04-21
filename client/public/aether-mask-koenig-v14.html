@@ -6,6 +6,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a0500; width: 100vw; height: 100vh; overflow: hidden; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.logo-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+video { width: 55%; height: auto; -webkit-mask-image: url("/aether_logo_white.svg"); mask-image: url("/aether_logo_white.svg"); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: 100% auto; mask-size: 100% auto; }
 #tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
 #tweak-toggle {
   position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
@@ -96,6 +98,11 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 MOVE IN CIRCLES TO PLAY
 </div>
 <div id="zone-indicator" style="position:absolute;bottom:48px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;color:rgba(255,150,80,0.15);pointer-events:none;user-select:none;transition:opacity 1.2s;">C</div>
+<div class="logo-wrap">
+<video autoplay muted loop playsinline>
+<source src="aether-bg.mp4" type="video/mp4">
+</video>
+</div>
 <div id="tweak-root">
 <button type="button" id="tweak-toggle" aria-expanded="true" title="Toggle controls">≡</button>
 <div id="tweak-panel"></div>
@@ -120,7 +127,6 @@ uniform float u_hintBand1;
 uniform float u_flickerSpeed;
 uniform float u_flickerAmount;
 uniform float u_waveSharpness;
-uniform float u_waveBrightness;
 uniform float u_gravityStrength;
 uniform float u_octaveAmount;
 uniform float u_octaveDirection;
@@ -132,9 +138,6 @@ uniform float u_noteFlash;
 uniform float u_activeBandNorm;
 uniform float u_hangDrum;
 uniform float u_sympathetic[8];
-uniform vec2 u_trail[20];
-uniform float u_trailAge[20];
-uniform int u_trailLen;
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5);
 }
@@ -148,11 +151,10 @@ void main() {
   float logoZoneX = smoothstep(0.1, 0.22, uv.x) * smoothstep(0.9, 0.78, uv.x);
   float logoZoneY = smoothstep(0.35, 0.42, uv.y) * smoothstep(0.65, 0.58, uv.y);
   float logoZone = logoZoneX * logoZoneY * u_logoPresence;
-  float refractionStrength = logoZone * (0.5 + u_logoPresence * 1.5);
   vec2 refractionOffset = vec2(
-    sin(uv.y * 12.0 + u_time * 0.5) * 0.018,
-    cos(uv.x * 10.0 + u_time * 0.4) * 0.012
-  ) * refractionStrength;
+    sin(uv.y * 12.0 + u_time * 0.5) * 0.012,
+    cos(uv.x * 10.0 + u_time * 0.4) * 0.008
+  ) * logoZone;
   vec2 uvRefracted = uv + refractionOffset;
   vec2 m = u_mouse / u_res;
   vec2 m2 = u_mouse2 / u_res;
@@ -172,7 +174,7 @@ void main() {
   vec2 smokeUV = uvRefracted * 2.5 + vec2(t * 0.04, t * 0.04);
   vec2 sd = vec2(fbm(smokeUV), fbm(smokeUV + vec2(1.7)));
   float smoke = fbm(uvRefracted * 1.8 + sd * u_warpStrength * 0.4 + t * 0.06);
-  smoke = clamp(smoke * 0.5, 0.0, 1.0);
+  smoke = clamp(smoke * u_noiseAmount * 0.6, 0.0, 1.0);
   float tiltedY = uv.y;
   float waves = 0.0;
   float wc = u_waveCount;
@@ -221,7 +223,7 @@ void main() {
     band *= 1.0 + sympLevel * 3.0;
     waves += band;
   }
-  waves = clamp(waves * u_waveBrightness, 0.0, 1.0);
+  waves = clamp(waves * u_noiseAmount, 0.0, 1.0);
   vec2 smokeOff = vec2(
     sin(uv.y * 8.0 + t * 0.5) * 0.02,
     sin(uv.x * 6.0 + t * 0.4) * 0.015
@@ -235,16 +237,6 @@ void main() {
   float glowTrail = pow(max(0., 1. - dg2 / 0.22), 2.0) * 0.2;
   float velBurst = u_velocity * exp(-mouseDist * mouseDist * 80.0) * 0.3;
   float glow = glowWide + glowCore + glowTrail;
-  float smokeTrail = 0.0;
-  for (int i = 0; i < 20; i++) {
-    if (i >= u_trailLen) break;
-    vec2 tp = u_trail[i] / u_res;
-    float td = length(uv - tp);
-    float fade = 1.0 - clamp(u_trailAge[i] / 1.2, 0.0, 1.0);
-    float warp = fbm(uv * 3.0 + u_time * 0.1 + float(i) * 0.3);
-    smokeTrail += exp(-td * td * 80.0) * fade * warp * 0.5;
-  }
-  smokeTrail = clamp(smokeTrail, 0.0, 1.0);
   float cursorLine = exp(-pow((uv.y - u_smoothBandY) * 20.0, 2.0)) * 0.15;
   float edgeGlow = 0.0;
   if (u_octaveDirection > 0.0) {
@@ -255,16 +247,17 @@ void main() {
   float bandPos = u_activeBandNorm;
   float letterX = 0.15 + bandPos * 0.7;
   float letterGlow = smoothstep(0.25, 0.0, abs(uv.x - letterX)) * logoZoneY * u_logoPresence;
-  float flashGlow = u_noteFlash * letterGlow * 0.8;
-  float logoBrightness = letterGlow * 0.4 + flashGlow;
-  float logoReveal = logoZone * u_logoPresence * 0.15;
-  float baseV = clamp(
-    smoke * u_noiseAmount * 0.6 + waves + logoReveal + smokeTrail * 0.4,
-    0.0,
-    0.85
-  );
+  float flashGlow = logoZone * u_noteFlash * 0.6;
+  float logoBrightness =
+    logoZone * 0.2 +
+    letterGlow * 0.35 +
+    flashGlow;
+  float logoEdge = logoZoneX * logoZoneY *
+    (1.0 - logoZoneX * logoZoneY * 0.8) *
+    u_logoPresence * 0.15;
+  float baseV = clamp(smoke * 0.5 + waves, 0.0, 0.85);
   float glowV = glow * 0.9;
-  float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow + logoBrightness, 0.0, 1.0);
+  float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow + logoBrightness + logoEdge, 0.0, 1.0);
   vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
@@ -311,7 +304,6 @@ const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
 const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
 const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
 const uWaveSharpness=gl.getUniformLocation(p,"u_waveSharpness");
-const uWaveBrightness=gl.getUniformLocation(p,"u_waveBrightness");
 const uGravityStrength=gl.getUniformLocation(p,"u_gravityStrength");
 const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
 const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
@@ -323,9 +315,6 @@ const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
 const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
 const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
 const uSympathetic=gl.getUniformLocation(p,"u_sympathetic[0]");
-const uTrail=gl.getUniformLocation(p,"u_trail[0]");
-const uTrailAge=gl.getUniformLocation(p,"u_trailAge[0]");
-const uTrailLen=gl.getUniformLocation(p,"u_trailLen");
 
 const tweak = {
   u_glowCoreRadius: 0.09,
@@ -342,8 +331,7 @@ const tweak = {
   u_rippleStrength: 0.8,
   u_flickerSpeed: 1.5,
   u_flickerAmount: 0.06,
-  u_waveSharpness: 400,
-  u_waveBrightness: 0.7,
+  u_waveSharpness: 120,
 };
 
 function applyTweakUniforms() {
@@ -361,7 +349,6 @@ function applyTweakUniforms() {
   gl.uniform1f(uFlickerSpeed, tweak.u_flickerSpeed);
   gl.uniform1f(uFlickerAmount, tweak.u_flickerAmount);
   gl.uniform1f(uWaveSharpness, tweak.u_waveSharpness);
-  gl.uniform1f(uWaveBrightness, tweak.u_waveBrightness);
 }
 
 const sliderDefs = [
@@ -380,7 +367,6 @@ const sliderDefs = [
   { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
   { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.5, step: 0.01 },
   { key: "u_waveSharpness", label: "wave sharpness", min: 50, max: 1200, step: 10 },
-  { key: "u_waveBrightness", label: "wave brightness", min: 0.1, max: 2.0, step: 0.05 },
 ];
 
 const SCALES = {
@@ -887,7 +873,6 @@ copyBtn.addEventListener("click", () => {
     u_flickerSpeed: tweak.u_flickerSpeed,
     u_flickerAmount: tweak.u_flickerAmount,
     u_waveSharpness: tweak.u_waveSharpness,
-    u_waveBrightness: tweak.u_waveBrightness,
     releaseTime,
     velocityThreshold,
     sustainLevel,
@@ -1128,8 +1113,6 @@ function playNote(b) {
 
 let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
 let mouseX=0.5;
-const trail = [];
-const TRAIL_LENGTH = 20;
 let prevTmy=ty;
 let prevTmx=tx;
 let mouseVelocity=0;
@@ -1156,8 +1139,6 @@ document.addEventListener("mousemove", (e) => {
   tx = e.clientX;
   ty = e.clientY;
   mouseX = e.clientX / window.innerWidth;
-  trail.push({x: mx, y: canvas.height - my, age: 0});
-  if (trail.length > TRAIL_LENGTH) trail.shift();
   lastMoveTime = performance.now();
 });
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);}
@@ -1216,9 +1197,6 @@ function frame(t){
   smoothScrollSemitones+=
     (targetScrollSemitones-smoothScrollSemitones)*0.03;
   scrollFreqMult=Math.pow(2,smoothScrollSemitones/12);
-  trail.forEach((p) => {
-    p.age += 0.016;
-  });
   const rawVel=Math.abs(tmy-prevTmy);
   prevTmy=tmy;
   mouseVelocity=rawVel;
@@ -1402,18 +1380,6 @@ function frame(t){
   gl.uniform1f(uLogoPresence, logoPresence);
   gl.uniform1f(uNoteFlash, noteFlash);
   gl.uniform1f(uActiveBandNorm, clampedBand / 7.0);
-  const trailPos = new Float32Array(TRAIL_LENGTH * 2);
-  const trailAge = new Float32Array(TRAIL_LENGTH);
-  for (let i = 0; i < TRAIL_LENGTH; i++) {
-    if (i < trail.length) {
-      trailPos[i * 2] = trail[i].x;
-      trailPos[i * 2 + 1] = trail[i].y;
-      trailAge[i] = trail[i].age;
-    }
-  }
-  gl.uniform2fv(uTrail, trailPos);
-  gl.uniform1fv(uTrailAge, trailAge);
-  gl.uniform1i(uTrailLen, trail.length);
   if (activeBand>=0&&activeBand<8) {
     const hints=HARMONIC_HINTS[activeBand];
     gl.uniform1f(uHintBand0,hints[0]);
