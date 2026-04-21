@@ -134,8 +134,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="logo-wrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-  <div id="logo-layer" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62%;aspect-ratio:2096/495;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background:#ffffff;opacity:0;pointer-events:none;will-change:opacity,filter,transform,background;"></div>
+<div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:62vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
+  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -152,6 +152,7 @@ MOVE IN CIRCLES TO PLAY
 <script>
 const canvas = document.getElementById("c");
 const logoLayerEl = document.getElementById("logo-layer");
+const logoWrapEl = document.getElementById("logo-wrap");
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -1883,48 +1884,25 @@ function frame(t){
   } else {
     logoPresence += (0.0 - logoPresence) * 0.005;
   }
-  const mouseDistFromCenter = Math.sqrt(
-    Math.pow((mx / window.innerWidth) - 0.5, 2) +
-    Math.pow((my / window.innerHeight) - 0.5, 2));
-  const proximityFactor = Math.max(0,
-    Math.min(1, (mouseDistFromCenter - 0.05) / 0.3));
-  const activeBandGlow=activeBand>=0&&activeBand<8?0.15:0;
-  const proximityBoost = (1 - Math.min(1, mouseDistFromCenter / 0.5))
-    * 0.3 * logoProximity;
-  const soundBoost = (activeBandGlow || 0) * 0.4 * logoSoundReact
-    + (noteFlash || 0) * 0.5 * logoSoundReact;
-  const finalOpacity = Math.min(0.97,
-    Math.max(logoBrightness,
-      logoPresence * 1.2 + proximityBoost + soundBoost
-    )
-  );
-  const logoEl = document.getElementById('logo-layer') || logoLayerEl;
-  if (logoEl) {
-    if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
-      logoEl._lastOp = finalOpacity.toFixed(3);
-      logoEl.style.opacity = finalOpacity.toFixed(3);
-    }
-    const bgColor = logoColor === "black" ? "#000000" : "#ffffff";
-    if (logoEl._lastBg !== bgColor) {
-      logoEl._lastBg = bgColor;
-      logoEl.style.background = bgColor;
-    }
+  const logoEl = document.getElementById('logo-layer');
+  if (logoEl && logoWrapEl) {
+    const finalOpacity = Math.min(0.97,
+      Math.max(logoBrightness, logoPresence * 1.2)
+    );
+    logoEl.style.opacity = finalOpacity.toFixed(3);
+    logoEl.style.background = logoColor === 'black' ? '#000' : '#fff';
     const ca = logoChromatic * finalOpacity;
-    const caStr = ca > 0.2
-      ? `drop-shadow(${ca.toFixed(1)}px 0 0 rgba(255,30,0,0.6)) ` +
-        `drop-shadow(${(-ca).toFixed(1)}px 0 0 rgba(0,180,255,0.5))`
-      : "none";
-    if (logoEl._lastCa !== caStr) {
-      logoEl._lastCa = caStr;
-      logoEl.style.filter = caStr;
-    }
-    const u_waveActivity = Math.min(1, Math.abs(totalVel) / 20);
-    const waveShift = (u_waveActivity || 0) * 3 * logoWaveWarp;
-    const transformStr =
-      `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%)`;
-    if (logoEl._lastTf !== transformStr) {
-      logoEl._lastTf = transformStr;
-      logoEl.style.transform = transformStr;
+    if (ca > 0.1) {
+      const tLogo = performance.now();
+      const jitterX = Math.sin(tLogo * 0.011) * 0.6 + Math.sin(tLogo * 0.037) * 0.3;
+      const jitterY = Math.sin(tLogo * 0.017) * 0.4;
+      const offX = ca + jitterX;
+      const offY = jitterY;
+      logoWrapEl.style.filter =
+        `drop-shadow(${offX.toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(80,0,140,1)) ` +
+        `drop-shadow(${(-offX).toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(255,200,50,1))`;
+    } else {
+      logoWrapEl.style.filter = 'none';
     }
   }
   noteFlash*=0.88;
