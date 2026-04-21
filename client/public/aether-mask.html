@@ -187,7 +187,6 @@ uniform float u_velocity;
 uniform float u_velX;
 uniform float u_drift;
 uniform float u_logoPresence;
-uniform float u_waveInfluence;
 uniform float u_noteFlash;
 uniform float u_activeBandNorm;
 uniform float u_hangDrum;
@@ -341,7 +340,7 @@ void main() {
   float letterX = 0.5 + sin(t * 0.7) * 0.02;
   float letterGlow = smoothstep(0.25, 0.0,
     abs(uv.x - letterX)) * u_logoPresence
-    * u_waveInfluence * 0.5;
+    * 0.5;
   float rawV = smoke * u_noiseAmount * 0.45
     + waves + smokeTrail * 0.35;
   float baseV = clamp(rawV, 0.0, 0.9);
@@ -411,7 +410,6 @@ const uVelocity=gl.getUniformLocation(p,"u_velocity");
 const uVelX=gl.getUniformLocation(p,"u_velX");
 const uDrift=gl.getUniformLocation(p,"u_drift");
 const uLogoPresence=gl.getUniformLocation(p,"u_logoPresence");
-const uWaveInfluence=gl.getUniformLocation(p,"u_waveInfluence");
 const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
 const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
 const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
@@ -558,7 +556,6 @@ let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
 let logoBrightness = 0.15;
 let logoChromatic = 0;
-let logoWaveInfluence = 0.5;
 let logoColor = "white";
 let logoProximity = 1;
 let logoSoundReact = 1;
@@ -995,17 +992,6 @@ appendSoundSlider(
   "logoSoundReact",
 );
 appendSoundSlider(
-  "logo wave infl.",
-  0,
-  1,
-  0.01,
-  () => logoWaveInfluence,
-  (v) => {
-    logoWaveInfluence = v;
-  },
-  "logoWaveInfluence",
-);
-appendSoundSlider(
   "logo chromatic",
   0,
   10,
@@ -1193,7 +1179,6 @@ function refreshPanelFromState() {
     else if (k === "logoProximity") v = logoProximity;
     else if (k === "logoSoundReact") v = logoSoundReact;
     else if (k === "logoChromatic") v = logoChromatic;
-    else if (k === "logoWaveInfluence") v = logoWaveInfluence;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
     else if (k === "fpsCap") v = fpsCap;
     else if (k === "renderScale") v = renderScale;
@@ -1217,7 +1202,6 @@ function getCurrentSettings() {
     logoProximity,
     logoSoundReact,
     logoChromatic,
-    logoWaveInfluence,
     logoWaveWarp,
     fpsCap,
     renderScale,
@@ -1284,7 +1268,6 @@ function applySettings(o) {
   if (n(o.logoProximity)) logoProximity = o.logoProximity;
   if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
-  if (n(o.logoWaveInfluence)) logoWaveInfluence = o.logoWaveInfluence;
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
   if (n(o.fpsCap)) fpsCap = o.fpsCap;
   if (n(o.renderScale)) {
@@ -2052,7 +2035,6 @@ function frame(t){
   gl.uniform1fv(uSympathetic, sympatheticLevels);
   gl.uniform1f(uDrift, Math.max(0.35, idleBreath * 0.8 + 0.45));
   gl.uniform1f(uLogoPresence, logoPresence);
-  gl.uniform1f(uWaveInfluence, logoWaveInfluence);
   gl.uniform1f(uNoteFlash, noteFlash);
   gl.uniform1f(uSplatIntensity, splatIntensity);
   gl.uniform2f(uSplatPos, splatX, splatY);
