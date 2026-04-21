@@ -6,22 +6,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a0500; width: 100vw; height: 100vh; overflow: hidden; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-#logo-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  -webkit-mask-image: url('aether_logo_white.svg');
-  mask-image: url('aether_logo_white.svg');
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: 60% auto;
-  mask-size: 60% auto;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
 #tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
 #tweak-toggle {
   position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
@@ -104,11 +88,36 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
+.logo-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.logo-mask {
+  width: 60%;
+  aspect-ratio: 1048 / 248;
+  background: rgba(255, 200, 120, 0.08);
+  -webkit-mask-image: url('aether_logo_white.svg');
+  mask-image: url('aether_logo_white.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% auto;
+  mask-size: 100% auto;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<canvas id="logo-canvas"></canvas>
+<div class="logo-wrap">
+  <div class="logo-mask"></div>
+</div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
 </div>
@@ -119,8 +128,6 @@ MOVE IN CIRCLES TO PLAY
 </div>
 <script>
 const canvas = document.getElementById("c");
-const logoCanvas = document.getElementById("logo-canvas");
-const logoCtx = logoCanvas.getContext("2d");
 const gl = canvas.getContext("webgl");
 const vert = `attribute vec2 a; void main(){gl_Position=vec4(a,0,1);}`;
 const frag = `precision mediump float;
@@ -271,13 +278,19 @@ void main() {
   } else {
     edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
   }
+  float bandPos = u_activeBandNorm;
+  float letterX = 0.15 + bandPos * 0.7;
+  float letterGlow = smoothstep(0.25, 0.0, abs(uv.x - letterX)) * logoZoneY * u_logoPresence;
+  float flashGlow = u_noteFlash * letterGlow * 0.8;
+  float logoBrightness = letterGlow * 0.4 + flashGlow;
+  float logoReveal = logoZone * u_logoPresence * 0.15;
   float baseV = clamp(
-    smoke * u_noiseAmount * 0.6 + waves + smokeTrail * 0.4,
+    smoke * u_noiseAmount * 0.6 + waves + logoReveal + smokeTrail * 0.4,
     0.0,
     0.85
   );
   float glowV = glow * 0.9;
-  float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
+  float v = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow + logoBrightness, 0.0, 1.0);
   vec3 col = mix(vec3(u_darkness, u_darkness * 0.3, 0.0),
                  vec3(0.4, 0.08, 0.01),
                  smoothstep(0.0, 0.25, v));
@@ -1173,13 +1186,7 @@ document.addEventListener("mousemove", (e) => {
   if (trail.length > TRAIL_LENGTH) trail.shift();
   lastMoveTime = performance.now();
 });
-function resize(){
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
-  logoCanvas.width=window.innerWidth;
-  logoCanvas.height=window.innerHeight;
-  gl.viewport(0,0,canvas.width,canvas.height);
-}
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);}
 window.addEventListener("resize",resize);resize();
 window.addEventListener(
   "wheel",
@@ -1323,6 +1330,10 @@ function frame(t){
       logoPresence+=(0.0-logoPresence)*0.008;
     }
   }
+  const logoEl = document.querySelector(".logo-mask");
+  if (logoEl) {
+    logoEl.style.opacity = Math.min(logoPresence * 1.2, 0.95).toFixed(3);
+  }
   noteFlash*=0.88;
   const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
   const freqGlide=0.03+(1.0-sensitivity)*0.08;
@@ -1443,18 +1454,6 @@ function frame(t){
   }
   applyTweakUniforms();
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
-  logoCtx.clearRect(0, 0, logoCanvas.width, logoCanvas.height);
-  const offsetX = Math.sin(Date.now() * 0.0005) * 4;
-  const offsetY = Math.cos(Date.now() * 0.0007) * 3;
-  logoCtx.globalAlpha = 0.6;
-  logoCtx.filter = "brightness(2.5) saturate(1.3)";
-  logoCtx.drawImage(canvas, offsetX, offsetY);
-  logoCtx.globalAlpha = 0.8;
-  logoCtx.filter = "brightness(3.0) saturate(1.2)";
-  logoCtx.drawImage(canvas, 0, 0);
-  logoCtx.globalAlpha = 1.0;
-  logoCtx.filter = "none";
-  logoCanvas.style.opacity = Math.min(logoPresence * 1.3, 1.0).toFixed(3);
   requestAnimationFrame(frame);
 }
 applyTweakUniforms();
