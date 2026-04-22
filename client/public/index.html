@@ -2322,18 +2322,6 @@ function frame(t){
     lensCanvas.height > 0
   ) {
     lensGl.useProgram(lensProgram);
-    if (!lensAlignmentLogged) {
-      lensAlignmentLogged = true;
-      console.log("[SDF alignment]", {
-        canvasWidth: lensCanvas.width,
-        canvasHeight: lensCanvas.height,
-        cssWidth: lensCanvas.clientWidth,
-        cssHeight: lensCanvas.clientHeight,
-        aspectBuffer: lensCanvas.width / lensCanvas.height,
-        aspectLogo: 2096 / 495,
-        devicePixelRatio: window.devicePixelRatio,
-      });
-    }
     const lsx = lensCanvas.width / window.innerWidth;
     const lsy = lensCanvas.height / window.innerHeight;
     setLens2f("u_res", lensCanvas.width, lensCanvas.height);
