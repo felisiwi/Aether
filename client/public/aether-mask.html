@@ -558,7 +558,7 @@ const lensGl = lensCanvas
 const lensFrag = frag
   .replace(
     "uniform float u_splatAge;",
-    "uniform float u_splatAge;\nuniform float u_lensStrength;",
+    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;",
   )
   .replace(
     "  vec2 uv = gl_FragCoord.xy / u_res;",
@@ -567,9 +567,14 @@ const lensFrag = frag
   .replace(
     "  vec2 uvRefracted = uv;",
     "  vec2 lensCenter = vec2(0.5, 0.5);\n  vec2 lensOffset = uv - lensCenter;\n  float lensDist = length(lensOffset);\n  float lensWarp = u_lensStrength * (1.0 - exp(-lensDist * 3.0));\n  vec2 uvRefracted = uv + lensOffset * lensWarp;",
+  )
+  .replace(
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;",
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float sdfVal = texture2D(u_sdf, uv).r;\n  float edgeDist = abs(sdfVal - 0.5) * 2.0;\n  float hazeMask = 1.0 - smoothstep(0.0, 0.35, edgeDist);\n  float hazeAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAngle) * cos(hazeAngle2),\n    cos(hazeAngle * 0.8) * sin(hazeAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * 0.02;",
   );
 let lensProgram = null;
 const lensUniformLoc = {};
+let lensSdfTexture = null;
 function lensShader(type, src) {
   const s = lensGl.createShader(type);
   lensGl.shaderSource(s, src);
@@ -598,6 +603,33 @@ function setLens1i(name, v) {
   const loc = getLensUniform(name);
   if (loc) lensGl.uniform1i(loc, v);
 }
+function initLensSdfTexture() {
+  if (!lensGl || !lensProgram) return;
+  const sdfImg = new Image();
+  sdfImg.onload = () => {
+    if (!lensGl || !lensProgram) return;
+    const tex = lensGl.createTexture();
+    lensGl.activeTexture(lensGl.TEXTURE0);
+    lensGl.bindTexture(lensGl.TEXTURE_2D, tex);
+    lensGl.pixelStorei(lensGl.UNPACK_FLIP_Y_WEBGL, true);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_WRAP_S, lensGl.CLAMP_TO_EDGE);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_WRAP_T, lensGl.CLAMP_TO_EDGE);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_MIN_FILTER, lensGl.LINEAR);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_MAG_FILTER, lensGl.LINEAR);
+    lensGl.texImage2D(
+      lensGl.TEXTURE_2D,
+      0,
+      lensGl.RGBA,
+      lensGl.RGBA,
+      lensGl.UNSIGNED_BYTE,
+      sdfImg,
+    );
+    lensSdfTexture = tex;
+    lensGl.useProgram(lensProgram);
+    setLens1i("u_sdf", 0);
+  };
+  sdfImg.src = "/aether_logo_sdf.png";
+}
 if (lensGl) {
   lensProgram = lensGl.createProgram();
   lensGl.attachShader(lensProgram, lensShader(lensGl.VERTEX_SHADER, vert));
@@ -617,6 +649,7 @@ if (lensGl) {
     const la = lensGl.getAttribLocation(lensProgram, "a");
     lensGl.enableVertexAttribArray(la);
     lensGl.vertexAttribPointer(la, 2, lensGl.FLOAT, false, 0, 0);
+    initLensSdfTexture();
   }
   gl.useProgram(p);
 }
@@ -809,6 +842,9 @@ let logoProximity = 1;
 let logoSoundReact = 1;
 let logoWaveWarp = 1;
 let lensStrength = 0.15;
+let hazeStrength = 0.5;
+let hazeSpeed = 1.0;
+let hazeScale = 1.0;
 let sandDissolve = 0.6;
 let sandSize = 1.0;
 let sandSpeed = 1.0;
@@ -1377,6 +1413,39 @@ appendSoundSlider(
   "lensStrength",
 );
 appendSoundSlider(
+  "haze strength",
+  0,
+  1,
+  0.01,
+  () => hazeStrength,
+  (v) => {
+    hazeStrength = v;
+  },
+  "hazeStrength",
+);
+appendSoundSlider(
+  "haze speed",
+  0,
+  5,
+  0.01,
+  () => hazeSpeed,
+  (v) => {
+    hazeSpeed = v;
+  },
+  "hazeSpeed",
+);
+appendSoundSlider(
+  "haze scale",
+  0.1,
+  3,
+  0.01,
+  () => hazeScale,
+  (v) => {
+    hazeScale = v;
+  },
+  "hazeScale",
+);
+appendSoundSlider(
   "logo sand",
   0,
   3,
@@ -1624,6 +1693,9 @@ function refreshPanelFromState() {
     else if (k === "logoChromatic") v = logoChromatic;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
     else if (k === "lensStrength") v = lensStrength;
+    else if (k === "hazeStrength") v = hazeStrength;
+    else if (k === "hazeSpeed") v = hazeSpeed;
+    else if (k === "hazeScale") v = hazeScale;
     else if (k === "sandDissolve") v = sandDissolve;
     else if (k === "sandSize") v = sandSize;
     else if (k === "sandSpeed") v = sandSpeed;
@@ -1655,6 +1727,9 @@ function getCurrentSettings() {
     logoChromatic,
     logoWaveWarp,
     lensStrength,
+    hazeStrength,
+    hazeSpeed,
+    hazeScale,
     sandDissolve,
     sandSize,
     sandSpeed,
@@ -1731,6 +1806,12 @@ function applySettings(o) {
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
   if (n(o.lensStrength))
     lensStrength = Math.max(0, Math.min(0.8, o.lensStrength));
+  if (n(o.hazeStrength))
+    hazeStrength = Math.max(0, Math.min(1, o.hazeStrength));
+  if (n(o.hazeSpeed))
+    hazeSpeed = Math.max(0, Math.min(5, o.hazeSpeed));
+  if (n(o.hazeScale))
+    hazeScale = Math.max(0.1, Math.min(3, o.hazeScale));
   if (n(o.sandDissolve))
     sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
   if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
@@ -2705,6 +2786,14 @@ function frame(t){
     setLens1f("u_time", t * 0.001);
     setLens2f("u_mouse", mx * lsx, my * lsy);
     setLens2f("u_mouse2", mx2 * lsx, my2 * lsy);
+    setLens1f("u_hazeStrength", hazeStrength);
+    setLens1f("u_hazeSpeed", hazeSpeed);
+    setLens1f("u_hazeScale", hazeScale);
+    if (lensSdfTexture) {
+      lensGl.activeTexture(lensGl.TEXTURE0);
+      lensGl.bindTexture(lensGl.TEXTURE_2D, lensSdfTexture);
+      setLens1i("u_sdf", 0);
+    }
     setLens1f("u_idle", idleBreath);
     setLens1f("u_activeBand", clampedBand);
     setLens1f("u_mouseX", mouseX);
