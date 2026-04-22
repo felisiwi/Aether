@@ -161,16 +161,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   z-index:0;
 "></canvas>
   <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
-  <canvas id="sand-canvas" style="
-  position:absolute;
-  top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  width:100%;
-  aspect-ratio:2096/495;
-  pointer-events:none;
-  opacity:0.85;
-  z-index:1;
-"></canvas>
 </div>
 <div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
 MOVE IN CIRCLES TO PLAY
@@ -184,33 +174,6 @@ MOVE IN CIRCLES TO PLAY
 const canvas = document.getElementById("c");
 const logoLayerEl = document.getElementById("logo-layer");
 const logoWrapEl = document.getElementById("logo-wrap");
-const sandCanvas = document.getElementById(
-  'sand-canvas');
-const sandCtx = sandCanvas
-  ? sandCanvas.getContext('2d') : null;
-// Load logo PNG to sample letter shape pixels
-const logoImg = new Image();
-let logoPixels = null;
-let logoPixelCanvas = null;
-logoImg.onload = () => {
-  logoPixelCanvas = document.createElement('canvas');
-  logoPixelCanvas.width = 200;
-  logoPixelCanvas.height = Math.round(200 * 495 / 2096);
-  const pCtx = logoPixelCanvas.getContext('2d');
-  pCtx.drawImage(logoImg, 0, 0,
-    logoPixelCanvas.width, logoPixelCanvas.height);
-  logoPixels = pCtx.getImageData(0, 0,
-    logoPixelCanvas.width,
-    logoPixelCanvas.height);
-};
-logoImg.src = '/aether_logo_white.png';
-function isInsideLetter(nx, ny) {
-  if (!logoPixels) return false;
-  const px = Math.floor(nx * (logoPixels.width - 1));
-  const py = Math.floor(ny * (logoPixels.height - 1));
-  const i = (py * logoPixels.width + px) * 4;
-  return logoPixels.data[i + 3] > 128;
-}
 const gl = canvas.getContext("webgl", {
   preserveDrawingBuffer: false,
   powerPreference: "high-performance",
@@ -447,7 +410,7 @@ const lensGl = lensCanvas
 const lensFrag = frag
   .replace(
     "uniform float u_splatAge;",
-    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;\nuniform float u_hazeAmount;\nuniform float u_chromAmount;\nuniform float u_edgeGlowAmount;",
+    "uniform float u_splatAge;\nuniform float u_lensStrength;",
   )
   .replace(
     "  vec2 uv = gl_FragCoord.xy / u_res;",
@@ -459,16 +422,14 @@ const lensFrag = frag
   )
   .replace(
     "  vec2 uvRefracted = uv + lensOffset * lensWarp;",
-    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float hazeSdfVal = texture2D(u_sdf, uv).r;\n  float hazeEdgeDist = abs(hazeSdfVal - 0.5) * 2.0;\n  float hazeMask = (1.0 - smoothstep(0.0, 0.35, hazeEdgeDist));\n  float hazeAnimAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAnimAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAnimAngle) * cos(hazeAnimAngle2),\n    cos(hazeAnimAngle * 0.8) * sin(hazeAnimAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * u_hazeAmount;\n  vec2 hazeChromDir = normalize(hazeOffset + vec2(0.001));\n  float hazeChromSpread = hazeMask * u_chromAmount * 0.03;",
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;",
   )
   .replace(
     "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
-    "  vec3 hazeFinalCol = clamp(col, 0.0, 1.0);\n  float hazeChromShift = hazeMask * u_chromAmount * 0.15;\n  hazeFinalCol.r = hazeFinalCol.r * (1.0 + hazeChromShift * 0.5);\n  hazeFinalCol.b = hazeFinalCol.b * (1.0 - hazeChromShift * 0.3);\n  hazeFinalCol.g = mix(hazeFinalCol.g, (hazeFinalCol.r + hazeFinalCol.b) * 0.5, hazeChromShift * 0.2);\n  float hazeGlowPulse = 0.5 + 0.5 * sin(u_time * u_hazeSpeed * 2.0);\n  float hazeEdgeGlow = hazeMask * u_edgeGlowAmount * (0.6 + 0.4 * hazeGlowPulse);\n  hazeFinalCol += hazeEdgeGlow * vec3(1.0, 0.85, 0.6);\n  hazeFinalCol = clamp(hazeFinalCol, 0.0, 1.0);\n  gl_FragColor = vec4(hazeFinalCol, 1.0);",
+    "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
   );
 let lensProgram = null;
 const lensUniformLoc = {};
-let lensSdfTexture = null;
-let lensAlignmentLogged = false;
 function lensShader(type, src) {
   const s = lensGl.createShader(type);
   lensGl.shaderSource(s, src);
@@ -497,34 +458,6 @@ function setLens1i(name, v) {
   const loc = getLensUniform(name);
   if (loc) lensGl.uniform1i(loc, v);
 }
-function initLensSdfTexture() {
-  if (!lensGl || !lensProgram) return;
-  const sdfImg = new Image();
-  sdfImg.onload = () => {
-    if (!lensGl || !lensProgram) return;
-    const tex = lensGl.createTexture();
-    const textureUnit = 0;
-    lensGl.activeTexture(lensGl.TEXTURE0);
-    lensGl.bindTexture(lensGl.TEXTURE_2D, tex);
-    lensGl.pixelStorei(lensGl.UNPACK_FLIP_Y_WEBGL, true);
-    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_WRAP_S, lensGl.CLAMP_TO_EDGE);
-    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_WRAP_T, lensGl.CLAMP_TO_EDGE);
-    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_MIN_FILTER, lensGl.LINEAR);
-    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_MAG_FILTER, lensGl.LINEAR);
-    lensGl.texImage2D(
-      lensGl.TEXTURE_2D,
-      0,
-      lensGl.RGBA,
-      lensGl.RGBA,
-      lensGl.UNSIGNED_BYTE,
-      sdfImg,
-    );
-    lensSdfTexture = tex;
-    lensGl.useProgram(lensProgram);
-    setLens1i("u_sdf", 0);
-  };
-  sdfImg.src = "/aether_logo_sdf.png";
-}
 if (lensGl) {
   lensProgram = lensGl.createProgram();
   lensGl.attachShader(lensProgram, lensShader(lensGl.VERTEX_SHADER, vert));
@@ -544,7 +477,6 @@ if (lensGl) {
     const la = lensGl.getAttribLocation(lensProgram, "a");
     lensGl.enableVertexAttribArray(la);
     lensGl.vertexAttribPointer(la, 2, lensGl.FLOAT, false, 0, 0);
-    initLensSdfTexture();
   }
   gl.useProgram(p);
 }
@@ -669,8 +601,8 @@ const sliderDefs = [
 ];
 
 const SCALES = {
-  "C Major": [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
-  Pentatonic: [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25],
+  Major: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
+  "Minor Pentatonic": [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25],
   "Whole Tone": [261.63, 293.66, 329.63, 369.99, 415.3, 466.16, 523.25, 587.33],
   Overtone: [130.81, 261.63, 392.0, 523.25, 654.06, 784.88, 915.69, 1046.5],
   Dorian: [261.63, 293.66, 311.13, 349.23, 392.0, 440.0, 466.16, 523.25],
@@ -681,7 +613,7 @@ const SCALES = {
   "Harmonic Min": [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 493.88, 523.25],
   Chromatic: [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.0],
 };
-let currentScale = SCALES["C Major"];
+let currentScale = SCALES.Major;
 let currentFreq = 392;
 let smoothBandY = 0.5;
 let polarAngle = 0;
@@ -736,20 +668,6 @@ let logoProximity = 1;
 let logoSoundReact = 1;
 let logoWaveWarp = 1;
 let lensStrength = 0.15;
-let hazeStrength = 0.5;
-let hazeSpeed = 1.0;
-let hazeScale = 1.0;
-let hazeAmount = 0.05;
-let chromAmount = 0.5;
-let edgeGlowAmount = 0.3;
-let sandDissolve = 0.6;
-let sandSize = 1.0;
-let sandSpeed = 1.0;
-let sandLife = 1.0;
-let sandGravity = 0.3;
-let sandSpread = 1.0;
-let sandCount = 300;
-let particles = [];
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
@@ -1341,152 +1259,6 @@ appendSoundSlider(
   },
   "lensStrength",
 );
-appendSoundSlider(
-  "haze strength",
-  0,
-  1,
-  0.01,
-  () => hazeStrength,
-  (v) => {
-    hazeStrength = v;
-  },
-  "hazeStrength",
-);
-appendSoundSlider(
-  "haze speed",
-  0,
-  5,
-  0.01,
-  () => hazeSpeed,
-  (v) => {
-    hazeSpeed = v;
-  },
-  "hazeSpeed",
-);
-appendSoundSlider(
-  "haze scale",
-  0.1,
-  3,
-  0.01,
-  () => hazeScale,
-  (v) => {
-    hazeScale = v;
-  },
-  "hazeScale",
-);
-appendSoundSlider(
-  "haze amount",
-  0,
-  0.3,
-  0.01,
-  () => hazeAmount,
-  (v) => {
-    hazeAmount = v;
-  },
-  "hazeAmount",
-);
-appendSoundSlider(
-  "chrom amount",
-  0,
-  1,
-  0.01,
-  () => chromAmount,
-  (v) => {
-    chromAmount = v;
-  },
-  "chromAmount",
-);
-appendSoundSlider(
-  "edge glow",
-  0,
-  1,
-  0.01,
-  () => edgeGlowAmount,
-  (v) => {
-    edgeGlowAmount = v;
-  },
-  "edgeGlowAmount",
-);
-appendSoundSlider(
-  "logo sand",
-  0,
-  3,
-  0.05,
-  () => sandDissolve,
-  (v) => {
-    sandDissolve = v;
-  },
-  "sandDissolve",
-);
-appendSoundSlider(
-  "logo sand size",
-  0.1,
-  5,
-  0.1,
-  () => sandSize,
-  (v) => {
-    sandSize = v;
-  },
-  "sandSize",
-);
-appendSoundSlider(
-  "logo sand speed",
-  0.1,
-  5,
-  0.1,
-  () => sandSpeed,
-  (v) => {
-    sandSpeed = v;
-  },
-  "sandSpeed",
-);
-appendSoundSlider(
-  "logo sand life",
-  0.1,
-  5,
-  0.1,
-  () => sandLife,
-  (v) => {
-    sandLife = v;
-  },
-  "sandLife",
-);
-appendSoundSlider(
-  "logo sand grav",
-  0,
-  3,
-  0.05,
-  () => sandGravity,
-  (v) => {
-    sandGravity = v;
-  },
-  "sandGravity",
-);
-appendSoundSlider(
-  "logo sand spread",
-  0,
-  1,
-  0.05,
-  () => sandSpread,
-  (v) => {
-    sandSpread = v;
-  },
-  "sandSpread",
-);
-appendSoundSlider(
-  "logo sand max",
-  50,
-  2000,
-  50,
-  () => sandCount,
-  (v) => {
-    sandCount = Math.round(v);
-    if (particles.length > sandCount) {
-      particles = particles.slice(-sandCount);
-    }
-  },
-  "sandCount",
-);
 
 const gravityRow = document.createElement("div");
 gravityRow.className = "tweak-row";
@@ -1664,19 +1436,6 @@ function refreshPanelFromState() {
     else if (k === "logoChromatic") v = logoChromatic;
     else if (k === "logoWaveWarp") v = logoWaveWarp;
     else if (k === "lensStrength") v = lensStrength;
-    else if (k === "hazeStrength") v = hazeStrength;
-    else if (k === "hazeSpeed") v = hazeSpeed;
-    else if (k === "hazeScale") v = hazeScale;
-    else if (k === "hazeAmount") v = hazeAmount;
-    else if (k === "chromAmount") v = chromAmount;
-    else if (k === "edgeGlowAmount") v = edgeGlowAmount;
-    else if (k === "sandDissolve") v = sandDissolve;
-    else if (k === "sandSize") v = sandSize;
-    else if (k === "sandSpeed") v = sandSpeed;
-    else if (k === "sandLife") v = sandLife;
-    else if (k === "sandGravity") v = sandGravity;
-    else if (k === "sandSpread") v = sandSpread;
-    else if (k === "sandCount") v = sandCount;
     else if (k === "fpsCap") v = fpsCap;
     else if (k === "renderScale") v = renderScale;
     else if (k === "gravityStrength") v = gravityStrength;
@@ -1701,21 +1460,8 @@ function getCurrentSettings() {
     logoChromatic,
     logoWaveWarp,
     lensStrength,
-    hazeStrength,
-    hazeSpeed,
-    hazeScale,
-    hazeAmount,
-    chromAmount,
-    edgeGlowAmount,
     rootKeySemitones,
     baseOctave,
-    sandDissolve,
-    sandSize,
-    sandSpeed,
-    sandLife,
-    sandGravity,
-    sandSpread,
-    sandCount,
     fpsCap,
     renderScale,
     idleThrottle,
@@ -1785,37 +1531,10 @@ function applySettings(o) {
   if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
   if (n(o.lensStrength))
     lensStrength = Math.max(0, Math.min(0.8, o.lensStrength));
-  if (n(o.hazeStrength))
-    hazeStrength = Math.max(0, Math.min(1, o.hazeStrength));
-  if (n(o.hazeSpeed))
-    hazeSpeed = Math.max(0, Math.min(5, o.hazeSpeed));
-  if (n(o.hazeScale))
-    hazeScale = Math.max(0.1, Math.min(3, o.hazeScale));
-  if (n(o.hazeAmount))
-    hazeAmount = Math.max(0, Math.min(0.3, o.hazeAmount));
-  if (n(o.chromAmount))
-    chromAmount = Math.max(0, Math.min(1, o.chromAmount));
-  if (n(o.edgeGlowAmount))
-    edgeGlowAmount = Math.max(0, Math.min(1, o.edgeGlowAmount));
   if (n(o.rootKeySemitones))
     rootKeySemitones = Math.max(0, Math.min(11, Math.round(o.rootKeySemitones)));
   if (n(o.baseOctave))
     baseOctave = Math.max(1, Math.min(7, Math.round(o.baseOctave)));
-  if (n(o.sandDissolve))
-    sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
-  if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
-  if (n(o.sandSpeed)) sandSpeed = Math.max(0.1, Math.min(5, o.sandSpeed));
-  if (n(o.sandLife)) sandLife = Math.max(0.1, Math.min(5, o.sandLife));
-  if (n(o.sandGravity))
-    sandGravity = Math.max(0, Math.min(3, o.sandGravity));
-  if (n(o.sandSpread))
-    sandSpread = Math.max(0, Math.min(1, o.sandSpread));
-  if (n(o.sandCount)) {
-    sandCount = Math.round(Math.max(50, Math.min(2000, o.sandCount)));
-    if (particles.length > sandCount) {
-      particles = particles.slice(-sandCount);
-    }
-  }
   if (n(o.fpsCap)) fpsCap = o.fpsCap;
   if (n(o.renderScale)) {
     renderScale = o.renderScale;
@@ -2022,46 +1741,6 @@ let pageFocused = true;
 let masterGain = null;
 let pageFadeGain = null;
 let lastBand = -1;
-function spawnParticles(count, intensity) {
-  if (!logoPixels) return;
-  let spawned = 0;
-  let attempts = 0;
-  while (spawned < count && attempts < count * 10) {
-    attempts++;
-    const nx = Math.random();
-    const ny = Math.random();
-    if (!isInsideLetter(nx, ny)) continue;
-    const band = Math.max(0, lastBand);
-    const freq = 2 + band * 1.5;
-    const nodal = Math.abs(
-      Math.sin(nx * Math.PI * freq) *
-      Math.sin(ny * Math.PI * freq * 0.7));
-    if (nodal > 0.3) continue;
-    const vx = (Math.random() - 0.5) * 0.008
-      * intensity * sandSpeed;
-    const vy = (Math.random() - 0.3) * 0.006
-      * intensity * sandSpeed;
-    const spreadAngle = (Math.random() - 0.5)
-      * Math.PI * 2 * sandSpread;
-    const cos = Math.cos(spreadAngle);
-    const sin = Math.sin(spreadAngle);
-    const rvx = vx * cos - vy * sin;
-    const rvy = vx * sin + vy * cos;
-    particles.push({
-      x: nx, y: ny,
-      vx: rvx,
-      vy: rvy,
-      life: 1.0,
-      decay: (0.018 + Math.random() * 0.025) / sandLife,
-      size: (0.6 + Math.random() * 1.4) * sandSize,
-    });
-    spawned++;
-  }
-  if (particles.length > sandCount) {
-    particles = particles.slice(
-      particles.length - sandCount);
-  }
-}
 let activeGain = null;
 let activeBand = -1;
 let hintFaded = false;
@@ -2300,12 +1979,6 @@ function resize(){
   canvas.width=window.innerWidth * devicePixelRatio * renderScale;
   canvas.height=window.innerHeight * devicePixelRatio * renderScale;
   gl.viewport(0,0,canvas.width,canvas.height);
-  if (sandCanvas) {
-    const logoW = window.innerWidth * 0.55;
-    const logoH = logoW * 495 / 2096;
-    sandCanvas.width = Math.round(logoW);
-    sandCanvas.height = Math.round(logoH);
-  }
   if (lensCanvas && lensGl) {
     const lw = Math.round(window.innerWidth * 0.55);
     const lh = Math.round(lw * 495 / 2096);
@@ -2484,50 +2157,6 @@ function frame(t){
     const transformStr =
       `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%) scaleX(${waveScale.toFixed(4)})`;
     logoWrapEl.style.transform = transformStr;
-    if (sandCtx && sandCanvas) {
-      if (sandDissolve > 0) {
-        const W = sandCanvas.width;
-        const H = sandCanvas.height;
-        if (W > 0 && H > 0) {
-          const burst = noteFlash * 40 * sandDissolve;
-          const trickle = smoothVelocity * 0.5 * sandDissolve;
-          const spawnCount = Math.floor(burst + trickle);
-          if (spawnCount > 0) {
-            spawnParticles(spawnCount,
-              (noteFlash + smoothVelocity * 0.05)
-              * sandDissolve);
-          }
-          sandCtx.clearRect(0, 0, W, H);
-          const toRemove = [];
-          const logoColor_local = logoColor === 'black'
-            ? '0,0,0' : '255,200,120';
-          particles.forEach((p, i) => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.0001 * sandGravity;
-            p.life -= p.decay;
-            if (p.life <= 0 || p.x < 0 || p.x > 1
-                || p.y < 0 || p.y > 1) {
-              toRemove.push(i);
-              return;
-            }
-            const px = p.x * W;
-            const py = p.y * H;
-            sandCtx.beginPath();
-            sandCtx.arc(px, py, p.size, 0, Math.PI * 2);
-            sandCtx.fillStyle =
-              `rgba(${logoColor_local},${p.life * 0.8})`;
-            sandCtx.fill();
-          });
-          for (let i = toRemove.length - 1; i >= 0; i--) {
-            particles.splice(toRemove[i], 1);
-          }
-        }
-      } else {
-        sandCtx.clearRect(0, 0, sandCanvas.width, sandCanvas.height);
-        particles.length = 0;
-      }
-    }
     const ca = logoChromatic * finalOpacity;
     if (ca > 0.1) {
       const tLogo = performance.now();
@@ -2711,17 +2340,6 @@ function frame(t){
     setLens1f("u_time", t * 0.001);
     setLens2f("u_mouse", mx * lsx, my * lsy);
     setLens2f("u_mouse2", mx2 * lsx, my2 * lsy);
-    setLens1f("u_hazeStrength", hazeStrength);
-    setLens1f("u_hazeSpeed", hazeSpeed);
-    setLens1f("u_hazeScale", hazeScale);
-    setLens1f("u_hazeAmount", hazeAmount);
-    setLens1f("u_chromAmount", chromAmount);
-    setLens1f("u_edgeGlowAmount", edgeGlowAmount);
-    if (lensSdfTexture) {
-      lensGl.activeTexture(lensGl.TEXTURE0);
-      lensGl.bindTexture(lensGl.TEXTURE_2D, lensSdfTexture);
-      setLens1i("u_sdf", 0);
-    }
     setLens1f("u_idle", idleBreath);
     setLens1f("u_activeBand", clampedBand);
     setLens1f("u_mouseX", mouseX);
