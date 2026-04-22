@@ -1,0 +1,2801 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a0500; width: 100vw; height: 100vh; overflow: hidden; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#tweak-root { position: fixed; top: 0; right: 0; z-index: 100; font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace; }
+#tweak-toggle {
+  position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 4px;
+  background: rgba(0,0,0,.45); color: rgba(255,255,255,.85); font-size: 16px; line-height: 1; cursor: pointer;
+}
+#tweak-toggle:hover { background: rgba(0,0,0,.65); }
+#tweak-panel {
+  width: 220px; margin-top: 44px; margin-right: 8px; padding: 16px;
+  background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.12); border-radius: 6px;
+  max-height: calc(100vh - 56px); overflow-y: auto;
+}
+#tweak-root.collapsed #tweak-panel { display: none; }
+.tweak-row { margin-bottom: 12px; }
+.tweak-row:last-of-type { margin-bottom: 0; }
+.tweak-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.tweak-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,.45); }
+.tweak-val { font-size: 10px; color: rgba(255,255,255,.65); }
+.tweak-row input[type="range"] { width: 100%; accent-color: #c96; }
+#tweak-copy {
+  width: 100%; margin-top: 14px; padding: 8px; font: inherit; font-size: 11px;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 4px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.8); cursor: pointer;
+}
+#tweak-copy:hover { background: rgba(255,255,255,.14); }
+#sound-osc-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+#sound-osc-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#sound-osc-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+#gravity-toggle-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+#perf-throttle-row,
+#perf-sound-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+#logo-color-row,
+#logo-layer-toggle-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+#gravity-toggle-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#perf-throttle-row button,
+#perf-sound-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#logo-color-row button,
+#logo-layer-toggle-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#gravity-toggle-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+#perf-throttle-row button.selected,
+#perf-sound-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+#logo-color-row button.selected,
+#logo-layer-toggle-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+#hang-drum-toggle-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+#hang-drum-toggle-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 9px;
+  background: #1a0800;
+  color: rgba(255,150,80,0.85);
+  border: 1px solid rgba(255,100,40,0.4);
+  cursor: pointer;
+}
+#hang-drum-toggle-row button.selected {
+  background: rgba(255,100,40,0.35);
+  color: #fff;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="logo-wrap" style="position:fixed;top:50%; left:50%;transform:translate(-50%,-50%);width:55vw;aspect-ratio:2096/495;pointer-events:none;will-change:filter;z-index:10;">
+  <canvas id="lens-canvas" style="
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:100%;
+  aspect-ratio:2096/495;
+  -webkit-mask-image:url('/aether_logo_white.png');
+  mask-image:url('/aether_logo_white.png');
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+  -webkit-mask-position:center;
+  mask-position:center;
+  -webkit-mask-size:100% auto;
+  mask-size:100% auto;
+  pointer-events:none;
+  opacity:0;
+  will-change:opacity;
+  z-index:0;
+"></canvas>
+  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
+  <canvas id="sand-canvas" style="
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:100%;
+  aspect-ratio:2096/495;
+  pointer-events:none;
+  opacity:0.85;
+  z-index:1;
+"></canvas>
+</div>
+<div id="hint" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.14em;color:rgba(255,150,80,0.4);pointer-events:none;user-select:none;">
+MOVE IN CIRCLES TO PLAY
+</div>
+<div id="zone-indicator" style="position:absolute;bottom:48px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.18em;color:rgba(255,150,80,0.15);pointer-events:none;user-select:none;transition:opacity 1.2s;">C</div>
+<div id="tweak-root">
+<button type="button" id="tweak-toggle" aria-expanded="true" title="Toggle controls">≡</button>
+<div id="tweak-panel"></div>
+</div>
+<script>
+const canvas = document.getElementById("c");
+const logoLayerEl = document.getElementById("logo-layer");
+const logoWrapEl = document.getElementById("logo-wrap");
+const sandCanvas = document.getElementById(
+  'sand-canvas');
+const sandCtx = sandCanvas
+  ? sandCanvas.getContext('2d') : null;
+// Load logo PNG to sample letter shape pixels
+const logoImg = new Image();
+let logoPixels = null;
+let logoPixelCanvas = null;
+logoImg.onload = () => {
+  logoPixelCanvas = document.createElement('canvas');
+  logoPixelCanvas.width = 200;
+  logoPixelCanvas.height = Math.round(200 * 495 / 2096);
+  const pCtx = logoPixelCanvas.getContext('2d');
+  pCtx.drawImage(logoImg, 0, 0,
+    logoPixelCanvas.width, logoPixelCanvas.height);
+  logoPixels = pCtx.getImageData(0, 0,
+    logoPixelCanvas.width,
+    logoPixelCanvas.height);
+};
+logoImg.src = '/aether_logo_white.png';
+function isInsideLetter(nx, ny) {
+  if (!logoPixels) return false;
+  const px = Math.floor(nx * (logoPixels.width - 1));
+  const py = Math.floor(ny * (logoPixels.height - 1));
+  const i = (py * logoPixels.width + px) * 4;
+  return logoPixels.data[i + 3] > 128;
+}
+const gl = canvas.getContext("webgl", {
+  preserveDrawingBuffer: false,
+  powerPreference: "high-performance",
+  antialias: false
+});
+const vert = `attribute vec2 a; void main(){gl_Position=vec4(a,0,1);}`;
+const frag = `precision mediump float;
+uniform vec2 u_res, u_mouse, u_mouse2;
+uniform float u_time;
+uniform float u_glowCoreRadius, u_glowCoreIntensity;
+uniform float u_glowWideRadius, u_glowWideIntensity;
+uniform float u_warpStrength, u_noiseAmount, u_darkness;
+uniform float u_waveCount, u_waveFreq, u_waveSpeed, u_rippleStrength;
+uniform float u_idle;
+uniform float u_activeBand;
+uniform float u_mouseX;
+uniform float u_smoothBandY;
+uniform float u_hintBand0;
+uniform float u_hintBand1;
+uniform float u_flickerSpeed;
+uniform float u_flickerAmount;
+uniform float u_waveSharpness;
+uniform float u_waveBrightness;
+uniform float u_waveGlow;
+uniform float u_waveTemp;
+uniform float u_waveSpacing;
+uniform float u_waveAlt;
+uniform float u_mouseRadius;
+uniform float u_gravityStrength;
+uniform float u_octaveAmount;
+uniform float u_octaveDirection;
+uniform float u_velocity;
+uniform float u_velX;
+uniform float u_drift;
+uniform float u_logoPresence;
+uniform float u_noteFlash;
+uniform float u_activeBandNorm;
+uniform float u_hangDrum;
+uniform float u_sympathetic[8];
+uniform vec2 u_trail[10];
+uniform float u_trailAge[10];
+uniform int u_trailLen;
+uniform float u_splatIntensity;
+uniform vec2 u_splatPos;
+uniform float u_splatAge;
+float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
+float sn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*sn(p);p*=2.;a*=.5;}return v;}
+const float ACTIVE_BAND_GLOW = 1.0;
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_res;
+  vec2 logoCentre = vec2(0.5, 0.5);
+  vec2 uvRefracted = uv;
+  vec2 m = u_mouse / u_res;
+  vec2 m2 = u_mouse2 / u_res;
+  float t = u_time;
+  float aspect = u_res.x / u_res.y;
+  vec2 uvA = vec2(uv.x * aspect, uv.y);
+  vec2 mA = vec2(m.x * aspect, m.y);
+  float mouseDist = length(uvA - mA);
+  float rippleFreq = 12.0 + u_rippleStrength * 8.0;
+  float ripple = sin(mouseDist * rippleFreq - t * 4.0)
+                 * exp(-mouseDist / u_mouseRadius * 1.2)
+                 * u_rippleStrength * 1.5;
+  vec2 m2A = vec2(m2.x * aspect, m2.y);
+  float mouseDist2 = length(uvA - m2A);
+  float ripple2 = sin(mouseDist2 * (rippleFreq * 0.8) - t * 3.0)
+                  * exp(-mouseDist2 / u_mouseRadius * 1.05)
+                  * u_rippleStrength * 0.8;
+  vec2 smokeUV = uvRefracted * 2.5 + vec2(t * 0.04);
+  float curlNoise = fbm(smokeUV + vec2(1.3, 0.7));
+  vec2 curl = vec2(
+    cos(curlNoise * 6.28),
+    sin(curlNoise * 6.28)
+  ) * 0.4;
+  vec2 sd = vec2(fbm(smokeUV + curl * 0.8),
+                 fbm(smokeUV + curl * 0.8 + vec2(1.7)));
+  float smoke = fbm(uvRefracted * 1.8 + sd * u_warpStrength * 0.4 + t * 0.06 + curl * 0.3);
+  smoke = clamp(smoke * u_noiseAmount * 0.6, 0.0, 1.0);
+  float tiltedY = uv.y;
+  float waves = 0.0;
+  float wc = u_waveCount;
+  for (int i = 0; i < 12; i++) {
+    if (float(i) >= wc) break;
+    float fi = float(i) / wc;
+    float bandY = fi * u_waveSpacing + (1.0 - u_waveSpacing) * 0.5;
+    float harmonic = 1.0 + float(i) * 0.5;
+    float phase = fi * 6.28 + t * u_waveSpeed * harmonic * 0.3;
+    float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
+                  * 0.03 * (1.0 + float(i) * 0.1);
+    waveX += sin(uv.x * 1.5 + sd.x * 3.14 + t * 0.2)
+      * u_warpStrength * 0.04 * sin(fi * 6.28);
+    waveX += ripple * 0.12 * sin(float(i) * 1.3);
+    waveX += ripple2 * 0.07 * cos(float(i) * 0.9);
+    float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
+    waveX += isActive * u_velX * 0.003 * sin(uv.x * 20.0 + t * 8.0);
+    float dy = tiltedY - bandY - waveX;
+    float flicker = 1.0 + u_flickerAmount *
+      sin(t * u_flickerSpeed * harmonic + fi * 12.0)
+      + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
+    float activeWidth = 1.0 + isActive * ACTIVE_BAND_GLOW * 0.4;
+    float band = exp(-dy * dy * (u_waveSharpness / activeWidth)) * flicker;
+    // Base active boost — whole band gets brighter
+    band *= 1.0 + isActive * ACTIVE_BAND_GLOW * 2.2;
+    // Horizontal illumination across full band width
+    // brighter near mouse, never goes dark at edges
+    float horzGlow = isActive * (
+      0.4 +
+      0.6 * exp(-mouseDist * mouseDist /
+        (u_mouseRadius * u_mouseRadius * 4.0))
+    );
+    band *= 1.0 + horzGlow * 2.5;
+    // Wider soft halo so active band reads as
+    // a distinct lit stripe across the screen
+    float activeHalo = isActive *
+      exp(-dy * dy * (u_waveSharpness * 0.015)) * 1.2;
+    waves += activeHalo;
+    float isOdd = mod(float(i), 2.0);
+    float altFactor = 1.0 + u_waveAlt *
+      (isOdd * 2.0 - 1.0) * 1.5;
+    band *= max(0.05, altFactor);
+    float mouseBand = exp(-mouseDist * mouseDist /
+      (u_mouseRadius * u_mouseRadius)) * 0.6;
+    band *= 1.0 + mouseBand;
+    float glowHalo = exp(-dy * dy * (u_waveSharpness * 0.05))
+                     * u_waveGlow * flicker;
+    float isWell = 0.0;
+    if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 1.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 4.0) < 0.5) isWell = 1.0;
+    band *= 1.0 + isWell * u_gravityStrength * 0.35;
+    float isHint0 = 1.0 - step(0.5, abs(float(i) - u_hintBand0));
+    float isHint1 = 1.0 - step(0.5, abs(float(i) - u_hintBand1));
+    band *= 1.0 + (isHint0 + isHint1) * 0.4;
+    float driftWobble = u_drift * 0.03 *
+      sin(t * 3.0 + float(i) * 1.7);
+    band *= 1.0 + driftWobble;
+    float sympLevel = 0.0;
+    if (i == 0) sympLevel = u_sympathetic[0];
+    if (i == 1) sympLevel = u_sympathetic[1];
+    if (i == 2) sympLevel = u_sympathetic[2];
+    if (i == 3) sympLevel = u_sympathetic[3];
+    if (i == 4) sympLevel = u_sympathetic[4];
+    if (i == 5) sympLevel = u_sympathetic[5];
+    if (i == 6) sympLevel = u_sympathetic[6];
+    if (i == 7) sympLevel = u_sympathetic[7];
+    band *= 1.0 + sympLevel * 3.0;
+    waves += band + glowHalo * 0.4;
+  }
+  waves = clamp(waves * u_waveBrightness, 0.0, 1.0);
+  vec2 smokeOff = vec2(
+    sin(uv.y * 8.0 + t * 0.5) * 0.02,
+    sin(uv.x * 6.0 + t * 0.4) * 0.015
+  ) * u_warpStrength;
+  float dg = length(uv + smokeOff - m);
+  float dg2 = length(uv + smokeOff * 1.4 - m2);
+  float glowWide = pow(max(0., 1. - dg / u_glowWideRadius), 2.0)
+                   * u_glowWideIntensity;
+  float glowCore = pow(max(0., 1. - dg / u_glowCoreRadius), 3.0)
+                   * u_glowCoreIntensity;
+  float glowTrail = pow(max(0., 1. - dg2 / 0.22), 2.0) * 0.2;
+  float velBurst = u_velocity * exp(-mouseDist * mouseDist * 80.0) * 0.3;
+  float glow = glowWide + glowCore + glowTrail;
+  float splatRadius = 0.04 + u_splatAge * 0.12;
+  float splatDist = length(uv - u_splatPos);
+  float splat = exp(-splatDist * splatDist /
+    (splatRadius * splatRadius)) * u_splatIntensity * 1.8;
+  float smokeTrail = 0.0;
+  for (int i = 0; i < 10; i++) {
+    if (i >= u_trailLen) break;
+    vec2 tp = u_trail[i] / u_res;
+    float td = length(uv - tp);
+    float fade = 1.0 - clamp(u_trailAge[i] / 1.2, 0.0, 1.0);
+    float warp = 0.5 + 0.5 * sin(
+      td * 12.0 + u_time * 0.8 + float(i) * 1.1);
+    smokeTrail += exp(-td * td * 80.0) * fade * warp * 0.5;
+  }
+  smokeTrail = clamp(smokeTrail, 0.0, 1.0);
+  float cursorLine = exp(-pow((uv.y - u_smoothBandY) * 20.0, 2.0)) * 0.15;
+  float edgeGlow = 0.0;
+  if (u_octaveDirection > 0.0) {
+    edgeGlow = u_octaveAmount * exp(-pow((uv.y - 1.0) * 8.0, 2.0)) * 0.6;
+  } else {
+    edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
+  }
+  float letterX = 0.5 + sin(t * 0.7) * 0.02;
+  float letterGlow = smoothstep(0.25, 0.0,
+    abs(uv.x - letterX)) * u_logoPresence
+    * 0.5;
+  float rawV = smoke * u_noiseAmount * 0.45
+    + waves + smokeTrail * 0.35;
+  float baseV = clamp(rawV, 0.0, 0.9);
+  float glowV = glow * 0.9 + splat * 0.8 + letterGlow * 0.35;
+  baseV = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
+  float br = pow(u_darkness / 0.15, 0.6) * 0.8 + 0.2;
+  vec3 col = mix(vec3(0.04, 0.01, 0.0),
+    vec3(0.4, 0.08, 0.01),
+    smoothstep(0.0, 0.35 / br, baseV));
+  col = mix(col, vec3(0.78, 0.22, 0.02),
+    smoothstep(0.25 / br, 0.65 / br, baseV));
+  col = mix(col, vec3(1.0, 0.62, 0.15),
+    smoothstep(0.55 / br, 0.92 / br, baseV));
+  col = mix(col, vec3(1.0, 0.88, 0.55),
+    smoothstep(0.82 / br, 1.1 / br, baseV));
+  col = mix(col, col * vec3(1.0, 0.85, 0.6), u_mouseX * 0.3);
+  vec3 redTone  = vec3(0.6, 0.08, 0.0);
+  vec3 amberTone = vec3(0.9, 0.45, 0.05);
+  vec3 tempShift = mix(redTone, amberTone, u_waveTemp);
+  col = mix(col, col * (tempShift * 2.0), 0.3);
+  float grain = (h(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
+  col += grain;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`;
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x;}
+const p=gl.createProgram();
+gl.attachShader(p,sh(gl.VERTEX_SHADER,vert));
+gl.attachShader(p,sh(gl.FRAGMENT_SHADER,frag));
+gl.linkProgram(p);gl.useProgram(p);
+const b=gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+const al=gl.getAttribLocation(p,"a");
+gl.enableVertexAttribArray(al);
+gl.vertexAttribPointer(al,2,gl.FLOAT,false,0,0);
+
+const lensCanvas = document.getElementById("lens-canvas");
+const lensGl = lensCanvas
+  ? lensCanvas.getContext("webgl", {
+    powerPreference: "high-performance",
+    antialias: false,
+    preserveDrawingBuffer: false,
+  })
+  : null;
+const lensFrag = frag
+  .replace(
+    "uniform float u_splatAge;",
+    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;\nuniform float u_hazeAmount;\nuniform float u_chromAmount;\nuniform float u_edgeGlowAmount;",
+  )
+  .replace(
+    "  vec2 uv = gl_FragCoord.xy / u_res;",
+    "  vec2 uv = vec2(gl_FragCoord.x / u_res.x, 1.0 - gl_FragCoord.y / u_res.y);",
+  )
+  .replace(
+    "  vec2 uvRefracted = uv;",
+    "  vec2 lensCenter = vec2(0.5, 0.5);\n  vec2 lensOffset = uv - lensCenter;\n  float lensDist = length(lensOffset);\n  float lensWarp = u_lensStrength * (1.0 - exp(-lensDist * 3.0));\n  vec2 uvRefracted = uv + lensOffset * lensWarp;",
+  )
+  .replace(
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;",
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float hazeSdfVal = texture2D(u_sdf, uv).r;\n  float hazeEdgeDist = abs(hazeSdfVal - 0.5) * 2.0;\n  float hazeMask = (1.0 - smoothstep(0.0, 0.35, hazeEdgeDist));\n  float hazeAnimAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAnimAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAnimAngle) * cos(hazeAnimAngle2),\n    cos(hazeAnimAngle * 0.8) * sin(hazeAnimAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * u_hazeAmount;\n  vec2 hazeChromDir = normalize(hazeOffset + vec2(0.001));\n  float hazeChromSpread = hazeMask * u_chromAmount * 0.03;",
+  )
+  .replace(
+    "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
+    "  vec3 hazeFinalCol = clamp(col, 0.0, 1.0);\n  float hazeChromShift = hazeMask * u_chromAmount * 0.15;\n  hazeFinalCol.r = hazeFinalCol.r * (1.0 + hazeChromShift * 0.5);\n  hazeFinalCol.b = hazeFinalCol.b * (1.0 - hazeChromShift * 0.3);\n  hazeFinalCol.g = mix(hazeFinalCol.g, (hazeFinalCol.r + hazeFinalCol.b) * 0.5, hazeChromShift * 0.2);\n  float hazeGlowPulse = 0.5 + 0.5 * sin(u_time * u_hazeSpeed * 2.0);\n  float hazeEdgeGlow = hazeMask * u_edgeGlowAmount * (0.6 + 0.4 * hazeGlowPulse);\n  hazeFinalCol += hazeEdgeGlow * vec3(1.0, 0.85, 0.6);\n  hazeFinalCol = clamp(hazeFinalCol, 0.0, 1.0);\n  gl_FragColor = vec4(hazeFinalCol, 1.0);",
+  );
+let lensProgram = null;
+const lensUniformLoc = {};
+let lensSdfTexture = null;
+let lensAlignmentLogged = false;
+function lensShader(type, src) {
+  const s = lensGl.createShader(type);
+  lensGl.shaderSource(s, src);
+  lensGl.compileShader(s);
+  return s;
+}
+function getLensUniform(name) {
+  if (!lensGl || !lensProgram) return null;
+  if (!Object.prototype.hasOwnProperty.call(lensUniformLoc, name)) {
+    lensUniformLoc[name] = lensGl.getUniformLocation(lensProgram, name);
+  }
+  return lensUniformLoc[name];
+}
+function setLens1f(name, val) {
+  if (!lensGl) return;
+  const loc = getLensUniform(name);
+  if (loc) lensGl.uniform1f(loc, val);
+}
+function setLens2f(name, x, y) {
+  if (!lensGl) return;
+  const loc = getLensUniform(name);
+  if (loc) lensGl.uniform2f(loc, x, y);
+}
+function setLens1i(name, v) {
+  if (!lensGl) return;
+  const loc = getLensUniform(name);
+  if (loc) lensGl.uniform1i(loc, v);
+}
+function initLensSdfTexture() {
+  if (!lensGl || !lensProgram) return;
+  const sdfImg = new Image();
+  sdfImg.onload = () => {
+    if (!lensGl || !lensProgram) return;
+    const tex = lensGl.createTexture();
+    const textureUnit = 0;
+    lensGl.activeTexture(lensGl.TEXTURE0);
+    lensGl.bindTexture(lensGl.TEXTURE_2D, tex);
+    lensGl.pixelStorei(lensGl.UNPACK_FLIP_Y_WEBGL, true);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_WRAP_S, lensGl.CLAMP_TO_EDGE);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_WRAP_T, lensGl.CLAMP_TO_EDGE);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_MIN_FILTER, lensGl.LINEAR);
+    lensGl.texParameteri(lensGl.TEXTURE_2D, lensGl.TEXTURE_MAG_FILTER, lensGl.LINEAR);
+    lensGl.texImage2D(
+      lensGl.TEXTURE_2D,
+      0,
+      lensGl.RGBA,
+      lensGl.RGBA,
+      lensGl.UNSIGNED_BYTE,
+      sdfImg,
+    );
+    lensSdfTexture = tex;
+    lensGl.useProgram(lensProgram);
+    setLens1i("u_sdf", 0);
+  };
+  sdfImg.src = "/aether_logo_sdf.png";
+}
+if (lensGl) {
+  lensProgram = lensGl.createProgram();
+  lensGl.attachShader(lensProgram, lensShader(lensGl.VERTEX_SHADER, vert));
+  lensGl.attachShader(lensProgram, lensShader(lensGl.FRAGMENT_SHADER, lensFrag));
+  lensGl.linkProgram(lensProgram);
+  if (!lensGl.getProgramParameter(lensProgram, lensGl.LINK_STATUS)) {
+    lensProgram = null;
+  } else {
+    lensGl.useProgram(lensProgram);
+    const lb = lensGl.createBuffer();
+    lensGl.bindBuffer(lensGl.ARRAY_BUFFER, lb);
+    lensGl.bufferData(
+      lensGl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+      lensGl.STATIC_DRAW,
+    );
+    const la = lensGl.getAttribLocation(lensProgram, "a");
+    lensGl.enableVertexAttribArray(la);
+    lensGl.vertexAttribPointer(la, 2, lensGl.FLOAT, false, 0, 0);
+    initLensSdfTexture();
+  }
+  gl.useProgram(p);
+}
+
+const ur=gl.getUniformLocation(p,"u_res"),um=gl.getUniformLocation(p,"u_mouse"),um2=gl.getUniformLocation(p,"u_mouse2"),ut=gl.getUniformLocation(p,"u_time");
+const uGlowCoreRadius=gl.getUniformLocation(p,"u_glowCoreRadius");
+const uGlowCoreIntensity=gl.getUniformLocation(p,"u_glowCoreIntensity");
+const uGlowWideRadius=gl.getUniformLocation(p,"u_glowWideRadius");
+const uGlowWideIntensity=gl.getUniformLocation(p,"u_glowWideIntensity");
+const uWarpStrength=gl.getUniformLocation(p,"u_warpStrength");
+const uNoiseAmount=gl.getUniformLocation(p,"u_noiseAmount");
+const uDarkness=gl.getUniformLocation(p,"u_darkness");
+const uWaveCount=gl.getUniformLocation(p,"u_waveCount");
+const uWaveFreq=gl.getUniformLocation(p,"u_waveFreq");
+const uWaveSpeed=gl.getUniformLocation(p,"u_waveSpeed");
+const uRippleStrength=gl.getUniformLocation(p,"u_rippleStrength");
+const uIdle=gl.getUniformLocation(p,"u_idle");
+const uActiveBand=gl.getUniformLocation(p,"u_activeBand");
+const uMouseX=gl.getUniformLocation(p,"u_mouseX");
+const uSmoothBandY=gl.getUniformLocation(p,"u_smoothBandY");
+const uHintBand0=gl.getUniformLocation(p,"u_hintBand0");
+const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
+const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
+const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
+const uWaveSharpness=gl.getUniformLocation(p,"u_waveSharpness");
+const uWaveBrightness=gl.getUniformLocation(p,"u_waveBrightness");
+const uWaveGlow=gl.getUniformLocation(p,"u_waveGlow");
+const uWaveTemp=gl.getUniformLocation(p,"u_waveTemp");
+const uWaveSpacing=gl.getUniformLocation(p,"u_waveSpacing");
+const uWaveAlt=gl.getUniformLocation(p,"u_waveAlt");
+const uMouseRadius=gl.getUniformLocation(p,"u_mouseRadius");
+const uGravityStrength=gl.getUniformLocation(p,"u_gravityStrength");
+const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
+const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
+const uVelocity=gl.getUniformLocation(p,"u_velocity");
+const uVelX=gl.getUniformLocation(p,"u_velX");
+const uDrift=gl.getUniformLocation(p,"u_drift");
+const uLogoPresence=gl.getUniformLocation(p,"u_logoPresence");
+const uNoteFlash=gl.getUniformLocation(p,"u_noteFlash");
+const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
+const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
+const uSympathetic=gl.getUniformLocation(p,"u_sympathetic[0]");
+const uTrail=gl.getUniformLocation(p,"u_trail[0]");
+const uTrailAge=gl.getUniformLocation(p,"u_trailAge[0]");
+const uTrailLen=gl.getUniformLocation(p,"u_trailLen");
+const uSplatIntensity=gl.getUniformLocation(p,"u_splatIntensity");
+const uSplatPos=gl.getUniformLocation(p,"u_splatPos");
+const uSplatAge=gl.getUniformLocation(p,"u_splatAge");
+
+const tweak = {
+  u_glowCoreRadius: 0.09,
+  u_glowCoreIntensity: 1.4,
+  u_glowWideRadius: 0.32,
+  u_glowWideIntensity: 0.35,
+  u_trailLag: 0.025,
+  u_warpStrength: 0.4,
+  u_noiseAmount: 0.3,
+  u_darkness: 0.04,
+  u_waveCount: 8,
+  u_waveFreq: 2,
+  u_waveSpeed: 0.3,
+  u_rippleStrength: 0.6,
+  u_flickerSpeed: 1.5,
+  u_flickerAmount: 0.06,
+  u_waveSharpness: 600,
+  u_waveBrightness: 1.6,
+  u_waveGlow: 0.3,
+  u_waveTemp: 0.5,
+  u_waveSpacing: 1.0,
+  u_waveAlt: 0.0,
+  u_mouseRadius: 0.3,
+};
+const uniformCache = {};
+
+function setUniform1f(loc, key, val) {
+  if (uniformCache[key] === val) return;
+  uniformCache[key] = val;
+  gl.uniform1f(loc, val);
+}
+
+function applyTweakUniforms() {
+  setUniform1f(uGlowCoreRadius, "u_glowCoreRadius", tweak.u_glowCoreRadius);
+  setUniform1f(uGlowCoreIntensity, "u_glowCoreIntensity", tweak.u_glowCoreIntensity);
+  setUniform1f(uGlowWideRadius, "u_glowWideRadius", tweak.u_glowWideRadius);
+  setUniform1f(uGlowWideIntensity, "u_glowWideIntensity", tweak.u_glowWideIntensity);
+  setUniform1f(uWarpStrength, "u_warpStrength", tweak.u_warpStrength);
+  setUniform1f(uNoiseAmount, "u_noiseAmount", tweak.u_noiseAmount);
+  setUniform1f(uDarkness, "u_darkness", tweak.u_darkness);
+  setUniform1f(uWaveCount, "u_waveCount", tweak.u_waveCount);
+  setUniform1f(uWaveFreq, "u_waveFreq", tweak.u_waveFreq);
+  setUniform1f(uWaveSpeed, "u_waveSpeed", tweak.u_waveSpeed);
+  setUniform1f(uRippleStrength, "u_rippleStrength", tweak.u_rippleStrength);
+  setUniform1f(uFlickerSpeed, "u_flickerSpeed", tweak.u_flickerSpeed);
+  setUniform1f(uFlickerAmount, "u_flickerAmount", tweak.u_flickerAmount);
+  setUniform1f(uWaveSharpness, "u_waveSharpness", tweak.u_waveSharpness);
+  setUniform1f(uWaveBrightness, "u_waveBrightness", tweak.u_waveBrightness);
+  setUniform1f(uWaveGlow, "u_waveGlow", tweak.u_waveGlow);
+  setUniform1f(uWaveTemp, "u_waveTemp", tweak.u_waveTemp);
+  setUniform1f(uWaveSpacing, "u_waveSpacing", tweak.u_waveSpacing);
+  setUniform1f(uWaveAlt, "u_waveAlt", tweak.u_waveAlt);
+  setUniform1f(uMouseRadius, "u_mouseRadius", tweak.u_mouseRadius);
+}
+
+const sliderDefs = [
+  { key: "u_trailLag", label: "trail speed", min: 0.0001, max: 0.15, step: 0.0001 },
+  { key: "u_warpStrength", label: "warp strength", min: 0.0, max: 2.0, step: 0.01 },
+  { key: "u_noiseAmount", label: "noise amount", min: 0.0, max: 1.0, step: 0.01 },
+  { key: "u_darkness", label: "brightness", min: 0.01, max: 0.15, step: 0.001 },
+  { key: "u_waveCount", label: "wave count", min: 2, max: 12, step: 1 },
+  { key: "u_waveFreq", label: "wave frequency", min: 0.3, max: 20, step: 0.1 },
+  { key: "u_waveSpeed", label: "wave speed", min: 0, max: 3, step: 0.1 },
+  { key: "u_rippleStrength", label: "ripple strength", min: 0.0, max: 4.0, step: 0.05 },
+  { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
+  { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.3, step: 0.005 },
+  { key: "u_waveSharpness", label: "wave sharpness", min: 20, max: 2000, step: 10 },
+  { key: "u_waveBrightness", label: "wave brightness", min: 0.02, max: 3.0, step: 0.02 },
+  { key: "u_waveGlow", label: "wave glow", min: 0.0, max: 2.0, step: 0.05 },
+  { key: "u_waveTemp", label: "wave temp (0=deep red / 1=amber)", min: 0.0, max: 1.0, step: 0.01 },
+  { key: "u_waveSpacing", label: "wave spacing", min: 0.3, max: 2.0, step: 0.05 },
+  { key: "u_waveAlt", label: "wave alt", min: 0.0, max: 1.0, step: 0.01 },
+  { key: "u_mouseRadius", label: "mouse radius", min: 0.05, max: 1.0, step: 0.01 },
+];
+
+const SCALES = {
+  "C Major": [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
+  Pentatonic: [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25],
+  "Whole Tone": [261.63, 293.66, 329.63, 369.99, 415.3, 466.16, 523.25, 587.33],
+  Overtone: [130.81, 261.63, 392.0, 523.25, 654.06, 784.88, 915.69, 1046.5],
+  Dorian: [261.63, 293.66, 311.13, 349.23, 392.0, 440.0, 466.16, 523.25],
+  Phrygian: [261.63, 277.18, 311.13, 349.23, 392.0, 415.3, 466.16, 523.25],
+  Lydian: [261.63, 293.66, 329.63, 369.99, 392.0, 440.0, 493.88, 523.25],
+  Mixolydian: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 466.16, 523.25],
+  Minor: [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 466.16, 523.25],
+  "Harmonic Min": [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 493.88, 523.25],
+  Chromatic: [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.0],
+};
+let currentScale = SCALES["C Major"];
+let currentFreq = 392;
+let smoothBandY = 0.5;
+let polarAngle = 0;
+let polarDist = 0;
+let smoothAngle = 0;
+let smoothDist = 0;
+const HANG_DRUM_MAP = [0, 4, 2, 6, 7, 3, 5, 1];
+let hangDrumEnabled = true;
+function getScaleDegree(bandIndex) {
+  if (hangDrumEnabled) {
+    return HANG_DRUM_MAP[bandIndex];
+  }
+  return bandIndex;
+}
+const HARMONIC_HINTS = [
+  [1, 2],
+  [0, 4],
+  [0, 5],
+  [1, 4],
+  [0, 1],
+  [2, 6],
+  [5, 7],
+  [6, 0],
+];
+let soundAttack = 400;
+let soundDecay = 3000;
+let soundVolume = 0.3;
+let portamentoSensitivity = 0.85;
+let vibratoDepthControl = 0.6;
+let vibratoSpeedControl = 3.5;
+let glowSize = 0.3;
+let glowIntensity = 1.0;
+let releaseTime = 4.0;
+let velocityThreshold = 5;
+let sustainLevel = 0.45;
+let deadZoneSize = 0.35;
+let gravityStrength = 0.55;
+let gravityEnabled = true;
+let octaveMix = 0.6;
+let oscType = "sine";
+let sympatheticGains = [];
+let sympatheticOscs = [];
+let sympatheticFilters = [];
+let sympatheticLevels = new Float32Array(8);
+let sympatheticMix = 0.15;
+let logoBrightness = 0.15;
+let logoChromatic = 0;
+let logoColor = "white";
+let logoLensEnabled = true;
+let logoColourEnabled = true;
+let logoProximity = 1;
+let logoSoundReact = 1;
+let logoWaveWarp = 1;
+let lensStrength = 0.15;
+let hazeStrength = 0.5;
+let hazeSpeed = 1.0;
+let hazeScale = 1.0;
+let hazeAmount = 0.05;
+let chromAmount = 0.5;
+let edgeGlowAmount = 0.3;
+let sandDissolve = 0.6;
+let sandSize = 1.0;
+let sandSpeed = 1.0;
+let sandLife = 1.0;
+let sandGravity = 0.3;
+let sandSpread = 1.0;
+let sandCount = 300;
+let particles = [];
+let fpsCap = 60;
+let renderScale = 1.0;
+let idleThrottle = false;
+let soundEnabled = true;
+let lastFrameTime = 0;
+let frameInterval = 1000 / 60;
+
+let scrollSemitones = 0;
+let targetScrollSemitones = 0;
+let smoothScrollSemitones = 0;
+let zoneScrollAccum = 0;
+let scrollFreqMult = 1;
+let rootKeySemitones = 0;
+let baseOctave = 3;
+
+function noteFreqForBand(bandIndex) {
+  const degree = hangDrumEnabled ?
+    HANG_DRUM_MAP[bandIndex] : bandIndex;
+  const keyMult = Math.pow(2, rootKeySemitones / 12);
+  const octaveMult = Math.pow(2, baseOctave - 3);
+  return currentScale[degree] * scrollFreqMult * keyMult * octaveMult;
+}
+
+currentFreq = noteFreqForBand(4);
+
+function angleDiff(target, current) {
+  let d = target - current;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+function getWellPositions() {
+  return [0, 1, 4].map((b) => (b + 0.5) / 8.0);
+}
+
+const panel = document.getElementById("tweak-panel");
+const perfSection = document.createElement("div");
+perfSection.className = "tweak-row";
+const perfHead = document.createElement("div");
+perfHead.className = "tweak-head";
+const perfLab = document.createElement("span");
+perfLab.className = "tweak-label";
+perfLab.textContent = "── PERFORMANCE ──";
+perfHead.appendChild(perfLab);
+perfSection.appendChild(perfHead);
+panel.appendChild(perfSection);
+
+const perfSoundRow = document.createElement("div");
+perfSoundRow.className = "tweak-row";
+const perfSoundHead = document.createElement("div");
+perfSoundHead.className = "tweak-head";
+const perfSoundLab = document.createElement("span");
+perfSoundLab.className = "tweak-label";
+perfSoundLab.textContent = "sound";
+perfSoundHead.appendChild(perfSoundLab);
+perfSoundRow.appendChild(perfSoundHead);
+const perfSoundWrap = document.createElement("div");
+perfSoundWrap.id = "perf-sound-row";
+const perfSoundOn = document.createElement("button");
+perfSoundOn.type = "button";
+perfSoundOn.textContent = "SOUND ON";
+const perfSoundOff = document.createElement("button");
+perfSoundOff.type = "button";
+perfSoundOff.textContent = "SOUND OFF";
+function syncMasterGainFromSoundEnabled() {
+  if (!audioCtx || !masterGain) return;
+  const t = audioCtx.currentTime;
+  if (soundEnabled) {
+    masterGain.gain.setTargetAtTime(0.8, t, 0.3);
+  } else {
+    masterGain.gain.setTargetAtTime(0, t, 0.3);
+  }
+}
+function syncPerfSoundButtons() {
+  perfSoundOn.classList.toggle("selected", soundEnabled);
+  perfSoundOff.classList.toggle("selected", !soundEnabled);
+}
+perfSoundOn.addEventListener("click", () => {
+  soundEnabled = true;
+  syncPerfSoundButtons();
+  syncMasterGainFromSoundEnabled();
+});
+perfSoundOff.addEventListener("click", () => {
+  soundEnabled = false;
+  syncPerfSoundButtons();
+  syncMasterGainFromSoundEnabled();
+});
+syncPerfSoundButtons();
+perfSoundWrap.appendChild(perfSoundOn);
+perfSoundWrap.appendChild(perfSoundOff);
+perfSoundRow.appendChild(perfSoundWrap);
+panel.appendChild(perfSoundRow);
+
+appendSoundSlider(
+  "fps cap",
+  10,
+  60,
+  5,
+  () => fpsCap,
+  (v) => {
+    fpsCap = v;
+  },
+  "fpsCap",
+);
+appendSoundSlider(
+  "render scale",
+  0.3,
+  1.0,
+  0.05,
+  () => renderScale,
+  (v) => {
+    renderScale = v;
+    resize();
+  },
+  "renderScale",
+);
+const perfThrottleRow = document.createElement("div");
+perfThrottleRow.className = "tweak-row";
+const perfThrottleHead = document.createElement("div");
+perfThrottleHead.className = "tweak-head";
+const perfThrottleLab = document.createElement("span");
+perfThrottleLab.className = "tweak-label";
+perfThrottleLab.textContent = "idle throttle";
+perfThrottleHead.appendChild(perfThrottleLab);
+perfThrottleRow.appendChild(perfThrottleHead);
+const perfThrottleWrap = document.createElement("div");
+perfThrottleWrap.id = "perf-throttle-row";
+const perfThrottleOn = document.createElement("button");
+perfThrottleOn.type = "button";
+perfThrottleOn.textContent = "THROTTLE ON";
+const perfThrottleOff = document.createElement("button");
+perfThrottleOff.type = "button";
+perfThrottleOff.textContent = "THROTTLE OFF";
+function syncPerfThrottleButtons() {
+  perfThrottleOn.classList.toggle("selected", idleThrottle);
+  perfThrottleOff.classList.toggle("selected", !idleThrottle);
+}
+perfThrottleOn.addEventListener("click", () => {
+  idleThrottle = true;
+  syncPerfThrottleButtons();
+});
+perfThrottleOff.addEventListener("click", () => {
+  idleThrottle = false;
+  syncPerfThrottleButtons();
+});
+syncPerfThrottleButtons();
+perfThrottleWrap.appendChild(perfThrottleOn);
+perfThrottleWrap.appendChild(perfThrottleOff);
+perfThrottleRow.appendChild(perfThrottleWrap);
+panel.appendChild(perfThrottleRow);
+
+const readouts = {};
+sliderDefs.forEach((def) => {
+  const row = document.createElement("div");
+  row.className = "tweak-row";
+  const head = document.createElement("div");
+  head.className = "tweak-head";
+  const lab = document.createElement("span");
+  lab.className = "tweak-label";
+  lab.textContent = def.label;
+  const val = document.createElement("span");
+  val.className = "tweak-val";
+  val.textContent = String(tweak[def.key]);
+  readouts[def.key] = val;
+  head.appendChild(lab);
+  head.appendChild(val);
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(def.min);
+  input.max = String(def.max);
+  input.step = String(def.step);
+  input.value = String(tweak[def.key]);
+  input.dataset.settingKey = def.key;
+  input.addEventListener("input", () => {
+    const x = parseFloat(input.value);
+    tweak[def.key] = x;
+    val.textContent = String(x);
+  });
+  row.appendChild(head);
+  row.appendChild(input);
+  panel.appendChild(row);
+});
+
+const scaleWrap = document.createElement("div");
+scaleWrap.style.marginBottom = "12px";
+const scaleHead = document.createElement("div");
+scaleHead.style.cssText =
+  "display:flex;justify-content:space-between;font-size:10px;letter-spacing:0.1em;color:rgba(255,150,80,0.6);margin-bottom:4px;";
+const scaleLabel = document.createElement("span");
+scaleLabel.textContent = "SCALE";
+scaleHead.appendChild(scaleLabel);
+const scaleSelect = document.createElement("select");
+scaleSelect.id = "scaleSelect";
+scaleSelect.style.cssText =
+  "width:100%;background:#1a0800;color:rgba(255,150,80,0.9);border:1px solid rgba(255,100,40,0.3);font-family:'Courier New',monospace;font-size:11px;padding:4px;";
+Object.keys(SCALES).forEach((name) => {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  scaleSelect.appendChild(opt);
+});
+scaleSelect.addEventListener("change", () => {
+  currentScale = SCALES[scaleSelect.value];
+});
+scaleWrap.appendChild(scaleHead);
+scaleWrap.appendChild(scaleSelect);
+const keyLabel = document.createElement("div");
+keyLabel.className = "tweak-label";
+keyLabel.style.marginTop = "8px";
+keyLabel.textContent = "key";
+const keySelect = document.createElement("select");
+keySelect.id = "keySelect";
+keySelect.style.cssText =
+  "width:100%;margin-top:4px;background:#1a0800;color:rgba(255,150,80,0.9);border:1px solid rgba(255,100,40,0.3);font-family:'Courier New',monospace;font-size:11px;padding:4px;";
+[
+  "C", "C#", "D", "D#", "E", "F",
+  "F#", "G", "G#", "A", "A#", "B",
+].forEach((name, idx) => {
+  const opt = document.createElement("option");
+  opt.value = String(idx);
+  opt.textContent = name;
+  keySelect.appendChild(opt);
+});
+keySelect.value = String(rootKeySemitones);
+keySelect.addEventListener("change", () => {
+  rootKeySemitones = parseInt(keySelect.value, 10) || 0;
+});
+scaleWrap.appendChild(keyLabel);
+scaleWrap.appendChild(keySelect);
+const octaveLabel = document.createElement("div");
+octaveLabel.className = "tweak-label";
+octaveLabel.style.marginTop = "8px";
+octaveLabel.textContent = "octave";
+const octaveSelect = document.createElement("select");
+octaveSelect.id = "octaveSelect";
+octaveSelect.style.cssText =
+  "width:100%;margin-top:4px;background:#1a0800;color:rgba(255,150,80,0.9);border:1px solid rgba(255,100,40,0.3);font-family:'Courier New',monospace;font-size:11px;padding:4px;";
+for (let i = 1; i <= 7; i++) {
+  const opt = document.createElement("option");
+  opt.value = String(i);
+  opt.textContent = String(i);
+  octaveSelect.appendChild(opt);
+}
+octaveSelect.value = String(baseOctave);
+octaveSelect.addEventListener("change", () => {
+  baseOctave = parseInt(octaveSelect.value, 10) || 3;
+});
+scaleWrap.appendChild(octaveLabel);
+scaleWrap.appendChild(octaveSelect);
+panel.appendChild(scaleWrap);
+
+appendSoundSlider(
+  "glow size",
+  0.05,
+  1.5,
+  0.01,
+  () => glowSize,
+  (v) => {
+    glowSize = v;
+  },
+  "glowSize",
+);
+appendSoundSlider(
+  "glow intensity",
+  0.0,
+  4.0,
+  0.05,
+  () => glowIntensity,
+  (v) => {
+    glowIntensity = v;
+  },
+  "glowIntensity",
+);
+
+function appendSoundSlider(label, min, max, step, getVal, setVal, settingKey) {
+  const row = document.createElement("div");
+  row.className = "tweak-row";
+  const head = document.createElement("div");
+  head.className = "tweak-head";
+  const lab = document.createElement("span");
+  lab.className = "tweak-label";
+  lab.textContent = label;
+  const val = document.createElement("span");
+  val.className = "tweak-val";
+  val.textContent = String(getVal());
+  head.appendChild(lab);
+  head.appendChild(val);
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(getVal());
+  if (settingKey) input.dataset.settingKey = settingKey;
+  input.addEventListener("input", () => {
+    const x = parseFloat(input.value);
+    setVal(x);
+    val.textContent = String(x);
+  });
+  row.appendChild(head);
+  row.appendChild(input);
+  panel.appendChild(row);
+}
+appendSoundSlider(
+  "attack ms",
+  0,
+  3000,
+  10,
+  () => soundAttack,
+  (v) => {
+    soundAttack = v;
+  },
+  "soundAttack",
+);
+appendSoundSlider(
+  "decay ms",
+  100,
+  15000,
+  100,
+  () => soundDecay,
+  (v) => {
+    soundDecay = v;
+  },
+  "soundDecay",
+);
+appendSoundSlider(
+  "volume",
+  0,
+  1,
+  0.01,
+  () => soundVolume,
+  (v) => {
+    soundVolume = v;
+  },
+  "soundVolume",
+);
+appendSoundSlider(
+  "portamento",
+  0.0,
+  1.0,
+  0.005,
+  () => portamentoSensitivity,
+  (v) => {
+    portamentoSensitivity = v;
+  },
+  "portamentoSensitivity",
+);
+appendSoundSlider(
+  "vibrato depth (semitones)",
+  0,
+  3.0,
+  0.05,
+  () => vibratoDepthControl,
+  (v) => {
+    vibratoDepthControl = v;
+  },
+  "vibratoDepthControl",
+);
+appendSoundSlider(
+  "vibrato speed (Hz)",
+  1.0,
+  8.0,
+  0.1,
+  () => vibratoSpeedControl,
+  (v) => {
+    vibratoSpeedControl = v;
+  },
+  "vibratoSpeedControl",
+);
+appendSoundSlider(
+  "release time",
+  0.1,
+  12.0,
+  0.1,
+  () => releaseTime,
+  (v) => {
+    releaseTime = v;
+  },
+  "releaseTime",
+);
+appendSoundSlider(
+  "velocity threshold",
+  0,
+  30,
+  0.5,
+  () => velocityThreshold,
+  (v) => {
+    velocityThreshold = v;
+  },
+  "velocityThreshold",
+);
+appendSoundSlider(
+  "sustain level",
+  0.0,
+  1.0,
+  0.01,
+  () => sustainLevel,
+  (v) => {
+    sustainLevel = v;
+  },
+  "sustainLevel",
+);
+appendSoundSlider(
+  "dead zone size",
+  0.0,
+  0.49,
+  0.01,
+  () => deadZoneSize,
+  (v) => {
+    deadZoneSize = v;
+  },
+  "deadZoneSize",
+);
+appendSoundSlider(
+  "edge octave (push to screen edge)",
+  0.0,
+  1.0,
+  0.01,
+  () => octaveMix,
+  (v) => {
+    octaveMix = v;
+  },
+  "octaveMix",
+);
+const octaveHint = document.createElement("div");
+octaveHint.className = "tweak-label";
+octaveHint.style.color = "rgba(255,255,255,.35)";
+octaveHint.style.marginTop = "-8px";
+octaveHint.style.marginBottom = "8px";
+octaveHint.textContent = "move mouse to top/bottom 10% of screen";
+panel.appendChild(octaveHint);
+appendSoundSlider(
+  "sympathetic",
+  0.0,
+  0.5,
+  0.01,
+  () => sympatheticMix,
+  (v) => {
+    sympatheticMix = v;
+  },
+  "sympatheticMix",
+);
+
+const logoSection = document.createElement("div");
+logoSection.className = "tweak-row";
+const logoSectionHead = document.createElement("div");
+logoSectionHead.className = "tweak-head";
+const logoSectionLab = document.createElement("span");
+logoSectionLab.className = "tweak-label";
+logoSectionLab.textContent = "── LOGO ──";
+logoSectionHead.appendChild(logoSectionLab);
+logoSection.appendChild(logoSectionHead);
+panel.appendChild(logoSection);
+
+appendSoundSlider(
+  "logo opacity",
+  0.0,
+  1.0,
+  0.01,
+  () => logoBrightness,
+  (v) => {
+    logoBrightness = v;
+  },
+  "logoBrightness",
+);
+const logoColorRow = document.createElement("div");
+logoColorRow.className = "tweak-row";
+const logoColorHead = document.createElement("div");
+logoColorHead.className = "tweak-head";
+const logoColorLab = document.createElement("span");
+logoColorLab.className = "tweak-label";
+logoColorLab.textContent = "logo colour";
+logoColorHead.appendChild(logoColorLab);
+logoColorRow.appendChild(logoColorHead);
+const logoColorWrap = document.createElement("div");
+logoColorWrap.id = "logo-color-row";
+const logoColorBlackBtn = document.createElement("button");
+logoColorBlackBtn.type = "button";
+logoColorBlackBtn.textContent = "BLACK";
+const logoColorWhiteBtn = document.createElement("button");
+logoColorWhiteBtn.type = "button";
+logoColorWhiteBtn.textContent = "WHITE";
+function syncLogoColorButtons() {
+  logoColorBlackBtn.classList.toggle("selected", logoColor === "black");
+  logoColorWhiteBtn.classList.toggle("selected", logoColor === "white");
+}
+logoColorBlackBtn.addEventListener("click", () => {
+  logoColor = "black";
+  syncLogoColorButtons();
+});
+logoColorWhiteBtn.addEventListener("click", () => {
+  logoColor = "white";
+  syncLogoColorButtons();
+});
+syncLogoColorButtons();
+logoColorWrap.appendChild(logoColorBlackBtn);
+logoColorWrap.appendChild(logoColorWhiteBtn);
+logoColorRow.appendChild(logoColorWrap);
+panel.appendChild(logoColorRow);
+const logoLayerToggleRow = document.createElement("div");
+logoLayerToggleRow.className = "tweak-row";
+const logoLayerToggleHead = document.createElement("div");
+logoLayerToggleHead.className = "tweak-head";
+const logoLayerToggleLab = document.createElement("span");
+logoLayerToggleLab.className = "tweak-label";
+logoLayerToggleLab.textContent = "logo layers";
+logoLayerToggleHead.appendChild(logoLayerToggleLab);
+logoLayerToggleRow.appendChild(logoLayerToggleHead);
+const logoLayerToggleWrap = document.createElement("div");
+logoLayerToggleWrap.id = "logo-layer-toggle-row";
+const logoLensBtn = document.createElement("button");
+logoLensBtn.type = "button";
+logoLensBtn.textContent = "LENS ON";
+const logoColourBtn = document.createElement("button");
+logoColourBtn.type = "button";
+logoColourBtn.textContent = "COLOUR ON";
+function syncLogoLayerToggleButtons() {
+  logoLensBtn.classList.toggle("selected", logoLensEnabled);
+  logoLensBtn.textContent = logoLensEnabled ? "LENS ON" : "LENS OFF";
+  logoColourBtn.classList.toggle("selected", logoColourEnabled);
+  logoColourBtn.textContent = logoColourEnabled ? "COLOUR ON" : "COLOUR OFF";
+}
+logoLensBtn.addEventListener("click", () => {
+  logoLensEnabled = !logoLensEnabled;
+  syncLogoLayerToggleButtons();
+});
+logoColourBtn.addEventListener("click", () => {
+  logoColourEnabled = !logoColourEnabled;
+  syncLogoLayerToggleButtons();
+});
+syncLogoLayerToggleButtons();
+logoLayerToggleWrap.appendChild(logoLensBtn);
+logoLayerToggleWrap.appendChild(logoColourBtn);
+logoLayerToggleRow.appendChild(logoLayerToggleWrap);
+panel.appendChild(logoLayerToggleRow);
+appendSoundSlider(
+  "logo proximity",
+  0,
+  2,
+  0.01,
+  () => logoProximity,
+  (v) => {
+    logoProximity = v;
+  },
+  "logoProximity",
+);
+appendSoundSlider(
+  "logo sound",
+  0,
+  2,
+  0.01,
+  () => logoSoundReact,
+  (v) => {
+    logoSoundReact = v;
+  },
+  "logoSoundReact",
+);
+appendSoundSlider(
+  "logo chromatic",
+  0,
+  10,
+  0.1,
+  () => logoChromatic,
+  (v) => {
+    logoChromatic = v;
+  },
+  "logoChromatic",
+);
+appendSoundSlider(
+  "logo wave",
+  0,
+  2,
+  0.01,
+  () => logoWaveWarp,
+  (v) => {
+    logoWaveWarp = v;
+  },
+  "logoWaveWarp",
+);
+appendSoundSlider(
+  "logo lens",
+  0,
+  0.8,
+  0.01,
+  () => lensStrength,
+  (v) => {
+    lensStrength = v;
+  },
+  "lensStrength",
+);
+appendSoundSlider(
+  "haze strength",
+  0,
+  1,
+  0.01,
+  () => hazeStrength,
+  (v) => {
+    hazeStrength = v;
+  },
+  "hazeStrength",
+);
+appendSoundSlider(
+  "haze speed",
+  0,
+  5,
+  0.01,
+  () => hazeSpeed,
+  (v) => {
+    hazeSpeed = v;
+  },
+  "hazeSpeed",
+);
+appendSoundSlider(
+  "haze scale",
+  0.1,
+  3,
+  0.01,
+  () => hazeScale,
+  (v) => {
+    hazeScale = v;
+  },
+  "hazeScale",
+);
+appendSoundSlider(
+  "haze amount",
+  0,
+  0.3,
+  0.01,
+  () => hazeAmount,
+  (v) => {
+    hazeAmount = v;
+  },
+  "hazeAmount",
+);
+appendSoundSlider(
+  "chrom amount",
+  0,
+  1,
+  0.01,
+  () => chromAmount,
+  (v) => {
+    chromAmount = v;
+  },
+  "chromAmount",
+);
+appendSoundSlider(
+  "edge glow",
+  0,
+  1,
+  0.01,
+  () => edgeGlowAmount,
+  (v) => {
+    edgeGlowAmount = v;
+  },
+  "edgeGlowAmount",
+);
+appendSoundSlider(
+  "logo sand",
+  0,
+  3,
+  0.05,
+  () => sandDissolve,
+  (v) => {
+    sandDissolve = v;
+  },
+  "sandDissolve",
+);
+appendSoundSlider(
+  "logo sand size",
+  0.1,
+  5,
+  0.1,
+  () => sandSize,
+  (v) => {
+    sandSize = v;
+  },
+  "sandSize",
+);
+appendSoundSlider(
+  "logo sand speed",
+  0.1,
+  5,
+  0.1,
+  () => sandSpeed,
+  (v) => {
+    sandSpeed = v;
+  },
+  "sandSpeed",
+);
+appendSoundSlider(
+  "logo sand life",
+  0.1,
+  5,
+  0.1,
+  () => sandLife,
+  (v) => {
+    sandLife = v;
+  },
+  "sandLife",
+);
+appendSoundSlider(
+  "logo sand grav",
+  0,
+  3,
+  0.05,
+  () => sandGravity,
+  (v) => {
+    sandGravity = v;
+  },
+  "sandGravity",
+);
+appendSoundSlider(
+  "logo sand spread",
+  0,
+  1,
+  0.05,
+  () => sandSpread,
+  (v) => {
+    sandSpread = v;
+  },
+  "sandSpread",
+);
+appendSoundSlider(
+  "logo sand max",
+  50,
+  2000,
+  50,
+  () => sandCount,
+  (v) => {
+    sandCount = Math.round(v);
+    if (particles.length > sandCount) {
+      particles = particles.slice(-sandCount);
+    }
+  },
+  "sandCount",
+);
+
+const gravityRow = document.createElement("div");
+gravityRow.className = "tweak-row";
+const gravityHead = document.createElement("div");
+gravityHead.className = "tweak-head";
+const gravityLab = document.createElement("span");
+gravityLab.className = "tweak-label";
+gravityLab.textContent = "gravity";
+const gravityVal = document.createElement("span");
+gravityVal.className = "tweak-val";
+gravityVal.textContent = String(gravityStrength);
+gravityHead.appendChild(gravityLab);
+gravityHead.appendChild(gravityVal);
+const gravitySliderRow = document.createElement("div");
+gravitySliderRow.style.cssText = "display:flex;gap:6px;align-items:center;";
+const gravityInput = document.createElement("input");
+gravityInput.type = "range";
+gravityInput.min = "0";
+gravityInput.max = "1";
+gravityInput.step = "0.01";
+gravityInput.value = String(gravityStrength);
+gravityInput.dataset.settingKey = "gravityStrength";
+gravityInput.style.cssText = "flex:1;min-width:0;accent-color:#c96;";
+gravityInput.addEventListener("input", () => {
+  const x = parseFloat(gravityInput.value);
+  gravityStrength = x;
+  gravityVal.textContent = String(x);
+});
+const gravityToggleWrap = document.createElement("div");
+gravityToggleWrap.id = "gravity-toggle-row";
+gravityToggleWrap.style.flexShrink = "0";
+const gravityBtnOn = document.createElement("button");
+gravityBtnOn.type = "button";
+gravityBtnOn.textContent = "GRAVITY ON";
+const gravityBtnOff = document.createElement("button");
+gravityBtnOff.type = "button";
+gravityBtnOff.textContent = "GRAVITY OFF";
+function syncGravityToggleButtons() {
+  gravityBtnOn.classList.toggle("selected", gravityEnabled);
+  gravityBtnOff.classList.toggle("selected", !gravityEnabled);
+}
+gravityBtnOn.addEventListener("click", () => {
+  gravityEnabled = true;
+  syncGravityToggleButtons();
+});
+gravityBtnOff.addEventListener("click", () => {
+  gravityEnabled = false;
+  syncGravityToggleButtons();
+});
+syncGravityToggleButtons();
+gravityToggleWrap.appendChild(gravityBtnOn);
+gravityToggleWrap.appendChild(gravityBtnOff);
+gravitySliderRow.appendChild(gravityInput);
+gravitySliderRow.appendChild(gravityToggleWrap);
+gravityRow.appendChild(gravityHead);
+gravityRow.appendChild(gravitySliderRow);
+panel.appendChild(gravityRow);
+
+const hangDrumRow = document.createElement("div");
+hangDrumRow.className = "tweak-row";
+const hangDrumHead = document.createElement("div");
+hangDrumHead.className = "tweak-head";
+const hangDrumLab = document.createElement("span");
+hangDrumLab.className = "tweak-label";
+hangDrumLab.textContent = "hang layout";
+hangDrumHead.appendChild(hangDrumLab);
+hangDrumRow.appendChild(hangDrumHead);
+const hangDrumToggleWrap = document.createElement("div");
+hangDrumToggleWrap.id = "hang-drum-toggle-row";
+const hangBtnOn = document.createElement("button");
+hangBtnOn.type = "button";
+hangBtnOn.textContent = "HANG DRUM ON";
+const hangBtnOff = document.createElement("button");
+hangBtnOff.type = "button";
+hangBtnOff.textContent = "HANG DRUM OFF";
+function syncHangDrumToggleButtons() {
+  hangBtnOn.classList.toggle("selected", hangDrumEnabled);
+  hangBtnOff.classList.toggle("selected", !hangDrumEnabled);
+}
+hangBtnOn.addEventListener("click", () => {
+  hangDrumEnabled = true;
+  syncHangDrumToggleButtons();
+});
+hangBtnOff.addEventListener("click", () => {
+  hangDrumEnabled = false;
+  syncHangDrumToggleButtons();
+});
+syncHangDrumToggleButtons();
+hangDrumToggleWrap.appendChild(hangBtnOn);
+hangDrumToggleWrap.appendChild(hangBtnOff);
+hangDrumRow.appendChild(hangDrumToggleWrap);
+panel.appendChild(hangDrumRow);
+
+const oscBlock = document.createElement("div");
+oscBlock.style.marginBottom = "12px";
+const oscHead = document.createElement("div");
+oscHead.className = "tweak-head";
+oscHead.style.marginBottom = "4px";
+const oscLab = document.createElement("span");
+oscLab.className = "tweak-label";
+oscLab.textContent = "osc type";
+oscHead.appendChild(oscLab);
+oscBlock.appendChild(oscHead);
+const oscRow = document.createElement("div");
+oscRow.id = "sound-osc-row";
+const oscTypes = [
+  { type: "sine", text: "SINE" },
+  { type: "triangle", text: "TRIANGLE" },
+  { type: "sawtooth", text: "SAW" },
+  { type: "square", text: "SQUARE" },
+];
+oscTypes.forEach(({ type, text }) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = text;
+  if (type === oscType) b.classList.add("selected");
+  b.addEventListener("click", () => {
+    oscType = type;
+    if (glideOsc1) glideOsc1.type = type;
+    if (glideOsc2 && audioCtx && glideG1 && glideG2) {
+      if (type === "sine") {
+        glideG1.gain.setTargetAtTime(0.7, audioCtx.currentTime, 0.1);
+        glideG2.gain.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
+      } else if (type === "triangle") {
+        glideOsc1.type = "triangle";
+        glideG1.gain.setTargetAtTime(0.6, audioCtx.currentTime, 0.1);
+        glideG2.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.1);
+      } else if (type === "sawtooth") {
+        glideOsc1.type = "sawtooth";
+        glideG1.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);
+        glideG2.gain.setTargetAtTime(0.45, audioCtx.currentTime, 0.1);
+      } else if (type === "square") {
+        glideOsc1.type = "square";
+        glideG1.gain.setTargetAtTime(0.25, audioCtx.currentTime, 0.1);
+        glideG2.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);
+      }
+    }
+    oscRow.querySelectorAll("button").forEach((btn) => btn.classList.remove("selected"));
+    b.classList.add("selected");
+  });
+  oscRow.appendChild(b);
+});
+oscBlock.appendChild(oscRow);
+panel.appendChild(oscBlock);
+
+function refreshPanelFromState() {
+  const scaleSelectEl = document.getElementById("scaleSelect");
+  if (scaleSelectEl) {
+    const scaleName = Object.keys(SCALES).find((n) => SCALES[n] === currentScale);
+    if (scaleName) scaleSelectEl.value = scaleName;
+  }
+  const keySelectEl = document.getElementById("keySelect");
+  if (keySelectEl) keySelectEl.value = String(rootKeySemitones);
+  const octaveSelectEl = document.getElementById("octaveSelect");
+  if (octaveSelectEl) octaveSelectEl.value = String(baseOctave);
+  panel.querySelectorAll('input[type="range"][data-setting-key]').forEach((inp) => {
+    const k = inp.dataset.settingKey;
+    let v;
+    if (Object.prototype.hasOwnProperty.call(tweak, k)) v = tweak[k];
+    else if (k === "releaseTime") v = releaseTime;
+    else if (k === "velocityThreshold") v = velocityThreshold;
+    else if (k === "sustainLevel") v = sustainLevel;
+    else if (k === "deadZoneSize") v = deadZoneSize;
+    else if (k === "soundAttack") v = soundAttack;
+    else if (k === "soundDecay") v = soundDecay;
+    else if (k === "soundVolume") v = soundVolume;
+    else if (k === "portamentoSensitivity") v = portamentoSensitivity;
+    else if (k === "vibratoDepthControl") v = vibratoDepthControl;
+    else if (k === "vibratoSpeedControl") v = vibratoSpeedControl;
+    else if (k === "glowSize") v = glowSize;
+    else if (k === "glowIntensity") v = glowIntensity;
+    else if (k === "logoBrightness") v = logoBrightness;
+    else if (k === "logoProximity") v = logoProximity;
+    else if (k === "logoSoundReact") v = logoSoundReact;
+    else if (k === "logoChromatic") v = logoChromatic;
+    else if (k === "logoWaveWarp") v = logoWaveWarp;
+    else if (k === "lensStrength") v = lensStrength;
+    else if (k === "hazeStrength") v = hazeStrength;
+    else if (k === "hazeSpeed") v = hazeSpeed;
+    else if (k === "hazeScale") v = hazeScale;
+    else if (k === "hazeAmount") v = hazeAmount;
+    else if (k === "chromAmount") v = chromAmount;
+    else if (k === "edgeGlowAmount") v = edgeGlowAmount;
+    else if (k === "sandDissolve") v = sandDissolve;
+    else if (k === "sandSize") v = sandSize;
+    else if (k === "sandSpeed") v = sandSpeed;
+    else if (k === "sandLife") v = sandLife;
+    else if (k === "sandGravity") v = sandGravity;
+    else if (k === "sandSpread") v = sandSpread;
+    else if (k === "sandCount") v = sandCount;
+    else if (k === "fpsCap") v = fpsCap;
+    else if (k === "renderScale") v = renderScale;
+    else if (k === "gravityStrength") v = gravityStrength;
+    else if (k === "octaveMix") v = octaveMix;
+    else if (k === "sympatheticMix") v = sympatheticMix;
+    else return;
+    inp.value = String(v);
+    const row = inp.closest(".tweak-row");
+    const valEl = row && row.querySelector(".tweak-val");
+    if (valEl) valEl.textContent = String(v);
+  });
+}
+
+function getCurrentSettings() {
+  return {
+    glowSize,
+    glowIntensity,
+    logoBrightness,
+    logoColor,
+    logoProximity,
+    logoSoundReact,
+    logoChromatic,
+    logoWaveWarp,
+    lensStrength,
+    hazeStrength,
+    hazeSpeed,
+    hazeScale,
+    hazeAmount,
+    chromAmount,
+    edgeGlowAmount,
+    rootKeySemitones,
+    baseOctave,
+    sandDissolve,
+    sandSize,
+    sandSpeed,
+    sandLife,
+    sandGravity,
+    sandSpread,
+    sandCount,
+    fpsCap,
+    renderScale,
+    idleThrottle,
+    soundEnabled,
+    u_trailLag: tweak.u_trailLag,
+    u_warpStrength: tweak.u_warpStrength,
+    u_noiseAmount: tweak.u_noiseAmount,
+    u_darkness: tweak.u_darkness,
+    u_waveCount: tweak.u_waveCount,
+    u_waveFreq: tweak.u_waveFreq,
+    u_waveSpeed: tweak.u_waveSpeed,
+    u_rippleStrength: tweak.u_rippleStrength,
+    u_flickerSpeed: tweak.u_flickerSpeed,
+    u_flickerAmount: tweak.u_flickerAmount,
+    u_waveSharpness: tweak.u_waveSharpness,
+    u_waveBrightness: tweak.u_waveBrightness,
+    u_waveGlow: tweak.u_waveGlow,
+    u_waveTemp: tweak.u_waveTemp,
+    u_waveSpacing: tweak.u_waveSpacing,
+    u_waveAlt: tweak.u_waveAlt,
+    u_mouseRadius: tweak.u_mouseRadius,
+    releaseTime,
+    velocityThreshold,
+    sustainLevel,
+    deadZoneSize,
+    portamentoSensitivity,
+    vibratoDepthControl,
+    vibratoSpeedControl,
+    gravityStrength,
+    gravityEnabled,
+    octaveMix,
+    sympatheticMix,
+    hangDrumEnabled,
+    targetScrollSemitones,
+  };
+}
+
+function applySettings(o) {
+  if (!o || typeof o !== "object") return;
+  const n = (x) => typeof x === "number" && !Number.isNaN(x);
+  for (const key of Object.keys(tweak)) {
+    if (
+      key === "u_glowCoreRadius" ||
+      key === "u_glowCoreIntensity" ||
+      key === "u_glowWideRadius" ||
+      key === "u_glowWideIntensity"
+    ) continue;
+    if (n(o[key])) tweak[key] = o[key];
+  }
+  if (n(o.releaseTime)) releaseTime = o.releaseTime;
+  if (n(o.velocityThreshold)) velocityThreshold = o.velocityThreshold;
+  if (n(o.sustainLevel)) sustainLevel = o.sustainLevel;
+  if (n(o.deadZoneSize)) deadZoneSize = o.deadZoneSize;
+  if (n(o.soundAttack)) soundAttack = o.soundAttack;
+  if (n(o.soundDecay)) soundDecay = o.soundDecay;
+  if (n(o.soundVolume)) soundVolume = o.soundVolume;
+  if (n(o.portamentoSensitivity)) portamentoSensitivity = o.portamentoSensitivity;
+  if (n(o.vibratoDepthControl)) vibratoDepthControl = o.vibratoDepthControl;
+  if (n(o.vibratoSpeedControl)) vibratoSpeedControl = o.vibratoSpeedControl;
+  if (n(o.glowSize)) glowSize = o.glowSize;
+  if (n(o.glowIntensity)) glowIntensity = o.glowIntensity;
+  if (n(o.logoBrightness)) logoBrightness = o.logoBrightness;
+  if (o.logoColor === "black" || o.logoColor === "white") logoColor = o.logoColor;
+  if (n(o.logoProximity)) logoProximity = o.logoProximity;
+  if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
+  if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
+  if (n(o.logoWaveWarp)) logoWaveWarp = o.logoWaveWarp;
+  if (n(o.lensStrength))
+    lensStrength = Math.max(0, Math.min(0.8, o.lensStrength));
+  if (n(o.hazeStrength))
+    hazeStrength = Math.max(0, Math.min(1, o.hazeStrength));
+  if (n(o.hazeSpeed))
+    hazeSpeed = Math.max(0, Math.min(5, o.hazeSpeed));
+  if (n(o.hazeScale))
+    hazeScale = Math.max(0.1, Math.min(3, o.hazeScale));
+  if (n(o.hazeAmount))
+    hazeAmount = Math.max(0, Math.min(0.3, o.hazeAmount));
+  if (n(o.chromAmount))
+    chromAmount = Math.max(0, Math.min(1, o.chromAmount));
+  if (n(o.edgeGlowAmount))
+    edgeGlowAmount = Math.max(0, Math.min(1, o.edgeGlowAmount));
+  if (n(o.rootKeySemitones))
+    rootKeySemitones = Math.max(0, Math.min(11, Math.round(o.rootKeySemitones)));
+  if (n(o.baseOctave))
+    baseOctave = Math.max(1, Math.min(7, Math.round(o.baseOctave)));
+  if (n(o.sandDissolve))
+    sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
+  if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
+  if (n(o.sandSpeed)) sandSpeed = Math.max(0.1, Math.min(5, o.sandSpeed));
+  if (n(o.sandLife)) sandLife = Math.max(0.1, Math.min(5, o.sandLife));
+  if (n(o.sandGravity))
+    sandGravity = Math.max(0, Math.min(3, o.sandGravity));
+  if (n(o.sandSpread))
+    sandSpread = Math.max(0, Math.min(1, o.sandSpread));
+  if (n(o.sandCount)) {
+    sandCount = Math.round(Math.max(50, Math.min(2000, o.sandCount)));
+    if (particles.length > sandCount) {
+      particles = particles.slice(-sandCount);
+    }
+  }
+  if (n(o.fpsCap)) fpsCap = o.fpsCap;
+  if (n(o.renderScale)) {
+    renderScale = o.renderScale;
+    resize();
+  }
+  if (typeof o.idleThrottle === "boolean") idleThrottle = o.idleThrottle;
+  if (typeof o.soundEnabled === "boolean") soundEnabled = o.soundEnabled;
+  if (n(o.gravityStrength)) gravityStrength = o.gravityStrength;
+  if (typeof o.gravityEnabled === "boolean") gravityEnabled = o.gravityEnabled;
+  if (n(o.octaveMix)) octaveMix = o.octaveMix;
+  if (n(o.sympatheticMix)) sympatheticMix = o.sympatheticMix;
+  if (typeof o.hangDrumEnabled === "boolean")
+    hangDrumEnabled = o.hangDrumEnabled;
+  if (n(o.targetScrollSemitones))
+    targetScrollSemitones = Math.max(-12, Math.min(12, o.targetScrollSemitones));
+  syncGravityToggleButtons();
+  syncHangDrumToggleButtons();
+  syncLogoColorButtons();
+  syncPerfThrottleButtons();
+  syncPerfSoundButtons();
+  syncMasterGainFromSoundEnabled();
+  refreshPanelFromState();
+}
+
+function getPresets() {
+  try {
+    return JSON.parse(localStorage.getItem("aether_presets") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function savePresets(presets) {
+  localStorage.setItem("aether_presets", JSON.stringify(presets));
+}
+
+function renderPresetList() {
+  const list = document.getElementById("preset-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const presets = getPresets();
+  if (presets.length === 0) {
+    list.innerHTML = '<div style="font-size:9px;color:rgba(255,255,255,0.2);padding:4px 0;">No saved presets</div>';
+    return;
+  }
+  presets.forEach((preset, index) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:4px;align-items:center;";
+    const nameBtn = document.createElement("button");
+    nameBtn.textContent = preset.name;
+    nameBtn.style.cssText = "flex:1;text-align:left;padding:5px 7px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:3px;color:rgba(255,200,120,0.85);font-family:inherit;font-size:10px;cursor:pointer;";
+    nameBtn.title = preset.name;
+    nameBtn.addEventListener("click", () => {
+      applySettings(preset.data);
+      document.querySelectorAll("#preset-list button:first-child")
+        .forEach((b) => (b.style.background = "rgba(255,255,255,0.05)"));
+      nameBtn.style.background = "rgba(255,150,80,0.2)";
+    });
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "×";
+    delBtn.style.cssText = "padding:4px 7px;background:rgba(255,60,60,0.08);border:1px solid rgba(255,60,60,0.2);border-radius:3px;color:rgba(255,100,80,0.7);font-family:inherit;font-size:11px;cursor:pointer;flex-shrink:0;";
+    delBtn.addEventListener("click", () => {
+      const items = getPresets();
+      items.splice(index, 1);
+      savePresets(items);
+      renderPresetList();
+    });
+    row.appendChild(nameBtn);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  });
+}
+
+const copyBtn = document.createElement("button");
+copyBtn.type = "button";
+copyBtn.id = "tweak-copy";
+copyBtn.textContent = "Copy values";
+copyBtn.addEventListener("click", () => {
+  const o = getCurrentSettings();
+  const text = JSON.stringify(o, null, 2);
+  navigator.clipboard.writeText(text).then(() => {
+    copyBtn.textContent = "Copied!";
+    copyBtn.style.background = "rgba(255,120,40,0.3)";
+    setTimeout(() => {
+      copyBtn.textContent = "Copy values";
+      copyBtn.style.background = "";
+    }, 1500);
+  }).catch(() => {
+    copyBtn.textContent = "Open console (F12) for values";
+    console.log(JSON.stringify(o, null, 2));
+    setTimeout(() => {
+      copyBtn.textContent = "Copy values";
+    }, 2000);
+  });
+});
+panel.appendChild(copyBtn);
+
+const importInput = document.createElement("input");
+importInput.type = "file";
+importInput.accept = ".json,application/json";
+importInput.style.display = "none";
+importInput.addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const o = JSON.parse(String(reader.result));
+      applySettings(o);
+      importBtn.textContent = "Imported!";
+      importBtn.style.background = "rgba(80,200,120,0.25)";
+      setTimeout(() => {
+        importBtn.textContent = "Import";
+        importBtn.style.background = "";
+      }, 1500);
+    } catch (err) {
+      importBtn.textContent = "Invalid JSON";
+      importBtn.style.background = "rgba(200,60,40,0.3)";
+      setTimeout(() => {
+        importBtn.textContent = "Import";
+        importBtn.style.background = "";
+      }, 2000);
+    }
+  };
+  reader.readAsText(f);
+});
+const importBtn = document.createElement("button");
+importBtn.type = "button";
+importBtn.id = "tweak-import";
+importBtn.textContent = "Import";
+importBtn.style.marginLeft = "8px";
+importBtn.addEventListener("click", () => importInput.click());
+panel.appendChild(importBtn);
+panel.appendChild(importInput);
+
+const presetSection = document.createElement("div");
+presetSection.id = "preset-section";
+presetSection.style.cssText = "margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;";
+const presetHeader = document.createElement("div");
+presetHeader.style.cssText = "font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3);margin-bottom:8px;";
+presetHeader.textContent = "Presets";
+const presetSaveRow = document.createElement("div");
+presetSaveRow.style.cssText = "display:flex;gap:4px;margin-bottom:8px;";
+const presetNameInput = document.createElement("input");
+presetNameInput.id = "preset-name-input";
+presetNameInput.type = "text";
+presetNameInput.placeholder = "preset name";
+presetNameInput.style.cssText = "flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:5px 7px;color:rgba(255,255,255,0.8);font-family:inherit;font-size:10px;outline:none;min-width:0;";
+const presetSaveBtn = document.createElement("button");
+presetSaveBtn.id = "preset-save-btn";
+presetSaveBtn.style.cssText = "padding:5px 8px;background:rgba(255,150,80,0.15);border:1px solid rgba(255,150,80,0.3);border-radius:3px;color:rgba(255,180,100,0.9);font-family:inherit;font-size:10px;cursor:pointer;white-space:nowrap;";
+presetSaveBtn.textContent = "Save";
+presetSaveRow.appendChild(presetNameInput);
+presetSaveRow.appendChild(presetSaveBtn);
+const presetList = document.createElement("div");
+presetList.id = "preset-list";
+presetList.style.cssText = "display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;";
+presetSection.appendChild(presetHeader);
+presetSection.appendChild(presetSaveRow);
+presetSection.appendChild(presetList);
+panel.appendChild(presetSection);
+
+presetSaveBtn.addEventListener("click", () => {
+  const name = presetNameInput.value.trim();
+  if (!name) {
+    presetNameInput.style.borderColor = "rgba(255,80,80,0.5)";
+    setTimeout(() => {
+      presetNameInput.style.borderColor = "rgba(255,255,255,0.15)";
+    }, 800);
+    return;
+  }
+  const presets = getPresets();
+  const existing = presets.findIndex((p) => p.name === name);
+  if (existing >= 0) presets[existing].data = getCurrentSettings();
+  else presets.push({ name, data: getCurrentSettings() });
+  savePresets(presets);
+  presetNameInput.value = "";
+  renderPresetList();
+});
+
+presetNameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") presetSaveBtn.click();
+  e.stopPropagation();
+});
+
+renderPresetList();
+
+document.getElementById("tweak-toggle").addEventListener("click", () => {
+  const root = document.getElementById("tweak-root");
+  const open = root.classList.toggle("collapsed");
+  document.getElementById("tweak-toggle").setAttribute("aria-expanded", open ? "false" : "true");
+});
+document.getElementById("tweak-root").addEventListener(
+  "wheel",
+  (e) => {
+    e.stopPropagation();
+  },
+  { passive: false },
+);
+
+let audioCtx = null;
+let pageFocused = true;
+let masterGain = null;
+let pageFadeGain = null;
+let lastBand = -1;
+function spawnParticles(count, intensity) {
+  if (!logoPixels) return;
+  let spawned = 0;
+  let attempts = 0;
+  while (spawned < count && attempts < count * 10) {
+    attempts++;
+    const nx = Math.random();
+    const ny = Math.random();
+    if (!isInsideLetter(nx, ny)) continue;
+    const band = Math.max(0, lastBand);
+    const freq = 2 + band * 1.5;
+    const nodal = Math.abs(
+      Math.sin(nx * Math.PI * freq) *
+      Math.sin(ny * Math.PI * freq * 0.7));
+    if (nodal > 0.3) continue;
+    const vx = (Math.random() - 0.5) * 0.008
+      * intensity * sandSpeed;
+    const vy = (Math.random() - 0.3) * 0.006
+      * intensity * sandSpeed;
+    const spreadAngle = (Math.random() - 0.5)
+      * Math.PI * 2 * sandSpread;
+    const cos = Math.cos(spreadAngle);
+    const sin = Math.sin(spreadAngle);
+    const rvx = vx * cos - vy * sin;
+    const rvy = vx * sin + vy * cos;
+    particles.push({
+      x: nx, y: ny,
+      vx: rvx,
+      vy: rvy,
+      life: 1.0,
+      decay: (0.018 + Math.random() * 0.025) / sandLife,
+      size: (0.6 + Math.random() * 1.4) * sandSize,
+    });
+    spawned++;
+  }
+  if (particles.length > sandCount) {
+    particles = particles.slice(
+      particles.length - sandCount);
+  }
+}
+let activeGain = null;
+let activeBand = -1;
+let hintFaded = false;
+let glideOsc1 = null;
+let glideOsc2 = null;
+let glideGain = null;
+let glideG1 = null;
+let glideG2 = null;
+let glideNode = null;
+let octaveLayerGain = null;
+let octaveLayerOsc1 = null;
+let octaveLayerOsc2 = null;
+let octaveLayerGainNode = null;
+let octaveLayerG1 = null;
+let octaveLayerG2 = null;
+let octaveDirection = 0;
+let octaveAmount = 0.0;
+
+function initSympathetic() {
+  if (!audioCtx || sympatheticOscs.length > 0) return;
+  for (let i = 0; i < 8; i++) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    osc.type = "sine";
+    const freq = noteFreqForBand(i);
+    osc.frequency.value = freq;
+    gain.gain.value = 0.0;
+    filter.type = "bandpass";
+    filter.Q.value = 8.0;
+    filter.frequency.value = freq;
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(pageFadeGain || audioCtx.destination);
+    osc.start();
+    sympatheticOscs.push(osc);
+    sympatheticGains.push(gain);
+    sympatheticFilters.push(filter);
+  }
+}
+
+function initGlide() {
+  if (!audioCtx || glideOsc1) return;
+  glideOsc1 = audioCtx.createOscillator();
+  glideOsc2 = audioCtx.createOscillator();
+  glideG1 = audioCtx.createGain();
+  glideG2 = audioCtx.createGain();
+  glideGain = audioCtx.createGain();
+  const glideFilter = audioCtx.createBiquadFilter();
+  glideOsc1.type = "sine";
+  glideOsc2.type = "sawtooth";
+  glideOsc1.frequency.value = currentFreq;
+  glideOsc2.frequency.value = currentFreq;
+  glideG1.gain.value = 0.6;
+  glideG2.gain.value = 0.1;
+  glideGain.gain.value = 0.0;
+  glideFilter.type = "lowpass";
+  glideFilter.frequency.value = 800;
+  glideOsc1.connect(glideG1);
+  glideG1.connect(glideFilter);
+  glideOsc2.connect(glideG2);
+  glideG2.connect(glideFilter);
+  glideFilter.connect(glideGain);
+  glideGain.connect(pageFadeGain || audioCtx.destination);
+  glideOsc1.start();
+  glideOsc2.start();
+}
+
+function initOctaveLayer() {
+  if (!audioCtx || octaveLayerOsc1) return;
+  octaveLayerOsc1 = audioCtx.createOscillator();
+  octaveLayerOsc2 = audioCtx.createOscillator();
+  const og1 = audioCtx.createGain();
+  const og2 = audioCtx.createGain();
+  octaveLayerGainNode = audioCtx.createGain();
+  const octFilter = audioCtx.createBiquadFilter();
+
+  octaveLayerOsc1.type = "sine";
+  octaveLayerOsc2.type = "sawtooth";
+  og1.gain.value = 0.7;
+  og2.gain.value = 0.15;
+  octaveLayerGainNode.gain.value = 0.0;
+  octFilter.type = "lowpass";
+  octFilter.frequency.value = 600;
+
+  octaveLayerOsc1.connect(og1);
+  og1.connect(octFilter);
+  octaveLayerOsc2.connect(og2);
+  og2.connect(octFilter);
+  octFilter.connect(octaveLayerGainNode);
+  octaveLayerGainNode.connect(pageFadeGain || audioCtx.destination);
+
+  octaveLayerG1 = og1;
+  octaveLayerG2 = og2;
+  octaveLayerGain = octaveLayerGainNode;
+
+  octaveLayerOsc1.start();
+  octaveLayerOsc2.start();
+}
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioContext();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  if (!masterGain) {
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = soundEnabled ? 0.8 : 0;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (!pageFadeGain) {
+    pageFadeGain = audioCtx.createGain();
+    pageFadeGain.gain.value = 1.0;
+    pageFadeGain.connect(masterGain);
+  }
+  initGlide();
+  initOctaveLayer();
+  initSympathetic();
+  syncMasterGainFromSoundEnabled();
+}
+
+document.body.addEventListener("pointerdown", () => {
+  initAudio();
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}, { once: true });
+
+document.addEventListener("visibilitychange", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = !document.hidden;
+  if (document.hidden) {
+    pageFadeGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.5);
+  } else {
+    pageFadeGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+  }
+});
+
+window.addEventListener("blur", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = false;
+  pageFadeGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.8);
+});
+
+window.addEventListener("focus", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = true;
+  pageFadeGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+});
+
+function playNoteWithVolume(bandIndex, vol) {
+  if (!audioCtx) return;
+  noteFlash = 1.0;
+  splatIntensity = 1.0;
+  splatX = mx / canvas.width;
+  splatY = 1.0 - (my / canvas.height);
+  splatAge = 0.0;
+  const freq = noteFreqForBand(bandIndex);
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain1 = audioCtx.createGain();
+  const gain2 = audioCtx.createGain();
+  const master = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  osc1.type = "sine";
+  osc2.type = "sawtooth";
+  osc1.frequency.value = freq;
+  osc2.frequency.value = freq;
+  const blend = mouseX;
+  gain1.gain.value = 1.0 - blend * 0.8;
+  gain2.gain.value = blend * 0.4;
+  filter.type = "lowpass";
+  filter.frequency.value = 400 + mouseX * 3600;
+  filter.Q.value = 1.5;
+  const t0 = audioCtx.currentTime;
+  master.gain.setValueAtTime(0.0, t0);
+  master.gain.linearRampToValueAtTime(vol, t0 + soundAttack / 1000);
+  master.gain.exponentialRampToValueAtTime(0.001, t0 + soundDecay / 1000);
+  osc1.connect(gain1);
+  gain1.connect(filter);
+  osc2.connect(gain2);
+  gain2.connect(filter);
+  filter.connect(master);
+  master.connect(pageFadeGain || audioCtx.destination);
+  osc1.start();
+  osc2.start();
+  osc1.stop(t0 + soundDecay / 1000 + 0.1);
+  osc2.stop(t0 + soundDecay / 1000 + 0.1);
+  activeBand = bandIndex;
+  setTimeout(() => {
+    if (activeBand === bandIndex) activeBand = -1;
+  }, 300);
+}
+
+function playNote(b) {
+  playNoteWithVolume(b, soundVolume);
+}
+
+let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
+let mouseX=0.5;
+const trail = [];
+const TRAIL_LENGTH = 10;
+let prevTmy=ty;
+let prevTmx=tx;
+let mouseVelocity=0;
+let smoothVelocity=0;
+let mouseVelX=0;
+let smoothVelX=0;
+let dwellTime=0;
+let lastBandY=-1;
+let mouseStillTime=0;
+let mx2=mx,my2=my;
+let lastMoveTime=performance.now();
+let idleBreath=0;
+let noteFlash = 0.0;
+let splatIntensity = 0.0;
+let splatX = 0.5;
+let splatY = 0.5;
+let splatAge = 0.0;
+let vibratoPhase = 0;
+let vibratoAmount = 0;
+document.addEventListener("mousemove", (e) => {
+  initAudio();
+  if (!hintFaded) {
+    hintFaded = true;
+    const h = document.getElementById("hint");
+    h.style.opacity = "0";
+    h.style.transition = "opacity 1s";
+  }
+  tx = e.clientX;
+  ty = e.clientY;
+  mouseX = e.clientX / window.innerWidth;
+  trail.push({x: mx, y: canvas.height - my, age: 0});
+  if (trail.length > TRAIL_LENGTH) trail.shift();
+  lastMoveTime = performance.now();
+});
+function resize(){
+  canvas.width=window.innerWidth * devicePixelRatio * renderScale;
+  canvas.height=window.innerHeight * devicePixelRatio * renderScale;
+  gl.viewport(0,0,canvas.width,canvas.height);
+  if (sandCanvas) {
+    const logoW = window.innerWidth * 0.55;
+    const logoH = logoW * 495 / 2096;
+    sandCanvas.width = Math.round(logoW);
+    sandCanvas.height = Math.round(logoH);
+  }
+  if (lensCanvas && lensGl) {
+    const lw = Math.round(window.innerWidth * 0.55);
+    const lh = Math.round(lw * 495 / 2096);
+    lensCanvas.width = lw;
+    lensCanvas.height = lh;
+    lensGl.viewport(0, 0, lw, lh);
+  }
+}
+window.addEventListener("resize",resize);resize();
+window.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    initAudio();
+    zoneScrollAccum += e.deltaY;
+    while (zoneScrollAccum > 80) {
+      zoneScrollAccum -= 80;
+      targetScrollSemitones = Math.max(
+        -12,
+        Math.min(12, targetScrollSemitones + 1),
+      );
+    }
+    while (zoneScrollAccum < -80) {
+      zoneScrollAccum += 80;
+      targetScrollSemitones = Math.max(
+        -12,
+        Math.min(12, targetScrollSemitones - 1),
+      );
+    }
+    const noteNames = [
+      "C",
+      "C#",
+      "D",
+      "D#",
+      "E",
+      "F",
+      "F#",
+      "G",
+      "G#",
+      "A",
+      "A#",
+      "B",
+    ];
+    const rootNote = ((targetScrollSemitones % 12) + 12) % 12;
+    const ind = document.getElementById("zone-indicator");
+    if (ind) {
+      ind.textContent = noteNames[rootNote];
+      ind.style.opacity = "0.6";
+      clearTimeout(ind._fadeTimer);
+      ind._fadeTimer = setTimeout(() => {
+        ind.style.opacity = "0.15";
+      }, 2000);
+    }
+  },
+  { passive: false },
+);
+function frame(t){
+  const now = performance.now();
+  frameInterval = 1000 / fpsCap;
+  if (now - lastFrameTime < frameInterval - 1) {
+    requestAnimationFrame(frame);
+    return;
+  }
+  if (idleThrottle && mouseStillTime > 3.0) {
+    if (now - lastFrameTime < 66 - 1) {
+      requestAnimationFrame(frame);
+      return;
+    }
+  }
+  lastFrameTime = now;
+  const tmx=tx;
+  const tmy=ty;
+  tweak.u_glowCoreRadius = glowSize * 0.25;
+  tweak.u_glowWideRadius = glowSize * 1.2;
+  tweak.u_glowCoreIntensity = glowIntensity * 1.8;
+  tweak.u_glowWideIntensity = glowIntensity * 0.45;
+  scrollSemitones = targetScrollSemitones;
+  smoothScrollSemitones+=
+    (targetScrollSemitones-smoothScrollSemitones)*0.03;
+  scrollFreqMult=Math.pow(2,smoothScrollSemitones/12);
+  splatAge += 0.016;
+  splatIntensity *= 0.92;
+  trail.forEach((p) => {
+    p.age += 0.016;
+  });
+  const rawVel=Math.abs(tmy-prevTmy);
+  prevTmy=tmy;
+  mouseVelocity=rawVel;
+  smoothVelocity+=(rawVel-smoothVelocity)*0.15;
+  const rawVelX=Math.abs(tmx-prevTmx);
+  prevTmx=tmx;
+  mouseVelX=rawVelX;
+  smoothVelX+=(rawVelX-smoothVelX)*0.15;
+  const totalVel=smoothVelocity+smoothVelX;
+  const isMovingPolar=totalVel>1.5;
+  if (isMovingPolar) {
+    mouseStillTime=0;
+  } else {
+    mouseStillTime+=0.016;
+  }
+  const lag=tweak.u_trailLag;
+  mx+=(tx-mx)*lag;my+=(ty-my)*lag;
+  mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
+  const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
+  idleBreath+=(idle-idleBreath)*0.02;
+  const cx=window.innerWidth/2;
+  const cy=window.innerHeight/2;
+  const dx=tmx-cx;
+  const dy=tmy-cy;
+  const maxDist=Math.min(cx,cy)*0.85;
+  polarAngle=Math.atan2(dy,dx);
+  polarDist=maxDist>0?Math.min(Math.sqrt(dx*dx+dy*dy)/maxDist,1.0):0;
+  smoothAngle+=angleDiff(polarAngle,smoothAngle)*0.06;
+  smoothDist+=(polarDist-smoothDist)*0.05;
+  const screenCentreX=window.innerWidth/2;
+  const screenCentreY=window.innerHeight/2;
+  const normY=1.0-tmy/window.innerHeight;
+  const rawBand=normY*8;
+  const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
+  const bandFraction=rawBand-Math.floor(rawBand);
+  const inDeadZone=bandFraction<deadZoneSize||
+    bandFraction>(1-deadZoneSize);
+  const shouldTrigger=!inDeadZone||
+    smoothVelocity>velocityThreshold;
+  const sensitivity=portamentoSensitivity;
+  const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
+  const clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
+  smoothBandY+=(normY-smoothBandY)*clampedGlide;
+  if (gravityEnabled) {
+    const wells=getWellPositions();
+    let totalPull=0;
+    wells.forEach((wellY)=>{
+      const dist=Math.abs(smoothBandY-wellY);
+      const pull=gravityStrength*Math.exp(-dist*6.0)*0.4;
+      totalPull+=(wellY-smoothBandY)*pull;
+    });
+    const maxPull=0.004;
+    smoothBandY+=Math.max(-maxPull,Math.min(maxPull,totalPull));
+    smoothBandY=Math.max(0,Math.min(1,smoothBandY));
+  }
+  const targetBand=Math.max(0,Math.min(7,Math.floor(smoothBandY*8)));
+  const targetFreq = noteFreqForBand(targetBand);
+  const isSettling=smoothVelocity<
+    velocityThreshold+portamentoSensitivity*8;
+  if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
+    lastBand=clampedBand;
+    vibratoPhase = 0;
+    vibratoAmount = 0;
+    const velVolume=soundVolume*
+      (0.4+Math.min(smoothVelocity/15.0,0.6));
+    playNoteWithVolume(clampedBand,velVolume);
+  }
+  const sustainFadeLogo=Math.max(0,1.0-mouseStillTime/releaseTime);
+  const holdingNoteLogo=clampedBand===lastBand;
+  const sustainBoostLogo=holdingNoteLogo?
+    Math.min(smoothVelX/10.0,0.3):0.0;
+  const targetGlideVol=soundVolume*
+    (sustainLevel+sustainBoostLogo)*sustainFadeLogo;
+  const logoEl = document.getElementById('logo-layer');
+  if (logoEl && logoWrapEl) {
+    const mouseDistFromCenter = Math.sqrt(
+      Math.pow((mx / window.innerWidth) - 0.5, 2) +
+      Math.pow((my / window.innerHeight) - 0.5, 2));
+    const finalOpacityRaw = logoBrightness;
+    const finalOpacity = logoColourEnabled ? finalOpacityRaw : 0;
+    if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
+      logoEl._lastOp = finalOpacity.toFixed(3);
+      logoEl.style.opacity = finalOpacity.toFixed(3);
+    }
+    logoEl.style.setProperty('background-color',
+      logoColor === 'black' ? '#000000' : '#ffffff',
+      'important');
+    const waveShift = smoothVelocity * 0.8 * logoWaveWarp;
+    const waveScale = 1.0 + (smoothVelocity * 0.003
+      * logoWaveWarp);
+    const transformStr =
+      `translate(calc(-50% + ${waveShift.toFixed(2)}px), -50%) scaleX(${waveScale.toFixed(4)})`;
+    logoWrapEl.style.transform = transformStr;
+    if (sandCtx && sandCanvas) {
+      if (sandDissolve > 0) {
+        const W = sandCanvas.width;
+        const H = sandCanvas.height;
+        if (W > 0 && H > 0) {
+          const burst = noteFlash * 40 * sandDissolve;
+          const trickle = smoothVelocity * 0.5 * sandDissolve;
+          const spawnCount = Math.floor(burst + trickle);
+          if (spawnCount > 0) {
+            spawnParticles(spawnCount,
+              (noteFlash + smoothVelocity * 0.05)
+              * sandDissolve);
+          }
+          sandCtx.clearRect(0, 0, W, H);
+          const toRemove = [];
+          const logoColor_local = logoColor === 'black'
+            ? '0,0,0' : '255,200,120';
+          particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.0001 * sandGravity;
+            p.life -= p.decay;
+            if (p.life <= 0 || p.x < 0 || p.x > 1
+                || p.y < 0 || p.y > 1) {
+              toRemove.push(i);
+              return;
+            }
+            const px = p.x * W;
+            const py = p.y * H;
+            sandCtx.beginPath();
+            sandCtx.arc(px, py, p.size, 0, Math.PI * 2);
+            sandCtx.fillStyle =
+              `rgba(${logoColor_local},${p.life * 0.8})`;
+            sandCtx.fill();
+          });
+          for (let i = toRemove.length - 1; i >= 0; i--) {
+            particles.splice(toRemove[i], 1);
+          }
+        }
+      } else {
+        sandCtx.clearRect(0, 0, sandCanvas.width, sandCanvas.height);
+        particles.length = 0;
+      }
+    }
+    const ca = logoChromatic * finalOpacity;
+    if (ca > 0.1) {
+      const tLogo = performance.now();
+      // Reduced jitter — too much jitter breaks depth perception through glasses
+      const jitterX = Math.sin(tLogo * 0.011) * 0.3 + Math.sin(tLogo * 0.037) * 0.15;
+      const jitterY = Math.sin(tLogo * 0.017) * 0.15;
+      // Slightly larger base offset so depth pops through glasses
+      // Red shifted LEFT, blue shifted RIGHT — correct anaglyph parallax
+      const offX = ca * 1.3 + jitterX;
+      const offY = jitterY;
+      logoWrapEl.style.filter =
+        // Pure red, shifted left (negative X) — seen by LEFT eye through blue lens
+        `drop-shadow(${(-offX).toFixed(2)}px ${offY.toFixed(2)}px 0 rgba(255,0,0,1)) ` +
+        // Pure blue, shifted right (positive X) — seen by RIGHT eye through red lens
+        `drop-shadow(${offX.toFixed(2)}px ${(-offY).toFixed(2)}px 0 rgba(0,0,255,1))`;
+    } else {
+      logoWrapEl.style.filter = 'none';
+    }
+  }
+  noteFlash*=0.88;
+  const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
+  const freqGlide=0.03+(1.0-sensitivity)*0.08;
+  if (glideOsc1&&audioCtx) {
+    currentFreq+=(targetFreq-currentFreq)*freqGlide;
+    const distPressure=smoothDist>0.9?(smoothDist-0.9)*10.0:0.0;
+    octaveAmount+=(distPressure-octaveAmount)*0.04;
+    octaveDirection=smoothDist>=0.5?1:-1;
+    if (octaveLayerOsc1&&audioCtx) {
+      const octFreq=currentFreq*2.0;
+      octaveLayerOsc1.frequency.setValueAtTime(octFreq,audioCtx.currentTime);
+      octaveLayerOsc2.frequency.setValueAtTime(octFreq,audioCtx.currentTime);
+      const octBlend=mouseX;
+      if (octaveLayerG1&&octaveLayerG2) {
+        octaveLayerG1.gain.setValueAtTime(1.0-octBlend*0.8,audioCtx.currentTime);
+        octaveLayerG2.gain.setValueAtTime(octBlend*0.4,audioCtx.currentTime);
+      }
+    }
+    if (octaveLayerOsc1&&audioCtx&&octaveLayerGainNode) {
+      const octVol=octaveAmount*soundVolume*sustainFade*octaveMix;
+      octaveLayerGainNode.gain.setTargetAtTime(octVol,audioCtx.currentTime,0.15);
+    }
+    const holdTime = mouseStillTime;
+    const vibratoRamp = Math.min(holdTime / 1.5, 1.0);
+    const vibratoRate = vibratoSpeedControl *
+      (0.7 + vibratoRamp * 0.3);
+    vibratoPhase += vibratoRate * 0.016 * Math.PI * 2;
+    vibratoAmount += (vibratoRamp - vibratoAmount) * 0.08;
+    const vibratoDepth = vibratoAmount *
+      vibratoDepthControl * 8.0;
+    const vibrato = Math.sin(vibratoPhase) *
+      vibratoDepth * (currentFreq / 440) * 0.015;
+    const expressiveVib = smoothVelX * 0.15 *
+      vibratoDepthControl;
+    glideOsc1.frequency.setValueAtTime(
+      currentFreq + vibrato + expressiveVib,
+      audioCtx.currentTime
+    );
+    glideOsc2.frequency.setValueAtTime(
+      currentFreq + vibrato + expressiveVib,
+      audioCtx.currentTime
+    );
+    const holdingNote=clampedBand===lastBand;
+    const sustainBoost=holdingNote?
+      Math.min(smoothVelX/10.0,0.3):0.0;
+    const glideVolTarget=soundVolume*
+      (sustainLevel+sustainBoost)*sustainFade;
+    if (glideGain&&audioCtx) {
+      glideGain.gain.setTargetAtTime(glideVolTarget,audioCtx.currentTime,0.3);
+    }
+    const blend=mouseX;
+    glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
+    glideG2.gain.setValueAtTime(blend*0.4,audioCtx.currentTime);
+  }
+  if (sympatheticOscs.length>0&&audioCtx) {
+    for (let i=0;i<8;i++) {
+      const freq=noteFreqForBand(i);
+      sympatheticOscs[i].frequency.setValueAtTime(
+        freq,
+        audioCtx.currentTime,
+      );
+      sympatheticFilters[i].frequency.setValueAtTime(
+        freq,
+        audioCtx.currentTime,
+      );
+      const isActive=i===lastBand;
+      const isNeighbour=
+        lastBand>=0&&
+        (Math.abs(i-lastBand)===1||Math.abs(i-lastBand)===7);
+      const isHintBand=
+        lastBand>=0&&
+        (HARMONIC_HINTS[lastBand]||[]).includes(i);
+      let targetLevel=0;
+      if (isActive) targetLevel=sympatheticMix*0.3;
+      else if (isHintBand) targetLevel=sympatheticMix*0.5;
+      else if (isNeighbour) targetLevel=sympatheticMix*0.2;
+      targetLevel*=sustainFade;
+      sympatheticLevels[i]+=
+        (targetLevel-sympatheticLevels[i])*0.015;
+      sympatheticGains[i].gain.setTargetAtTime(
+        sympatheticLevels[i],
+        audioCtx.currentTime,
+        0.3,
+      );
+    }
+  }
+  gl.uniform2f(ur,canvas.width,canvas.height);
+  const scaleX = canvas.width / window.innerWidth;
+  const scaleY = canvas.height / window.innerHeight;
+  gl.uniform2f(um,mx * scaleX,canvas.height - my * scaleY);
+  gl.uniform2f(um2,mx2 * scaleX,canvas.height - my2 * scaleY);
+  gl.uniform1f(ut,t*.001);
+  gl.uniform1f(uIdle,idleBreath);
+  gl.uniform1f(uActiveBand,clampedBand);
+  gl.uniform1f(uMouseX,mouseX);
+  gl.uniform1f(uSmoothBandY,smoothBandY);
+  gl.uniform1f(
+    uGravityStrength,
+    gravityEnabled ? gravityStrength : 0.0
+  );
+  gl.uniform1f(uOctaveAmount, octaveAmount);
+  gl.uniform1f(uOctaveDirection, octaveDirection);
+  gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
+  gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
+  gl.uniform1f(uHangDrum, hangDrumEnabled ? 1.0 : 0.0);
+  gl.uniform1fv(uSympathetic, sympatheticLevels);
+  gl.uniform1f(uDrift, Math.max(0.35, idleBreath * 0.8 + 0.45));
+  gl.uniform1f(uLogoPresence, 1.0);
+  gl.uniform1f(uNoteFlash, noteFlash);
+  gl.uniform1f(uSplatIntensity, splatIntensity);
+  gl.uniform2f(uSplatPos, splatX, splatY);
+  gl.uniform1f(uSplatAge, splatAge);
+  gl.uniform1f(uActiveBandNorm, clampedBand / 7.0);
+  const trailPos = new Float32Array(TRAIL_LENGTH * 2);
+  const trailAge = new Float32Array(TRAIL_LENGTH);
+  for (let i = 0; i < TRAIL_LENGTH; i++) {
+    if (i < trail.length) {
+      trailPos[i * 2] = trail[i].x;
+      trailPos[i * 2 + 1] = trail[i].y;
+      trailAge[i] = trail[i].age;
+    }
+  }
+  gl.uniform2fv(uTrail, trailPos);
+  gl.uniform1fv(uTrailAge, trailAge);
+  gl.uniform1i(uTrailLen, Math.min(trail.length, 10));
+  if (activeBand>=0&&activeBand<8) {
+    const hints=HARMONIC_HINTS[activeBand];
+    gl.uniform1f(uHintBand0,hints[0]);
+    gl.uniform1f(uHintBand1,hints[1]);
+  } else {
+    gl.uniform1f(uHintBand0,-1.0);
+    gl.uniform1f(uHintBand1,-1.0);
+  }
+  applyTweakUniforms();
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+
+  if (
+    lensGl &&
+    lensProgram &&
+    logoLensEnabled &&
+    lensStrength > 0 &&
+    lensCanvas &&
+    lensCanvas.width > 0 &&
+    lensCanvas.height > 0
+  ) {
+    lensGl.useProgram(lensProgram);
+    if (!lensAlignmentLogged) {
+      lensAlignmentLogged = true;
+      console.log("[SDF alignment]", {
+        canvasWidth: lensCanvas.width,
+        canvasHeight: lensCanvas.height,
+        cssWidth: lensCanvas.clientWidth,
+        cssHeight: lensCanvas.clientHeight,
+        aspectBuffer: lensCanvas.width / lensCanvas.height,
+        aspectLogo: 2096 / 495,
+        devicePixelRatio: window.devicePixelRatio,
+      });
+    }
+    const lsx = lensCanvas.width / window.innerWidth;
+    const lsy = lensCanvas.height / window.innerHeight;
+    setLens2f("u_res", lensCanvas.width, lensCanvas.height);
+    setLens1f("u_time", t * 0.001);
+    setLens2f("u_mouse", mx * lsx, my * lsy);
+    setLens2f("u_mouse2", mx2 * lsx, my2 * lsy);
+    setLens1f("u_hazeStrength", hazeStrength);
+    setLens1f("u_hazeSpeed", hazeSpeed);
+    setLens1f("u_hazeScale", hazeScale);
+    setLens1f("u_hazeAmount", hazeAmount);
+    setLens1f("u_chromAmount", chromAmount);
+    setLens1f("u_edgeGlowAmount", edgeGlowAmount);
+    if (lensSdfTexture) {
+      lensGl.activeTexture(lensGl.TEXTURE0);
+      lensGl.bindTexture(lensGl.TEXTURE_2D, lensSdfTexture);
+      setLens1i("u_sdf", 0);
+    }
+    setLens1f("u_idle", idleBreath);
+    setLens1f("u_activeBand", clampedBand);
+    setLens1f("u_mouseX", mouseX);
+    setLens1f("u_smoothBandY", smoothBandY);
+    setLens1f(
+      "u_gravityStrength",
+      gravityEnabled ? gravityStrength : 0.0,
+    );
+    setLens1f("u_octaveAmount", octaveAmount);
+    setLens1f("u_octaveDirection", octaveDirection);
+    setLens1f("u_velocity", Math.min(smoothVelocity / 20.0, 1.0));
+    setLens1f("u_velX", Math.min(smoothVelX / 15.0, 1.0));
+    setLens1f("u_hangDrum", hangDrumEnabled ? 1.0 : 0.0);
+    const symLocL = getLensUniform("u_sympathetic[0]");
+    if (symLocL) lensGl.uniform1fv(symLocL, sympatheticLevels);
+    setLens1f("u_drift", Math.max(0.35, idleBreath * 0.8 + 0.45));
+    setLens1f("u_logoPresence", 1.0);
+    setLens1f("u_noteFlash", noteFlash);
+    setLens1f("u_splatIntensity", splatIntensity);
+    setLens2f("u_splatPos", splatX, splatY);
+    setLens1f("u_splatAge", splatAge);
+    setLens1f("u_activeBandNorm", clampedBand / 7.0);
+    setLens1f("u_lensStrength", lensStrength);
+    const trailLocL = getLensUniform("u_trail[0]");
+    if (trailLocL) lensGl.uniform2fv(trailLocL, trailPos);
+    const trailAgeLocL = getLensUniform("u_trailAge[0]");
+    if (trailAgeLocL) lensGl.uniform1fv(trailAgeLocL, trailAge);
+    setLens1i("u_trailLen", Math.min(trail.length, 10));
+    if (activeBand >= 0 && activeBand < 8) {
+      const hintsL = HARMONIC_HINTS[activeBand];
+      setLens1f("u_hintBand0", hintsL[0]);
+      setLens1f("u_hintBand1", hintsL[1]);
+    } else {
+      setLens1f("u_hintBand0", -1.0);
+      setLens1f("u_hintBand1", -1.0);
+    }
+    setLens1f("u_glowCoreRadius", tweak.u_glowCoreRadius);
+    setLens1f("u_glowCoreIntensity", tweak.u_glowCoreIntensity);
+    setLens1f("u_glowWideRadius", tweak.u_glowWideRadius);
+    setLens1f("u_glowWideIntensity", tweak.u_glowWideIntensity);
+    setLens1f("u_warpStrength", tweak.u_warpStrength);
+    setLens1f("u_noiseAmount", tweak.u_noiseAmount);
+    setLens1f("u_darkness", tweak.u_darkness);
+    setLens1f("u_waveCount", tweak.u_waveCount);
+    setLens1f("u_waveFreq", tweak.u_waveFreq);
+    setLens1f("u_waveSpeed", tweak.u_waveSpeed);
+    setLens1f("u_rippleStrength", tweak.u_rippleStrength);
+    setLens1f("u_flickerSpeed", tweak.u_flickerSpeed);
+    setLens1f("u_flickerAmount", tweak.u_flickerAmount);
+    setLens1f("u_waveSharpness", tweak.u_waveSharpness);
+    setLens1f("u_waveBrightness", tweak.u_waveBrightness);
+    setLens1f("u_waveGlow", tweak.u_waveGlow);
+    setLens1f("u_waveTemp", tweak.u_waveTemp);
+    setLens1f("u_waveSpacing", tweak.u_waveSpacing);
+    setLens1f("u_waveAlt", tweak.u_waveAlt);
+    setLens1f("u_mouseRadius", tweak.u_mouseRadius);
+    lensGl.drawArrays(lensGl.TRIANGLE_STRIP, 0, 4);
+    gl.useProgram(p);
+    const lensOpStr = Math.min(0.95, lensStrength / 0.8).toFixed(2);
+    if (lensCanvas._lastOp !== lensOpStr) {
+      lensCanvas._lastOp = lensOpStr;
+      lensCanvas.style.opacity = lensOpStr;
+    }
+  } else if (lensCanvas) {
+    if (lensCanvas._lastOp !== "0") {
+      lensCanvas._lastOp = "0";
+      lensCanvas.style.opacity = "0";
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+applyTweakUniforms();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
