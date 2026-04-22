@@ -98,13 +98,14 @@ export const typography = {
 
 export type TypographyStyle = keyof typeof typography;
 
-/** Text/Practical text colours from Figma. `textHeadingNeutral`, `textBodyNeutral`, `textDisabled`, `textLabel` are `var(--ds-…)` (see semantic-tokens.css); other keys are static hex. `textBodyNeutralDark` / `textBodyColourDark` are Dark mode (27:3) for overlays & dark surfaces. */
+/** Text/Practical text colours from Figma. `textHeadingNeutral`, `textBodyNeutral`, `textDisabled`, `textInverted`, `textLabel` are `var(--ds-…)` (see semantic-tokens.css); other keys are static hex. `textBodyNeutralDark` / `textBodyColourDark` are Dark mode (27:3) for overlays & dark surfaces. */
 export const colors = {
   textHeadingNeutral: "var(--ds-text-heading-neutral)",
   textBodyNeutral: "var(--ds-text-body-neutral)",
   textBodyNeutralDark: "#ffffff99",
   textHeadingColour: "#F04700",
   textDisabled: "var(--ds-text-disabled)",
+  textInverted: "var(--ds-text-inverted)",
   textBodyColour: "#A33200",
   textBodyColourDark: "#FFA986",
   textPressed: "#FF8152",
@@ -261,7 +262,10 @@ export const layout = {
   paddingWrapperVertical: 48,
   paddingWrapperVerticalHover: 40,
   stroke2Xl: 4,
-  buttonInnerItemSpacing: 10
+  buttonInnerItemSpacing: 10,
+  screenWidth: 1200,
+  viewportHeight: 780,
+  sectionS: 64
 } as const;
 
 /** Focus ring — light backgrounds (WCAG). Prefer over raw stroke-focus hex when matching product spec. */
