@@ -660,6 +660,7 @@ let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
 let logoBrightness = 0.15;
+let logoSize = 55;
 let logoChromatic = 0;
 let logoColor = "white";
 let logoLensEnabled = true;
@@ -1134,6 +1135,19 @@ appendSoundSlider(
   },
   "logoBrightness",
 );
+appendSoundSlider(
+  "logo size",
+  10,
+  100,
+  1,
+  () => logoSize,
+  (v) => {
+    logoSize = v;
+    if (logoWrapEl) logoWrapEl.style.width = logoSize + "vw";
+    resize();
+  },
+  "logoSize",
+);
 const logoColorRow = document.createElement("div");
 logoColorRow.className = "tweak-row";
 const logoColorHead = document.createElement("div");
@@ -1431,6 +1445,7 @@ function refreshPanelFromState() {
     else if (k === "glowSize") v = glowSize;
     else if (k === "glowIntensity") v = glowIntensity;
     else if (k === "logoBrightness") v = logoBrightness;
+    else if (k === "logoSize") v = logoSize;
     else if (k === "logoProximity") v = logoProximity;
     else if (k === "logoSoundReact") v = logoSoundReact;
     else if (k === "logoChromatic") v = logoChromatic;
@@ -1454,6 +1469,7 @@ function getCurrentSettings() {
     glowSize,
     glowIntensity,
     logoBrightness,
+    logoSize,
     logoColor,
     logoProximity,
     logoSoundReact,
@@ -1524,6 +1540,11 @@ function applySettings(o) {
   if (n(o.glowSize)) glowSize = o.glowSize;
   if (n(o.glowIntensity)) glowIntensity = o.glowIntensity;
   if (n(o.logoBrightness)) logoBrightness = o.logoBrightness;
+  if (n(o.logoSize)) {
+    logoSize = Math.max(10, Math.min(100, Math.round(o.logoSize)));
+    if (logoWrapEl) logoWrapEl.style.width = logoSize + "vw";
+    resize();
+  }
   if (o.logoColor === "black" || o.logoColor === "white") logoColor = o.logoColor;
   if (n(o.logoProximity)) logoProximity = o.logoProximity;
   if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
@@ -1980,7 +2001,7 @@ function resize(){
   canvas.height=window.innerHeight * devicePixelRatio * renderScale;
   gl.viewport(0,0,canvas.width,canvas.height);
   if (lensCanvas && lensGl) {
-    const lw = Math.round(window.innerWidth * 0.55);
+    const lw = Math.round(window.innerWidth * (logoSize / 100));
     const lh = Math.round(lw * 495 / 2096);
     lensCanvas.width = lw;
     lensCanvas.height = lh;
