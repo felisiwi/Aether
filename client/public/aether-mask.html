@@ -561,7 +561,7 @@ const lensGl = lensCanvas
 const lensFrag = frag
   .replace(
     "uniform float u_splatAge;",
-    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;\nuniform float u_hazeAmount;\nuniform float u_hazeDebug;",
+    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;\nuniform float u_hazeAmount;\nuniform float u_hazeDebug;\nuniform float u_chromAmount;\nuniform float u_edgeGlowAmount;",
   )
   .replace(
     "  vec2 uv = gl_FragCoord.xy / u_res;",
@@ -573,11 +573,11 @@ const lensFrag = frag
   )
   .replace(
     "  vec2 uvRefracted = uv + lensOffset * lensWarp;",
-    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float sdfVal = texture2D(u_sdf, uv).r;\n  float edgeDist = abs(sdfVal - 0.5) * 2.0;\n  float hazeMask = 1.0 - smoothstep(0.0, 0.35, edgeDist);\n  float hazeAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAngle) * cos(hazeAngle2),\n    cos(hazeAngle * 0.8) * sin(hazeAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * u_hazeAmount;",
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float sdfVal = texture2D(u_sdf, uv).r;\n  float edgeDist = abs(sdfVal - 0.5) * 2.0;\n  float hazeMask = 1.0 - smoothstep(0.0, 0.35, edgeDist);\n  float hazeAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAngle) * cos(hazeAngle2),\n    cos(hazeAngle * 0.8) * sin(hazeAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * u_hazeAmount;\n  vec2 chromDir = normalize(hazeOffset + vec2(0.001));",
   )
   .replace(
     "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
-    "  if (u_hazeDebug > 0.5) {\n    gl_FragColor = vec4(vec3(hazeMask), 1.0);\n    return;\n  }\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
+    "  vec3 finalCol = clamp(col, 0.0, 1.0);\n  float chromShift = hazeMask * u_chromAmount * 0.15;\n  finalCol.r = finalCol.r * (1.0 + chromShift * 0.5);\n  finalCol.b = finalCol.b * (1.0 - chromShift * 0.3);\n  finalCol.g = mix(finalCol.g, (finalCol.r + finalCol.b) * 0.5, chromShift * 0.2);\n  float glowPulse = 0.5 + 0.5 * sin(u_time * u_hazeSpeed * 2.0);\n  float edgeGlow = hazeMask * u_edgeGlowAmount * (0.6 + 0.4 * glowPulse);\n  finalCol += edgeGlow * vec3(1.0, 0.85, 0.6);\n  finalCol = clamp(finalCol, 0.0, 1.0);\n  if (u_hazeDebug > 0.5) {\n    vec2 cd = normalize(hazeOffset + vec2(0.001));\n    gl_FragColor = vec4(hazeMask * abs(cd.x), hazeMask, hazeMask * abs(cd.y), 1.0);\n    return;\n  }\n  gl_FragColor = vec4(finalCol, 1.0);",
   );
 console.log("[SDF] lensFrag includes u_sdf:", lensFrag.includes("u_sdf"));
 console.log("[SDF] lensFrag includes hazeOffset:", lensFrag.includes("hazeOffset"));
@@ -864,6 +864,8 @@ let hazeSpeed = 1.0;
 let hazeScale = 1.0;
 let hazeAmount = 0.05;
 let hazeDebug = false;
+let chromAmount = 0.5;
+let edgeGlowAmount = 0.3;
 let sandDissolve = 0.6;
 let sandSize = 1.0;
 let sandSpeed = 1.0;
@@ -1475,6 +1477,28 @@ appendSoundSlider(
   },
   "hazeAmount",
 );
+appendSoundSlider(
+  "chrom amount",
+  0,
+  1,
+  0.01,
+  () => chromAmount,
+  (v) => {
+    chromAmount = v;
+  },
+  "chromAmount",
+);
+appendSoundSlider(
+  "edge glow",
+  0,
+  1,
+  0.01,
+  () => edgeGlowAmount,
+  (v) => {
+    edgeGlowAmount = v;
+  },
+  "edgeGlowAmount",
+);
 const hazeDebugRow = document.createElement("div");
 hazeDebugRow.className = "tweak-row";
 const hazeDebugHead = document.createElement("div");
@@ -1753,6 +1777,8 @@ function refreshPanelFromState() {
     else if (k === "hazeSpeed") v = hazeSpeed;
     else if (k === "hazeScale") v = hazeScale;
     else if (k === "hazeAmount") v = hazeAmount;
+    else if (k === "chromAmount") v = chromAmount;
+    else if (k === "edgeGlowAmount") v = edgeGlowAmount;
     else if (k === "sandDissolve") v = sandDissolve;
     else if (k === "sandSize") v = sandSize;
     else if (k === "sandSpeed") v = sandSpeed;
@@ -1789,6 +1815,8 @@ function getCurrentSettings() {
     hazeScale,
     hazeAmount,
     hazeDebug,
+    chromAmount,
+    edgeGlowAmount,
     sandDissolve,
     sandSize,
     sandSpeed,
@@ -1874,6 +1902,10 @@ function applySettings(o) {
   if (n(o.hazeAmount))
     hazeAmount = Math.max(0, Math.min(0.3, o.hazeAmount));
   if (typeof o.hazeDebug === "boolean") hazeDebug = o.hazeDebug;
+  if (n(o.chromAmount))
+    chromAmount = Math.max(0, Math.min(1, o.chromAmount));
+  if (n(o.edgeGlowAmount))
+    edgeGlowAmount = Math.max(0, Math.min(1, o.edgeGlowAmount));
   if (n(o.sandDissolve))
     sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
   if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
@@ -2854,6 +2886,8 @@ function frame(t){
     setLens1f("u_hazeScale", hazeScale);
     setLens1f("u_hazeAmount", hazeAmount);
     setLens1f("u_hazeDebug", hazeDebug ? 1.0 : 0.0);
+    setLens1f("u_chromAmount", chromAmount);
+    setLens1f("u_edgeGlowAmount", edgeGlowAmount);
     if (lensSdfTexture) {
       lensGl.activeTexture(lensGl.TEXTURE0);
       lensGl.bindTexture(lensGl.TEXTURE_2D, lensSdfTexture);
