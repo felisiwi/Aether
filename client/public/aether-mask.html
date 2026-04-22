@@ -59,7 +59,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   flex-wrap: wrap;
   margin-top: 4px;
 }
-#logo-color-row {
+#logo-color-row,
+#logo-layer-toggle-row {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
@@ -88,7 +89,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   border: 1px solid rgba(255,100,40,0.4);
   cursor: pointer;
 }
-#logo-color-row button {
+#logo-color-row button,
+#logo-layer-toggle-row button {
   flex: 1;
   min-width: 0;
   padding: 4px 2px;
@@ -108,7 +110,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
-#logo-color-row button.selected {
+#logo-color-row button.selected,
+#logo-layer-toggle-row button.selected {
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
@@ -198,7 +201,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   <canvas id="lens-canvas" style="
   position:absolute;
   top:50%;left:50%;
-  transform:translate(-50%,-50%) scaleY(-1);
+  transform:translate(-50%,-50%);
   width:100%;
   aspect-ratio:2096/495;
   -webkit-mask-image:url('/aether_logo_white.png');
@@ -214,7 +217,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   will-change:opacity;
   z-index:0;
 "></canvas>
-  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0;will-change:opacity,background;"></div>
+  <div id="logo-layer" style="width:100%;height:100%;-webkit-mask-image:url('/aether_logo_white.png');mask-image:url('/aether_logo_white.png');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% auto;mask-size:100% auto;background-color:#ffffff;opacity:0.15;will-change:opacity,background;"></div>
   <canvas id="sand-canvas" style="
   position:absolute;
   top:50%;left:50%;
@@ -558,6 +561,10 @@ const lensFrag = frag
     "uniform float u_splatAge;\nuniform float u_lensStrength;",
   )
   .replace(
+    "  vec2 uv = gl_FragCoord.xy / u_res;",
+    "  vec2 uv = vec2(gl_FragCoord.x / u_res.x, 1.0 - gl_FragCoord.y / u_res.y);",
+  )
+  .replace(
     "  vec2 uvRefracted = uv;",
     "  vec2 lensCenter = vec2(0.5, 0.5);\n  vec2 lensOffset = uv - lensCenter;\n  float lensDist = length(lensOffset);\n  float lensWarp = u_lensStrength * (1.0 - exp(-lensDist * 3.0));\n  vec2 uvRefracted = uv + lensOffset * lensWarp;",
   );
@@ -795,6 +802,9 @@ let sympatheticMix = 0.15;
 let logoBrightness = 0.15;
 let logoChromatic = 0;
 let logoColor = "white";
+let logoVideoEnabled = true;
+let logoLensEnabled = true;
+let logoColourEnabled = true;
 let logoProximity = 1;
 let logoSoundReact = 1;
 let logoWaveWarp = 1;
@@ -1265,6 +1275,52 @@ logoColorWrap.appendChild(logoColorBlackBtn);
 logoColorWrap.appendChild(logoColorWhiteBtn);
 logoColorRow.appendChild(logoColorWrap);
 panel.appendChild(logoColorRow);
+const logoLayerToggleRow = document.createElement("div");
+logoLayerToggleRow.className = "tweak-row";
+const logoLayerToggleHead = document.createElement("div");
+logoLayerToggleHead.className = "tweak-head";
+const logoLayerToggleLab = document.createElement("span");
+logoLayerToggleLab.className = "tweak-label";
+logoLayerToggleLab.textContent = "logo layers";
+logoLayerToggleHead.appendChild(logoLayerToggleLab);
+logoLayerToggleRow.appendChild(logoLayerToggleHead);
+const logoLayerToggleWrap = document.createElement("div");
+logoLayerToggleWrap.id = "logo-layer-toggle-row";
+const logoVideoBtn = document.createElement("button");
+logoVideoBtn.type = "button";
+logoVideoBtn.textContent = "VIDEO ON";
+const logoLensBtn = document.createElement("button");
+logoLensBtn.type = "button";
+logoLensBtn.textContent = "LENS ON";
+const logoColourBtn = document.createElement("button");
+logoColourBtn.type = "button";
+logoColourBtn.textContent = "COLOUR ON";
+function syncLogoLayerToggleButtons() {
+  logoVideoBtn.classList.toggle("selected", logoVideoEnabled);
+  logoVideoBtn.textContent = logoVideoEnabled ? "VIDEO ON" : "VIDEO OFF";
+  logoLensBtn.classList.toggle("selected", logoLensEnabled);
+  logoLensBtn.textContent = logoLensEnabled ? "LENS ON" : "LENS OFF";
+  logoColourBtn.classList.toggle("selected", logoColourEnabled);
+  logoColourBtn.textContent = logoColourEnabled ? "COLOUR ON" : "COLOUR OFF";
+}
+logoVideoBtn.addEventListener("click", () => {
+  logoVideoEnabled = !logoVideoEnabled;
+  syncLogoLayerToggleButtons();
+});
+logoLensBtn.addEventListener("click", () => {
+  logoLensEnabled = !logoLensEnabled;
+  syncLogoLayerToggleButtons();
+});
+logoColourBtn.addEventListener("click", () => {
+  logoColourEnabled = !logoColourEnabled;
+  syncLogoLayerToggleButtons();
+});
+syncLogoLayerToggleButtons();
+logoLayerToggleWrap.appendChild(logoVideoBtn);
+logoLayerToggleWrap.appendChild(logoLensBtn);
+logoLayerToggleWrap.appendChild(logoColourBtn);
+logoLayerToggleRow.appendChild(logoLayerToggleWrap);
+panel.appendChild(logoLayerToggleRow);
 appendSoundSlider(
   "logo proximity",
   0,
@@ -2401,6 +2457,14 @@ function frame(t){
     logoPresence += (0.0 - logoPresence) * 0.03;
   }
   const logoEl = document.getElementById('logo-layer');
+  const logoVideoStageEl = document.getElementById("logo-video-stage");
+  if (logoVideoStageEl) {
+    const targetDisplay = logoVideoEnabled ? "flex" : "none";
+    if (logoVideoStageEl._lastDisplay !== targetDisplay) {
+      logoVideoStageEl._lastDisplay = targetDisplay;
+      logoVideoStageEl.style.display = targetDisplay;
+    }
+  }
   if (logoEl && logoWrapEl) {
     const mouseDistFromCenter = Math.sqrt(
       Math.pow((mx / window.innerWidth) - 0.5, 2) +
@@ -2409,9 +2473,10 @@ function frame(t){
       Math.pow(Math.max(0, 1 - mouseDistFromCenter / 0.6), 2)
       * 0.8 * logoProximity;
     const soundBoost = noteFlash * 0.4 * logoSoundReact;
-    const finalOpacity = Math.min(0.97,
+    const finalOpacityRaw = Math.min(0.97,
       (logoPresence * 0.9 + proximityBoost + soundBoost)
       * logoBrightness * 4.0);
+    const finalOpacity = logoColourEnabled ? finalOpacityRaw : 0;
     if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
       logoEl._lastOp = finalOpacity.toFixed(3);
       logoEl.style.opacity = finalOpacity.toFixed(3);
@@ -2627,6 +2692,7 @@ function frame(t){
   if (
     lensGl &&
     lensProgram &&
+    logoLensEnabled &&
     lensStrength > 0 &&
     lensCanvas &&
     lensCanvas.width > 0 &&
@@ -2637,8 +2703,8 @@ function frame(t){
     const lsy = lensCanvas.height / window.innerHeight;
     setLens2f("u_res", lensCanvas.width, lensCanvas.height);
     setLens1f("u_time", t * 0.001);
-    setLens2f("u_mouse", mx * lsx, lensCanvas.height - my * lsy);
-    setLens2f("u_mouse2", mx2 * lsx, lensCanvas.height - my2 * lsy);
+    setLens2f("u_mouse", mx * lsx, my * lsy);
+    setLens2f("u_mouse2", mx2 * lsx, my2 * lsy);
     setLens1f("u_idle", idleBreath);
     setLens1f("u_activeBand", clampedBand);
     setLens1f("u_mouseX", mouseX);
