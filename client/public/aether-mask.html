@@ -651,8 +651,18 @@ if (lensGl) {
   lensProgram = lensGl.createProgram();
   lensGl.attachShader(lensProgram, lensShader(lensGl.VERTEX_SHADER, vert));
   lensGl.attachShader(lensProgram, lensShader(lensGl.FRAGMENT_SHADER, lensFrag));
+  console.log("[SDF] lensFrag preview:", lensFrag.substring(0, 200));
   lensGl.linkProgram(lensProgram);
   if (!lensGl.getProgramParameter(lensProgram, lensGl.LINK_STATUS)) {
+    console.error("[SDF] lens program LINK failed:", lensGl.getProgramInfoLog(lensProgram));
+    const shaders = lensGl.getAttachedShaders(lensProgram);
+    if (shaders) {
+      shaders.forEach((s, i) => {
+        if (!lensGl.getShaderParameter(s, lensGl.COMPILE_STATUS)) {
+          console.error("[SDF] lens shader", i, "COMPILE failed:", lensGl.getShaderInfoLog(s));
+        }
+      });
+    }
     lensProgram = null;
   } else {
     lensGl.useProgram(lensProgram);
