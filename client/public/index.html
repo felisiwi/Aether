@@ -660,9 +660,10 @@ let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
 let sympatheticMix = 0.15;
 let logoBrightness = 0.15;
-let logoSize = 55;
+let logoSize = 96;
 let logoChromatic = 0;
 let logoColor = "white";
+let logoOverlayBlend = true;
 let logoLensEnabled = true;
 let logoColourEnabled = true;
 let logoProximity = 1;
@@ -690,6 +691,14 @@ function noteFreqForBand(bandIndex) {
   const keyMult = Math.pow(2, rootKeySemitones / 12);
   const octaveMult = Math.pow(2, baseOctave - 3);
   return currentScale[degree] * scrollFreqMult * keyMult * octaveMult;
+}
+
+function applyLogoSize() {
+  if (!logoWrapEl) return;
+  const logoH = Math.max(10, logoSize);
+  const logoW = logoH * 2096 / 495;
+  logoWrapEl.style.height = logoH + "px";
+  logoWrapEl.style.width = logoW + "px";
 }
 
 currentFreq = noteFreqForBand(4);
@@ -1138,12 +1147,12 @@ appendSoundSlider(
 appendSoundSlider(
   "logo size",
   10,
-  100,
+  400,
   1,
   () => logoSize,
   (v) => {
     logoSize = v;
-    if (logoWrapEl) logoWrapEl.style.width = logoSize + "vw";
+    applyLogoSize();
     resize();
   },
   "logoSize",
@@ -1182,6 +1191,40 @@ logoColorWrap.appendChild(logoColorBlackBtn);
 logoColorWrap.appendChild(logoColorWhiteBtn);
 logoColorRow.appendChild(logoColorWrap);
 panel.appendChild(logoColorRow);
+const logoBlendRow = document.createElement("div");
+logoBlendRow.className = "tweak-row";
+const logoBlendHead = document.createElement("div");
+logoBlendHead.className = "tweak-head";
+const logoBlendLab = document.createElement("span");
+logoBlendLab.className = "tweak-label";
+logoBlendLab.textContent = "logo blend";
+logoBlendHead.appendChild(logoBlendLab);
+logoBlendRow.appendChild(logoBlendHead);
+const logoBlendWrap = document.createElement("div");
+logoBlendWrap.id = "logo-layer-toggle-row";
+const logoBlendOnBtn = document.createElement("button");
+logoBlendOnBtn.type = "button";
+logoBlendOnBtn.textContent = "OVERLAY ON";
+const logoBlendOffBtn = document.createElement("button");
+logoBlendOffBtn.type = "button";
+logoBlendOffBtn.textContent = "OVERLAY OFF";
+function syncLogoBlendButtons() {
+  logoBlendOnBtn.classList.toggle("selected", logoOverlayBlend);
+  logoBlendOffBtn.classList.toggle("selected", !logoOverlayBlend);
+}
+logoBlendOnBtn.addEventListener("click", () => {
+  logoOverlayBlend = true;
+  syncLogoBlendButtons();
+});
+logoBlendOffBtn.addEventListener("click", () => {
+  logoOverlayBlend = false;
+  syncLogoBlendButtons();
+});
+syncLogoBlendButtons();
+logoBlendWrap.appendChild(logoBlendOnBtn);
+logoBlendWrap.appendChild(logoBlendOffBtn);
+logoBlendRow.appendChild(logoBlendWrap);
+panel.appendChild(logoBlendRow);
 const logoLayerToggleRow = document.createElement("div");
 logoLayerToggleRow.className = "tweak-row";
 const logoLayerToggleHead = document.createElement("div");
@@ -1471,6 +1514,7 @@ function getCurrentSettings() {
     logoBrightness,
     logoSize,
     logoColor,
+    logoOverlayBlend,
     logoProximity,
     logoSoundReact,
     logoChromatic,
@@ -1541,11 +1585,12 @@ function applySettings(o) {
   if (n(o.glowIntensity)) glowIntensity = o.glowIntensity;
   if (n(o.logoBrightness)) logoBrightness = o.logoBrightness;
   if (n(o.logoSize)) {
-    logoSize = Math.max(10, Math.min(100, Math.round(o.logoSize)));
-    if (logoWrapEl) logoWrapEl.style.width = logoSize + "vw";
+    logoSize = Math.max(10, Math.min(400, Math.round(o.logoSize)));
+    applyLogoSize();
     resize();
   }
   if (o.logoColor === "black" || o.logoColor === "white") logoColor = o.logoColor;
+  if (typeof o.logoOverlayBlend === "boolean") logoOverlayBlend = o.logoOverlayBlend;
   if (n(o.logoProximity)) logoProximity = o.logoProximity;
   if (n(o.logoSoundReact)) logoSoundReact = o.logoSoundReact;
   if (n(o.logoChromatic)) logoChromatic = o.logoChromatic;
@@ -1574,6 +1619,7 @@ function applySettings(o) {
   syncGravityToggleButtons();
   syncHangDrumToggleButtons();
   syncLogoColorButtons();
+  syncLogoBlendButtons();
   syncPerfThrottleButtons();
   syncPerfSoundButtons();
   syncMasterGainFromSoundEnabled();
@@ -2001,14 +2047,16 @@ function resize(){
   canvas.height=window.innerHeight * devicePixelRatio * renderScale;
   gl.viewport(0,0,canvas.width,canvas.height);
   if (lensCanvas && lensGl) {
-    const lw = Math.round(window.innerWidth * (logoSize / 100));
-    const lh = Math.round(lw * 495 / 2096);
+    const lh = Math.round(Math.max(10, logoSize));
+    const lw = Math.round(lh * 2096 / 495);
     lensCanvas.width = lw;
     lensCanvas.height = lh;
     lensGl.viewport(0, 0, lw, lh);
   }
 }
-window.addEventListener("resize",resize);resize();
+window.addEventListener("resize",resize);
+applyLogoSize();
+resize();
 window.addEventListener(
   "wheel",
   (e) => {
@@ -2160,9 +2208,6 @@ function frame(t){
     (sustainLevel+sustainBoostLogo)*sustainFadeLogo;
   const logoEl = document.getElementById('logo-layer');
   if (logoEl && logoWrapEl) {
-    const mouseDistFromCenter = Math.sqrt(
-      Math.pow((mx / window.innerWidth) - 0.5, 2) +
-      Math.pow((my / window.innerHeight) - 0.5, 2));
     const finalOpacityRaw = logoBrightness;
     const finalOpacity = logoColourEnabled ? finalOpacityRaw : 0;
     if (logoEl._lastOp !== finalOpacity.toFixed(3)) {
@@ -2172,6 +2217,7 @@ function frame(t){
     logoEl.style.setProperty('background-color',
       logoColor === 'black' ? '#000000' : '#ffffff',
       'important');
+    logoEl.style.mixBlendMode = logoOverlayBlend ? "overlay" : "normal";
     const waveShift = smoothVelocity * 0.8 * logoWaveWarp;
     const waveScale = 1.0 + (smoothVelocity * 0.003
       * logoWaveWarp);
