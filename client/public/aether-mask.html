@@ -53,7 +53,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   margin-top: 4px;
 }
 #perf-throttle-row,
-#perf-sound-row {
+#perf-sound-row,
+#haze-debug-row {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
@@ -78,7 +79,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   cursor: pointer;
 }
 #perf-throttle-row button,
-#perf-sound-row button {
+#perf-sound-row button,
+#haze-debug-row button {
   flex: 1;
   min-width: 0;
   padding: 4px 2px;
@@ -106,7 +108,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   color: #fff;
 }
 #perf-throttle-row button.selected,
-#perf-sound-row button.selected {
+#perf-sound-row button.selected,
+#haze-debug-row button.selected {
   background: rgba(255,100,40,0.35);
   color: #fff;
 }
@@ -558,7 +561,7 @@ const lensGl = lensCanvas
 const lensFrag = frag
   .replace(
     "uniform float u_splatAge;",
-    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;",
+    "uniform float u_splatAge;\nuniform float u_lensStrength;\nuniform sampler2D u_sdf;\nuniform float u_hazeStrength;\nuniform float u_hazeSpeed;\nuniform float u_hazeScale;\nuniform float u_hazeAmount;\nuniform float u_hazeDebug;",
   )
   .replace(
     "  vec2 uv = gl_FragCoord.xy / u_res;",
@@ -570,8 +573,14 @@ const lensFrag = frag
   )
   .replace(
     "  vec2 uvRefracted = uv + lensOffset * lensWarp;",
-    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float sdfVal = texture2D(u_sdf, uv).r;\n  float edgeDist = abs(sdfVal - 0.5) * 2.0;\n  float hazeMask = 1.0 - smoothstep(0.0, 0.35, edgeDist);\n  float hazeAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAngle) * cos(hazeAngle2),\n    cos(hazeAngle * 0.8) * sin(hazeAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * 0.02;",
+    "  vec2 uvRefracted = uv + lensOffset * lensWarp;\n  float sdfVal = texture2D(u_sdf, uv).r;\n  float edgeDist = abs(sdfVal - 0.5) * 2.0;\n  float hazeMask = 1.0 - smoothstep(0.0, 0.35, edgeDist);\n  float hazeAngle = uv.x * u_hazeScale * 20.0 + u_time * u_hazeSpeed;\n  float hazeAngle2 = uv.y * u_hazeScale * 15.0 - u_time * u_hazeSpeed * 0.7;\n  vec2 hazeOffset = vec2(\n    sin(hazeAngle) * cos(hazeAngle2),\n    cos(hazeAngle * 0.8) * sin(hazeAngle2 * 1.2)\n  );\n  uvRefracted += hazeOffset * hazeMask * u_hazeStrength * u_hazeAmount;",
+  )
+  .replace(
+    "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
+    "  if (u_hazeDebug > 0.5) {\n    gl_FragColor = vec4(vec3(hazeMask), 1.0);\n    return;\n  }\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
   );
+console.log("[SDF] lensFrag includes u_sdf:", lensFrag.includes("u_sdf"));
+console.log("[SDF] lensFrag includes hazeOffset:", lensFrag.includes("hazeOffset"));
 let lensProgram = null;
 const lensUniformLoc = {};
 let lensSdfTexture = null;
@@ -606,9 +615,12 @@ function setLens1i(name, v) {
 function initLensSdfTexture() {
   if (!lensGl || !lensProgram) return;
   const sdfImg = new Image();
+  console.log("[SDF] loading image...");
   sdfImg.onload = () => {
     if (!lensGl || !lensProgram) return;
+    console.log("[SDF] image loaded", sdfImg.width, sdfImg.height);
     const tex = lensGl.createTexture();
+    const textureUnit = 0;
     lensGl.activeTexture(lensGl.TEXTURE0);
     lensGl.bindTexture(lensGl.TEXTURE_2D, tex);
     lensGl.pixelStorei(lensGl.UNPACK_FLIP_Y_WEBGL, true);
@@ -625,8 +637,13 @@ function initLensSdfTexture() {
       sdfImg,
     );
     lensSdfTexture = tex;
+    console.log("[SDF] texture uploaded to unit", textureUnit);
     lensGl.useProgram(lensProgram);
     setLens1i("u_sdf", 0);
+    console.log(
+      "[SDF] u_sdf uniform location:",
+      getLensUniform("u_sdf"),
+    );
   };
   sdfImg.src = "/aether_logo_sdf.png";
 }
@@ -845,6 +862,8 @@ let lensStrength = 0.15;
 let hazeStrength = 0.5;
 let hazeSpeed = 1.0;
 let hazeScale = 1.0;
+let hazeAmount = 0.05;
+let hazeDebug = false;
 let sandDissolve = 0.6;
 let sandSize = 1.0;
 let sandSpeed = 1.0;
@@ -1446,6 +1465,43 @@ appendSoundSlider(
   "hazeScale",
 );
 appendSoundSlider(
+  "haze amount",
+  0,
+  0.3,
+  0.01,
+  () => hazeAmount,
+  (v) => {
+    hazeAmount = v;
+  },
+  "hazeAmount",
+);
+const hazeDebugRow = document.createElement("div");
+hazeDebugRow.className = "tweak-row";
+const hazeDebugHead = document.createElement("div");
+hazeDebugHead.className = "tweak-head";
+const hazeDebugLab = document.createElement("span");
+hazeDebugLab.className = "tweak-label";
+hazeDebugLab.textContent = "haze debug";
+hazeDebugHead.appendChild(hazeDebugLab);
+hazeDebugRow.appendChild(hazeDebugHead);
+const hazeDebugWrap = document.createElement("div");
+hazeDebugWrap.id = "haze-debug-row";
+const hazeDebugBtn = document.createElement("button");
+hazeDebugBtn.type = "button";
+hazeDebugBtn.textContent = "HAZE DEBUG OFF";
+function syncHazeDebugButton() {
+  hazeDebugBtn.classList.toggle("selected", hazeDebug);
+  hazeDebugBtn.textContent = hazeDebug ? "HAZE DEBUG ON" : "HAZE DEBUG OFF";
+}
+hazeDebugBtn.addEventListener("click", () => {
+  hazeDebug = !hazeDebug;
+  syncHazeDebugButton();
+});
+syncHazeDebugButton();
+hazeDebugWrap.appendChild(hazeDebugBtn);
+hazeDebugRow.appendChild(hazeDebugWrap);
+panel.appendChild(hazeDebugRow);
+appendSoundSlider(
   "logo sand",
   0,
   3,
@@ -1696,6 +1752,7 @@ function refreshPanelFromState() {
     else if (k === "hazeStrength") v = hazeStrength;
     else if (k === "hazeSpeed") v = hazeSpeed;
     else if (k === "hazeScale") v = hazeScale;
+    else if (k === "hazeAmount") v = hazeAmount;
     else if (k === "sandDissolve") v = sandDissolve;
     else if (k === "sandSize") v = sandSize;
     else if (k === "sandSpeed") v = sandSpeed;
@@ -1730,6 +1787,8 @@ function getCurrentSettings() {
     hazeStrength,
     hazeSpeed,
     hazeScale,
+    hazeAmount,
+    hazeDebug,
     sandDissolve,
     sandSize,
     sandSpeed,
@@ -1812,6 +1871,9 @@ function applySettings(o) {
     hazeSpeed = Math.max(0, Math.min(5, o.hazeSpeed));
   if (n(o.hazeScale))
     hazeScale = Math.max(0.1, Math.min(3, o.hazeScale));
+  if (n(o.hazeAmount))
+    hazeAmount = Math.max(0, Math.min(0.3, o.hazeAmount));
+  if (typeof o.hazeDebug === "boolean") hazeDebug = o.hazeDebug;
   if (n(o.sandDissolve))
     sandDissolve = Math.max(0, Math.min(3, o.sandDissolve));
   if (n(o.sandSize)) sandSize = Math.max(0.1, Math.min(5, o.sandSize));
@@ -1845,6 +1907,7 @@ function applySettings(o) {
   syncGravityToggleButtons();
   syncHangDrumToggleButtons();
   syncLogoColorButtons();
+  syncHazeDebugButton();
   syncPerfThrottleButtons();
   syncPerfSoundButtons();
   syncMasterGainFromSoundEnabled();
@@ -2789,11 +2852,19 @@ function frame(t){
     setLens1f("u_hazeStrength", hazeStrength);
     setLens1f("u_hazeSpeed", hazeSpeed);
     setLens1f("u_hazeScale", hazeScale);
+    setLens1f("u_hazeAmount", hazeAmount);
+    setLens1f("u_hazeDebug", hazeDebug ? 1.0 : 0.0);
     if (lensSdfTexture) {
       lensGl.activeTexture(lensGl.TEXTURE0);
       lensGl.bindTexture(lensGl.TEXTURE_2D, lensSdfTexture);
       setLens1i("u_sdf", 0);
     }
+    console.log(
+      "[SDF] hazeStrength:",
+      hazeStrength,
+      "bound texture:",
+      !!lensSdfTexture,
+    );
     setLens1f("u_idle", idleBreath);
     setLens1f("u_activeBand", clampedBand);
     setLens1f("u_mouseX", mouseX);
