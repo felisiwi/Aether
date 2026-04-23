@@ -1,0 +1,61 @@
+---
+# Aether — Cursor Agent Rules
+
+## Role
+You are the Aether agent. You write and edit code in the Aether app repo only.
+Claude (external chat) handles strategy, architecture, and prompt writing.
+You implement. You do not make architectural decisions without being told to.
+
+## Repo
+- Path: /Users/felix/GitHub/Aether
+- Active branch: ui-redesign-v2
+- Client: client/src/ (React/TypeScript/Vite)
+- Server: server/ (Node/Express/WebSocket)
+
+## What you touch
+- client/src/ — React components, hooks, lib, contexts
+- server/ — server-side logic
+- vendor/DesignSystem/src/ — ONLY via vendor-cp shell function after DS agent commits. Never edit vendor files directly.
+
+## What you never touch
+- vendor/DesignSystem/src/ directly — DS source is truth, not vendor
+- Any file outside client/src/ or server/ unless explicitly instructed
+
+## Git rules — CRITICAL
+- NEVER use git add -A — always stage specific files only
+- Always use --no-verify: git commit --no-verify
+- Never commit without running npx tsc --noEmit first (zero errors required)
+- Commit message format: "fix: description" or "feat: description"
+
+## Immutable constraints — never change these
+- WebRTC data channel: ordered: false, maxRetransmits: 0
+- CC11 breath control: always callbackRef pattern, never useState
+- localStorage keys: jamlink_user and jamlink_theme — never rename
+- themeTokens keys: purple/pink/green/blue — never rename to components/bubbleGum/developedComponents/prototypes
+
+## Token rules
+- No hardcoded hex values — use semantic tokens from design-tokens.ts
+- themeTokens keys are purple/pink/green/blue (human-readable, not Figma internal names)
+- GUARD comments exist in design-tokens.ts and theme-map.ts — never remove or work around them
+
+## Vendor sync workflow
+The shell aliases vendor-cp, aether-tsc, aether-sync exist in ~/.zshrc.
+Felix runs these manually. You do not run them. You only commit your own files.
+After your commit, report: files changed, commit hash, and any vendor-cp paths Felix needs to run.
+
+## Instrument
+Roland Aerophone AE-1 Mini. Hardware transposes +6 semitones — app default transpose is -6.
+
+## Deploy
+Vercel (client) + Railway (server). Deploys from main branch.
+Current work is on ui-redesign-v2 — not yet merged or deployed.
+
+## Code extraction / porting — CRITICAL
+When extracting or porting logic from an existing file into a new architecture (e.g. static HTML → React component, vanilla JS → TypeScript module):
+- Copy source logic verbatim — do not rewrite, simplify, or approximate
+- Shaders, audio code, math, state machines, and complex logic must be character-for-character identical
+- Only structural adaptation is allowed: replacing DOM queries with refs, wrapping in lifecycle hooks, adding TypeScript types, removing explicitly listed dead code
+- Never use eval, new Function(), or string embedding to run extracted code — convert it to direct module code
+- If the source is too large to handle in one pass, say so and ask to break the task into smaller steps
+- Never silently substitute a simplified version — a wrong implementation that type-checks is worse than an error
+---

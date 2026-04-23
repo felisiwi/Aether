@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "../../tokens/dark-marketing-surface.css";
 import logoUrl from "../../assets/aetherlogo.svg";
 import { LandingPageLink } from "../landingpagelink/LandingPageLink.1.1.0";
 import type { LandingPageLinkState } from "../landingpagelink/LandingPageLink.1.1.0";
@@ -139,7 +140,12 @@ export const LandingComponent: React.FC<LandingComponentProps> = ({
   const bindRightWrapper = !isControlled && !isLeftActive;
 
   return (
-    <section className={className} style={shellStyle} aria-label="Aether Studios landing">
+    <section
+      className={className}
+      style={shellStyle}
+      aria-label="Aether Studios landing"
+      {...{ "data-ds-dark-surface": "" }}
+    >
       <div style={rowStyle}>
         {isRightActive ? (
           <div style={sideColumnShell(false)}>
@@ -158,7 +164,7 @@ export const LandingComponent: React.FC<LandingComponentProps> = ({
                 pageLink="play."
                 hoverMessage="Enter"
                 state={leftLinkState}
-                to={leftLinkState === "Hover" ? "/play" : undefined}
+                to="/play"
                 onMouseEnter={bindLeftWrapper ? () => setZone("leftLink") : undefined}
                 onMouseLeave={bindLeftWrapper ? () => setZone("leftWrap") : undefined}
               />
@@ -179,10 +185,13 @@ export const LandingComponent: React.FC<LandingComponentProps> = ({
               maskSize: "contain",
               maskRepeat: "no-repeat",
               maskPosition: "center",
+              maskMode: "alpha",
               WebkitMaskImage: `url(${logoUrl})`,
               WebkitMaskSize: "contain",
               WebkitMaskRepeat: "no-repeat",
               WebkitMaskPosition: "center",
+              transition: "background-color 1200ms ease-in-out",
+              ...( { WebkitMaskSourceType: "alpha" } as React.CSSProperties ),
             }}
           />
         </div>

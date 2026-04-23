@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import {
   colors,
   semanticColors,
@@ -14,6 +15,8 @@ import {
   applyPatchStateToSynth,
   DEFAULT_PATCH_STATE,
 } from './lib/patchApply'
+import Landing from './pages/Landing'
+import Explore from './pages/Explore'
 import Login from './pages/Login'
 import Lobby from './pages/Lobby'
 import JamRoomPage from './pages/JamRoom'
@@ -245,9 +248,9 @@ function Session({
   )
 }
 
-// ─── App root ────────────────────────────────────────────────────
+// ─── Play page (the synth app — Login → Session flow) ───────────
 
-export default function App() {
+function PlayPage() {
   const [page, setPage] = useState<'login' | 'session'>(() =>
     localStorage.getItem('aether_user') ? 'session' : 'login',
   )
@@ -273,4 +276,16 @@ export default function App() {
   }
 
   return <Session username={username} mode={mode} onLogout={handleLogout} />
+}
+
+// ─── App root ────────────────────────────────────────────────────
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/play/*" element={<PlayPage />} />
+      <Route path="/explore" element={<Explore />} />
+    </Routes>
+  )
 }

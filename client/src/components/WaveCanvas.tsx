@@ -1,0 +1,1249 @@
+// @ts-nocheck
+import { useEffect, useMemo, useRef } from 'react'
+import type { CSSProperties } from 'react'
+
+export type PresetConfig = {
+  scale: string
+  rootKeySemitones: number
+  baseOctave: number
+  glowSize: number
+  glowIntensity: number
+  u_trailLag: number
+  u_warpStrength: number
+  u_noiseAmount: number
+  u_darkness: number
+  u_waveCount: number
+  u_waveFreq: number
+  u_waveSpeed: number
+  u_waveParallax: number
+  u_rippleStrength: number
+  u_flickerSpeed: number
+  u_flickerAmount: number
+  u_waveSharpness: number
+  u_waveBrightness: number
+  u_waveGlow: number
+  u_waveTemp: number
+  u_waveSpacing: number
+  u_waveAlt: number
+  u_mouseRadius: number
+  releaseTime: number
+  velocityThreshold: number
+  sustainLevel: number
+  deadZoneSize: number
+  portamentoSensitivity: number
+  vibratoDepthControl: number
+  vibratoSpeedControl: number
+  gravityStrength: number
+  gravityEnabled: boolean
+  octaveMix: number
+  sympatheticMix: number
+  hangDrumEnabled: boolean
+  targetScrollSemitones: number
+  fpsCap: number
+  renderScale: number
+  idleThrottle: boolean
+  soundEnabled: boolean
+}
+
+export const DAY_PRESET: PresetConfig = {
+  scale: "Major",
+  rootKeySemitones: 0,
+  baseOctave: 2,
+  glowSize: 0.4,
+  glowIntensity: 1.6,
+  u_trailLag: 0.15,
+  u_warpStrength: 0.85,
+  u_noiseAmount: 1,
+  u_darkness: 0.073,
+  u_waveCount: 12,
+  u_waveFreq: 0.3,
+  u_waveSpeed: 0.5,
+  u_waveParallax: 3,
+  u_rippleStrength: 1.3,
+  u_flickerSpeed: 2.2,
+  u_flickerAmount: 0.115,
+  u_waveSharpness: 1880,
+  u_waveBrightness: 0.16,
+  u_waveGlow: 2,
+  u_waveTemp: 0.81,
+  u_waveSpacing: 0.9,
+  u_waveAlt: 0.45,
+  u_mouseRadius: 0.12,
+  releaseTime: 1.1,
+  velocityThreshold: 4.5,
+  sustainLevel: 0.72,
+  deadZoneSize: 0.35,
+  portamentoSensitivity: 0.52,
+  vibratoDepthControl: 1.65,
+  vibratoSpeedControl: 1.5,
+  gravityStrength: 1,
+  gravityEnabled: true,
+  octaveMix: 1,
+  sympatheticMix: 0.38,
+  hangDrumEnabled: true,
+  targetScrollSemitones: 12,
+  fpsCap: 25,
+  renderScale: 0.5,
+  idleThrottle: true,
+  soundEnabled: true,
+}
+
+export const NIGHT_PRESET: PresetConfig = {
+  scale: "Dorian",
+  rootKeySemitones: 10,
+  baseOctave: 1,
+  glowSize: 0.4,
+  glowIntensity: 1.6,
+  u_trailLag: 0.15,
+  u_warpStrength: 0.85,
+  u_noiseAmount: 1,
+  u_darkness: 0.073,
+  u_waveCount: 12,
+  u_waveFreq: 0.9,
+  u_waveSpeed: 0.3,
+  u_waveParallax: 3,
+  u_rippleStrength: 2.75,
+  u_flickerSpeed: 2,
+  u_flickerAmount: 0.05,
+  u_waveSharpness: 1880,
+  u_waveBrightness: 0.1,
+  u_waveGlow: 0.55,
+  u_waveTemp: 0.81,
+  u_waveSpacing: 0.9,
+  u_waveAlt: 0.45,
+  u_mouseRadius: 0.12,
+  releaseTime: 1.1,
+  velocityThreshold: 4.5,
+  sustainLevel: 0.72,
+  deadZoneSize: 0.35,
+  portamentoSensitivity: 0.52,
+  vibratoDepthControl: 1.65,
+  vibratoSpeedControl: 1.5,
+  gravityStrength: 1,
+  gravityEnabled: true,
+  octaveMix: 1,
+  sympatheticMix: 0.38,
+  hangDrumEnabled: true,
+  targetScrollSemitones: 12,
+  fpsCap: 25,
+  renderScale: 0.5,
+  idleThrottle: true,
+  soundEnabled: true,
+}
+
+type WaveCanvasProps = {
+  style?: CSSProperties
+  className?: string
+  soundEnabled?: boolean
+  preset?: Partial<PresetConfig>
+}
+
+export default function WaveCanvas({ style, className, soundEnabled = true, preset }: WaveCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  const mergedPreset = useMemo(() => {
+    const hour = new Date().getHours()
+    const isNight = hour < 7 || hour >= 20
+    return { ...(isNight ? NIGHT_PRESET : DAY_PRESET), ...(preset ?? {}), soundEnabled }
+  }, [preset, soundEnabled])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const cleanup: Array<() => void> = []
+    const addWin = (type: string, handler: any, options?: any) => {
+      window.addEventListener(type, handler, options)
+      cleanup.push(() => window.removeEventListener(type, handler, options))
+    }
+    const addDoc = (type: string, handler: any, options?: any) => {
+      document.addEventListener(type, handler, options)
+      cleanup.push(() => document.removeEventListener(type, handler, options))
+    }
+    const addBody = (type: string, handler: any, options?: any) => {
+      document.body.addEventListener(type, handler, options)
+      cleanup.push(() => document.body.removeEventListener(type, handler, options))
+    }
+
+    const __activePreset = mergedPreset
+    let __rafId = 0
+
+const gl = canvas.getContext("webgl", {
+  preserveDrawingBuffer: false,
+  powerPreference: "high-performance",
+  antialias: false
+});
+const vert = `attribute vec2 a; void main(){gl_Position=vec4(a,0,1);}`;
+const frag = `precision mediump float;
+uniform vec2 u_res, u_mouse, u_mouse2;
+uniform float u_time;
+uniform float u_glowCoreRadius, u_glowCoreIntensity;
+uniform float u_glowWideRadius, u_glowWideIntensity;
+uniform float u_warpStrength, u_noiseAmount, u_darkness;
+uniform float u_waveCount, u_waveFreq, u_waveSpeed, u_waveParallax, u_rippleStrength;
+uniform float u_idle;
+uniform float u_activeBand;
+uniform float u_mouseX;
+uniform float u_smoothBandY;
+uniform float u_hintBand0;
+uniform float u_hintBand1;
+uniform float u_flickerSpeed;
+uniform float u_flickerAmount;
+uniform float u_waveSharpness;
+uniform float u_waveBrightness;
+uniform float u_waveGlow;
+uniform float u_waveTemp;
+uniform float u_waveSpacing;
+uniform float u_waveAlt;
+uniform float u_mouseRadius;
+uniform float u_gravityStrength;
+uniform float u_octaveAmount;
+uniform float u_octaveDirection;
+uniform float u_velocity;
+uniform float u_velX;
+uniform float u_drift;
+uniform float u_activeBandNorm;
+uniform float u_hangDrum;
+uniform float u_sympathetic[8];
+uniform vec2 u_trail[10];
+uniform float u_trailAge[10];
+uniform int u_trailLen;
+uniform float u_splatIntensity;
+uniform vec2 u_splatPos;
+uniform float u_splatAge;
+float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
+float sn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*sn(p);p*=2.;a*=.5;}return v;}
+const float ACTIVE_BAND_GLOW = 1.0;
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_res;
+  vec2 uvRefracted = uv;
+  vec2 m = u_mouse / u_res;
+  vec2 m2 = u_mouse2 / u_res;
+  float t = u_time;
+  float aspect = u_res.x / u_res.y;
+  vec2 uvA = vec2(uv.x * aspect, uv.y);
+  vec2 mA = vec2(m.x * aspect, m.y);
+  float mouseDist = length(uvA - mA);
+  float rippleFreq = 12.0 + u_rippleStrength * 8.0;
+  float ripple = sin(mouseDist * rippleFreq - t * 4.0)
+                 * exp(-mouseDist / u_mouseRadius * 1.2)
+                 * u_rippleStrength * 1.5;
+  vec2 m2A = vec2(m2.x * aspect, m2.y);
+  float mouseDist2 = length(uvA - m2A);
+  float ripple2 = sin(mouseDist2 * (rippleFreq * 0.8) - t * 3.0)
+                  * exp(-mouseDist2 / u_mouseRadius * 1.05)
+                  * u_rippleStrength * 0.8;
+  vec2 smokeUV = uvRefracted * 2.5 + vec2(t * 0.04);
+  float curlNoise = fbm(smokeUV + vec2(1.3, 0.7));
+  vec2 curl = vec2(
+    cos(curlNoise * 6.28),
+    sin(curlNoise * 6.28)
+  ) * 0.4;
+  vec2 sd = vec2(fbm(smokeUV + curl * 0.8),
+                 fbm(smokeUV + curl * 0.8 + vec2(1.7)));
+  float smoke = fbm(uvRefracted * 1.8 + sd * u_warpStrength * 0.4 + t * 0.06 + curl * 0.3);
+  smoke = clamp(smoke * u_noiseAmount * 0.6, 0.0, 1.0);
+  float tiltedY = uv.y;
+  float waves = 0.0;
+  float wc = u_waveCount;
+  for (int i = 0; i < 12; i++) {
+    if (float(i) >= wc) break;
+    float fi = float(i) / wc;
+    float bandY = fi * u_waveSpacing + (1.0 - u_waveSpacing) * 0.5;
+    float harmonic = 1.0 + float(i) * 0.5;
+    float bandSpeedOffset = 1.0 + (float(i) - 3.5) * u_waveParallax * 0.05;
+    float phase = fi * 6.28 + t * (u_waveSpeed * bandSpeedOffset) * harmonic * 0.3;
+    float waveX = sin(uv.x * u_waveFreq * harmonic + phase)
+                  * 0.03 * (1.0 + float(i) * 0.1);
+    waveX += sin(uv.x * 1.5 + sd.x * 3.14 + t * 0.2)
+      * u_warpStrength * 0.04 * sin(fi * 6.28);
+    waveX += ripple * 0.12 * sin(float(i) * 1.3);
+    waveX += ripple2 * 0.07 * cos(float(i) * 0.9);
+    float isActive = 1.0 - step(0.5, abs(float(i) - u_activeBand));
+    waveX += isActive * u_velX * 0.003 * sin(uv.x * 20.0 + t * 8.0);
+    float dy = tiltedY - bandY - waveX;
+    float flicker = 1.0 + u_flickerAmount *
+      sin(t * u_flickerSpeed * harmonic + fi * 12.0)
+      + u_idle * 0.3 * sin(t * 1.5 * harmonic + fi * 3.0);
+    float activeWidth = 1.0 + isActive * ACTIVE_BAND_GLOW * 0.4;
+    float band = exp(-dy * dy * (u_waveSharpness / activeWidth)) * flicker;
+    // Base active boost — whole band gets brighter
+    band *= 1.0 + isActive * ACTIVE_BAND_GLOW * 2.2;
+    // Horizontal illumination across full band width
+    // brighter near mouse, never goes dark at edges
+    float horzGlow = isActive * (
+      0.4 +
+      0.6 * exp(-mouseDist * mouseDist /
+        (u_mouseRadius * u_mouseRadius * 4.0))
+    );
+    band *= 1.0 + horzGlow * 2.5;
+    // Wider soft halo so active band reads as
+    // a distinct lit stripe across the screen
+    float activeHalo = isActive *
+      exp(-dy * dy * (u_waveSharpness * 0.015)) * 1.2;
+    waves += activeHalo;
+    float isOdd = mod(float(i), 2.0);
+    float altFactor = 1.0 + u_waveAlt *
+      (isOdd * 2.0 - 1.0) * 1.5;
+    band *= max(0.05, altFactor);
+    float mouseBand = exp(-mouseDist * mouseDist /
+      (u_mouseRadius * u_mouseRadius)) * 0.6;
+    band *= 1.0 + mouseBand;
+    float glowHalo = exp(-dy * dy * (u_waveSharpness * 0.05))
+                     * u_waveGlow * flicker;
+    float isWell = 0.0;
+    if (abs(float(i) - 0.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 1.0) < 0.5) isWell = 1.0;
+    if (abs(float(i) - 4.0) < 0.5) isWell = 1.0;
+    band *= 1.0 + isWell * u_gravityStrength * 0.35;
+    float isHint0 = 1.0 - step(0.5, abs(float(i) - u_hintBand0));
+    float isHint1 = 1.0 - step(0.5, abs(float(i) - u_hintBand1));
+    band *= 1.0 + (isHint0 + isHint1) * 0.4;
+    float driftWobble = u_drift * 0.03 *
+      sin(t * 3.0 + float(i) * 1.7);
+    band *= 1.0 + driftWobble;
+    float sympLevel = 0.0;
+    if (i == 0) sympLevel = u_sympathetic[0];
+    if (i == 1) sympLevel = u_sympathetic[1];
+    if (i == 2) sympLevel = u_sympathetic[2];
+    if (i == 3) sympLevel = u_sympathetic[3];
+    if (i == 4) sympLevel = u_sympathetic[4];
+    if (i == 5) sympLevel = u_sympathetic[5];
+    if (i == 6) sympLevel = u_sympathetic[6];
+    if (i == 7) sympLevel = u_sympathetic[7];
+    band *= 1.0 + sympLevel * 3.0;
+    waves += band + glowHalo * 0.4;
+  }
+  waves = clamp(waves * u_waveBrightness, 0.0, 1.0);
+  vec2 smokeOff = vec2(
+    sin(uv.y * 8.0 + t * 0.5) * 0.02,
+    sin(uv.x * 6.0 + t * 0.4) * 0.015
+  ) * u_warpStrength;
+  float dg = length(uv + smokeOff - m);
+  float dg2 = length(uv + smokeOff * 1.4 - m2);
+  float glowWide = pow(max(0., 1. - dg / u_glowWideRadius), 2.0)
+                   * u_glowWideIntensity;
+  float glowCore = pow(max(0., 1. - dg / u_glowCoreRadius), 3.0)
+                   * u_glowCoreIntensity;
+  float glowTrail = pow(max(0., 1. - dg2 / 0.22), 2.0) * 0.2;
+  float velBurst = u_velocity * exp(-mouseDist * mouseDist * 80.0) * 0.3;
+  float glow = glowWide + glowCore + glowTrail;
+  float splatRadius = 0.04 + u_splatAge * 0.12;
+  float splatDist = length(uv - u_splatPos);
+  float splat = exp(-splatDist * splatDist /
+    (splatRadius * splatRadius)) * u_splatIntensity * 1.8;
+  float smokeTrail = 0.0;
+  for (int i = 0; i < 10; i++) {
+    if (i >= u_trailLen) break;
+    vec2 tp = u_trail[i] / u_res;
+    float td = length(uv - tp);
+    float fade = 1.0 - clamp(u_trailAge[i] / 1.2, 0.0, 1.0);
+    float warp = 0.5 + 0.5 * sin(
+      td * 12.0 + u_time * 0.8 + float(i) * 1.1);
+    smokeTrail += exp(-td * td * 80.0) * fade * warp * 0.5;
+  }
+  smokeTrail = clamp(smokeTrail, 0.0, 1.0);
+  float cursorLine = exp(-pow((uv.y - u_smoothBandY) * 20.0, 2.0)) * 0.15;
+  float edgeGlow = 0.0;
+  if (u_octaveDirection > 0.0) {
+    edgeGlow = u_octaveAmount * exp(-pow((uv.y - 1.0) * 8.0, 2.0)) * 0.6;
+  } else {
+    edgeGlow = u_octaveAmount * exp(-pow(uv.y * 8.0, 2.0)) * 0.6;
+  }
+  float rawV = smoke * u_noiseAmount * 0.45
+    + waves + smokeTrail * 0.35;
+  float baseV = clamp(rawV, 0.0, 0.9);
+  float glowV = glow * 0.9 + splat * 0.8;
+  baseV = clamp(baseV + glowV + cursorLine + velBurst + edgeGlow, 0.0, 1.0);
+  float br = pow(u_darkness / 0.15, 0.6) * 0.8 + 0.2;
+  vec3 col = mix(vec3(0.04, 0.01, 0.0),
+    vec3(0.4, 0.08, 0.01),
+    smoothstep(0.0, 0.35 / br, baseV));
+  col = mix(col, vec3(0.78, 0.22, 0.02),
+    smoothstep(0.25 / br, 0.65 / br, baseV));
+  col = mix(col, vec3(1.0, 0.62, 0.15),
+    smoothstep(0.55 / br, 0.92 / br, baseV));
+  col = mix(col, vec3(1.0, 0.88, 0.55),
+    smoothstep(0.82 / br, 1.1 / br, baseV));
+  col = mix(col, col * vec3(1.0, 0.85, 0.6), u_mouseX * 0.3);
+  vec3 redTone  = vec3(0.6, 0.08, 0.0);
+  vec3 amberTone = vec3(0.9, 0.45, 0.05);
+  vec3 tempShift = mix(redTone, amberTone, u_waveTemp);
+  col = mix(col, col * (tempShift * 2.0), 0.3);
+  float grain = (h(uv * u_res * 0.4 + t * 300.0) - 0.5) * 0.04;
+  col += grain;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`;
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x;}
+const p=gl.createProgram();
+gl.attachShader(p,sh(gl.VERTEX_SHADER,vert));
+gl.attachShader(p,sh(gl.FRAGMENT_SHADER,frag));
+gl.linkProgram(p);gl.useProgram(p);
+const b=gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+const al=gl.getAttribLocation(p,"a");
+gl.enableVertexAttribArray(al);
+gl.vertexAttribPointer(al,2,gl.FLOAT,false,0,0);
+
+const ur=gl.getUniformLocation(p,"u_res"),um=gl.getUniformLocation(p,"u_mouse"),um2=gl.getUniformLocation(p,"u_mouse2"),ut=gl.getUniformLocation(p,"u_time");
+const uGlowCoreRadius=gl.getUniformLocation(p,"u_glowCoreRadius");
+const uGlowCoreIntensity=gl.getUniformLocation(p,"u_glowCoreIntensity");
+const uGlowWideRadius=gl.getUniformLocation(p,"u_glowWideRadius");
+const uGlowWideIntensity=gl.getUniformLocation(p,"u_glowWideIntensity");
+const uWarpStrength=gl.getUniformLocation(p,"u_warpStrength");
+const uNoiseAmount=gl.getUniformLocation(p,"u_noiseAmount");
+const uDarkness=gl.getUniformLocation(p,"u_darkness");
+const uWaveCount=gl.getUniformLocation(p,"u_waveCount");
+const uWaveFreq=gl.getUniformLocation(p,"u_waveFreq");
+const uWaveSpeed=gl.getUniformLocation(p,"u_waveSpeed");
+const uWaveParallax=gl.getUniformLocation(p,"u_waveParallax");
+const uRippleStrength=gl.getUniformLocation(p,"u_rippleStrength");
+const uIdle=gl.getUniformLocation(p,"u_idle");
+const uActiveBand=gl.getUniformLocation(p,"u_activeBand");
+const uMouseX=gl.getUniformLocation(p,"u_mouseX");
+const uSmoothBandY=gl.getUniformLocation(p,"u_smoothBandY");
+const uHintBand0=gl.getUniformLocation(p,"u_hintBand0");
+const uHintBand1=gl.getUniformLocation(p,"u_hintBand1");
+const uFlickerSpeed=gl.getUniformLocation(p,"u_flickerSpeed");
+const uFlickerAmount=gl.getUniformLocation(p,"u_flickerAmount");
+const uWaveSharpness=gl.getUniformLocation(p,"u_waveSharpness");
+const uWaveBrightness=gl.getUniformLocation(p,"u_waveBrightness");
+const uWaveGlow=gl.getUniformLocation(p,"u_waveGlow");
+const uWaveTemp=gl.getUniformLocation(p,"u_waveTemp");
+const uWaveSpacing=gl.getUniformLocation(p,"u_waveSpacing");
+const uWaveAlt=gl.getUniformLocation(p,"u_waveAlt");
+const uMouseRadius=gl.getUniformLocation(p,"u_mouseRadius");
+const uGravityStrength=gl.getUniformLocation(p,"u_gravityStrength");
+const uOctaveAmount=gl.getUniformLocation(p,"u_octaveAmount");
+const uOctaveDirection=gl.getUniformLocation(p,"u_octaveDirection");
+const uVelocity=gl.getUniformLocation(p,"u_velocity");
+const uVelX=gl.getUniformLocation(p,"u_velX");
+const uDrift=gl.getUniformLocation(p,"u_drift");
+const uActiveBandNorm=gl.getUniformLocation(p,"u_activeBandNorm");
+const uHangDrum=gl.getUniformLocation(p,"u_hangDrum");
+const uSympathetic=gl.getUniformLocation(p,"u_sympathetic[0]");
+const uTrail=gl.getUniformLocation(p,"u_trail[0]");
+const uTrailAge=gl.getUniformLocation(p,"u_trailAge[0]");
+const uTrailLen=gl.getUniformLocation(p,"u_trailLen");
+const uSplatIntensity=gl.getUniformLocation(p,"u_splatIntensity");
+const uSplatPos=gl.getUniformLocation(p,"u_splatPos");
+const uSplatAge=gl.getUniformLocation(p,"u_splatAge");
+
+const tweak = {
+  u_glowCoreRadius: 0.09,
+  u_glowCoreIntensity: 1.4,
+  u_glowWideRadius: 0.32,
+  u_glowWideIntensity: 0.35,
+  u_trailLag: 0.025,
+  u_warpStrength: 0.4,
+  u_noiseAmount: 0.3,
+  u_darkness: 0.04,
+  u_waveCount: 8,
+  u_waveFreq: 2,
+  u_waveSpeed: 0.3,
+  u_waveParallax: 0.0,
+  u_rippleStrength: 0.6,
+  u_flickerSpeed: 1.5,
+  u_flickerAmount: 0.06,
+  u_waveSharpness: 600,
+  u_waveBrightness: 1.6,
+  u_waveGlow: 0.3,
+  u_waveTemp: 0.5,
+  u_waveSpacing: 1.0,
+  u_waveAlt: 0.0,
+  u_mouseRadius: 0.3,
+};
+const uniformCache = {};
+
+function setUniform1f(loc, key, val) {
+  if (uniformCache[key] === val) return;
+  uniformCache[key] = val;
+  gl.uniform1f(loc, val);
+}
+
+function applyTweakUniforms() {
+  setUniform1f(uGlowCoreRadius, "u_glowCoreRadius", tweak.u_glowCoreRadius);
+  setUniform1f(uGlowCoreIntensity, "u_glowCoreIntensity", tweak.u_glowCoreIntensity);
+  setUniform1f(uGlowWideRadius, "u_glowWideRadius", tweak.u_glowWideRadius);
+  setUniform1f(uGlowWideIntensity, "u_glowWideIntensity", tweak.u_glowWideIntensity);
+  setUniform1f(uWarpStrength, "u_warpStrength", tweak.u_warpStrength);
+  setUniform1f(uNoiseAmount, "u_noiseAmount", tweak.u_noiseAmount);
+  setUniform1f(uDarkness, "u_darkness", tweak.u_darkness);
+  setUniform1f(uWaveCount, "u_waveCount", tweak.u_waveCount);
+  setUniform1f(uWaveFreq, "u_waveFreq", tweak.u_waveFreq);
+  setUniform1f(uWaveSpeed, "u_waveSpeed", tweak.u_waveSpeed);
+  setUniform1f(uWaveParallax, "u_waveParallax", tweak.u_waveParallax);
+  setUniform1f(uRippleStrength, "u_rippleStrength", tweak.u_rippleStrength);
+  setUniform1f(uFlickerSpeed, "u_flickerSpeed", tweak.u_flickerSpeed);
+  setUniform1f(uFlickerAmount, "u_flickerAmount", tweak.u_flickerAmount);
+  setUniform1f(uWaveSharpness, "u_waveSharpness", tweak.u_waveSharpness);
+  setUniform1f(uWaveBrightness, "u_waveBrightness", tweak.u_waveBrightness);
+  setUniform1f(uWaveGlow, "u_waveGlow", tweak.u_waveGlow);
+  setUniform1f(uWaveTemp, "u_waveTemp", tweak.u_waveTemp);
+  setUniform1f(uWaveSpacing, "u_waveSpacing", tweak.u_waveSpacing);
+  setUniform1f(uWaveAlt, "u_waveAlt", tweak.u_waveAlt);
+  setUniform1f(uMouseRadius, "u_mouseRadius", tweak.u_mouseRadius);
+}
+
+const SCALES = {
+  Major: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
+  "Minor Pentatonic": [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25],
+  "Whole Tone": [261.63, 293.66, 329.63, 369.99, 415.3, 466.16, 523.25, 587.33],
+  Overtone: [130.81, 261.63, 392.0, 523.25, 654.06, 784.88, 915.69, 1046.5],
+  Dorian: [261.63, 293.66, 311.13, 349.23, 392.0, 440.0, 466.16, 523.25],
+  Phrygian: [261.63, 277.18, 311.13, 349.23, 392.0, 415.3, 466.16, 523.25],
+  Lydian: [261.63, 293.66, 329.63, 369.99, 392.0, 440.0, 493.88, 523.25],
+  Mixolydian: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 466.16, 523.25],
+  Minor: [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 466.16, 523.25],
+  "Harmonic Min": [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 493.88, 523.25],
+  Chromatic: [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.0],
+};
+let currentScale = SCALES.Major;
+let currentFreq = 392;
+let smoothBandY = 0.5;
+let polarAngle = 0;
+let polarDist = 0;
+let smoothAngle = 0;
+let smoothDist = 0;
+const HANG_DRUM_MAP = [0, 4, 2, 6, 7, 3, 5, 1];
+let hangDrumEnabled = true;
+function getScaleDegree(bandIndex) {
+  if (hangDrumEnabled) {
+    return HANG_DRUM_MAP[bandIndex];
+  }
+  return bandIndex;
+}
+const HARMONIC_HINTS = [
+  [1, 2],
+  [0, 4],
+  [0, 5],
+  [1, 4],
+  [0, 1],
+  [2, 6],
+  [5, 7],
+  [6, 0],
+];
+let soundAttack = 400;
+let soundDecay = 3000;
+let soundVolume = 0.3;
+let portamentoSensitivity = 0.85;
+let vibratoDepthControl = 0.6;
+let vibratoSpeedControl = 3.5;
+let glowSize = 0.3;
+let glowIntensity = 1.0;
+let releaseTime = 4.0;
+let velocityThreshold = 5;
+let sustainLevel = 0.45;
+let deadZoneSize = 0.35;
+let gravityStrength = 0.55;
+let gravityEnabled = true;
+let octaveMix = 0.6;
+let sympatheticGains = [];
+let sympatheticOscs = [];
+let sympatheticFilters = [];
+let sympatheticLevels = new Float32Array(8);
+let sympatheticMix = 0.15;
+let fpsCap = 60;
+let renderScale = 1.0;
+let idleThrottle = false;
+let soundEnabled = true;
+let lastFrameTime = 0;
+let frameInterval = 1000 / 60;
+
+let scrollSemitones = 0;
+let targetScrollSemitones = 0;
+let smoothScrollSemitones = 0;
+let zoneScrollAccum = 0;
+let scrollFreqMult = 1;
+let rootKeySemitones = 0;
+let baseOctave = 3;
+
+const DAY_PRESET = {
+  scale: "Major",
+  rootKeySemitones: 0,
+  baseOctave: 2,
+  glowSize: 0.4,
+  glowIntensity: 1.6,
+  u_trailLag: 0.15,
+  u_warpStrength: 0.85,
+  u_noiseAmount: 1,
+  u_darkness: 0.073,
+  u_waveCount: 12,
+  u_waveFreq: 0.3,
+  u_waveSpeed: 0.5,
+  u_waveParallax: 3,
+  u_rippleStrength: 1.3,
+  u_flickerSpeed: 2.2,
+  u_flickerAmount: 0.115,
+  u_waveSharpness: 1880,
+  u_waveBrightness: 0.16,
+  u_waveGlow: 2,
+  u_waveTemp: 0.81,
+  u_waveSpacing: 0.9,
+  u_waveAlt: 0.45,
+  u_mouseRadius: 0.12,
+  releaseTime: 1.1,
+  velocityThreshold: 4.5,
+  sustainLevel: 0.72,
+  deadZoneSize: 0.35,
+  portamentoSensitivity: 0.52,
+  vibratoDepthControl: 1.65,
+  vibratoSpeedControl: 1.5,
+  gravityStrength: 1,
+  gravityEnabled: true,
+  octaveMix: 1,
+  sympatheticMix: 0.38,
+  hangDrumEnabled: true,
+  targetScrollSemitones: 12,
+  fpsCap: 25,
+  renderScale: 0.5,
+  idleThrottle: true,
+  soundEnabled: true
+};
+
+const NIGHT_PRESET = {
+  scale: "Dorian",
+  rootKeySemitones: 10,
+  baseOctave: 1,
+  glowSize: 0.4,
+  glowIntensity: 1.6,
+  u_trailLag: 0.15,
+  u_warpStrength: 0.85,
+  u_noiseAmount: 1,
+  u_darkness: 0.073,
+  u_waveCount: 12,
+  u_waveFreq: 0.9,
+  u_waveSpeed: 0.3,
+  u_waveParallax: 3,
+  u_rippleStrength: 2.75,
+  u_flickerSpeed: 2,
+  u_flickerAmount: 0.05,
+  u_waveSharpness: 1880,
+  u_waveBrightness: 0.1,
+  u_waveGlow: 0.55,
+  u_waveTemp: 0.81,
+  u_waveSpacing: 0.9,
+  u_waveAlt: 0.45,
+  u_mouseRadius: 0.12,
+  releaseTime: 1.1,
+  velocityThreshold: 4.5,
+  sustainLevel: 0.72,
+  deadZoneSize: 0.35,
+  portamentoSensitivity: 0.52,
+  vibratoDepthControl: 1.65,
+  vibratoSpeedControl: 1.5,
+  gravityStrength: 1,
+  gravityEnabled: true,
+  octaveMix: 1,
+  sympatheticMix: 0.38,
+  hangDrumEnabled: true,
+  targetScrollSemitones: 12,
+  fpsCap: 25,
+  renderScale: 0.5,
+  idleThrottle: true,
+  soundEnabled: true
+};
+
+const activePreset = __activePreset;
+
+function applyLivePreset(preset) {
+  currentScale = SCALES[preset.scale] || SCALES.Major;
+  rootKeySemitones = preset.rootKeySemitones;
+  baseOctave = preset.baseOctave;
+  glowSize = preset.glowSize;
+  glowIntensity = preset.glowIntensity;
+  releaseTime = preset.releaseTime;
+  velocityThreshold = preset.velocityThreshold;
+  sustainLevel = preset.sustainLevel;
+  deadZoneSize = preset.deadZoneSize;
+  portamentoSensitivity = preset.portamentoSensitivity;
+  vibratoDepthControl = preset.vibratoDepthControl;
+  vibratoSpeedControl = preset.vibratoSpeedControl;
+  gravityStrength = preset.gravityStrength;
+  gravityEnabled = preset.gravityEnabled;
+  octaveMix = preset.octaveMix;
+  sympatheticMix = preset.sympatheticMix;
+  hangDrumEnabled = preset.hangDrumEnabled;
+  targetScrollSemitones = preset.targetScrollSemitones;
+  fpsCap = preset.fpsCap;
+  renderScale = preset.renderScale;
+  idleThrottle = preset.idleThrottle;
+  soundEnabled = preset.soundEnabled;
+
+  tweak.u_trailLag = preset.u_trailLag;
+  tweak.u_warpStrength = preset.u_warpStrength;
+  tweak.u_noiseAmount = preset.u_noiseAmount;
+  tweak.u_darkness = preset.u_darkness;
+  tweak.u_waveCount = preset.u_waveCount;
+  tweak.u_waveFreq = preset.u_waveFreq;
+  tweak.u_waveSpeed = preset.u_waveSpeed;
+  tweak.u_waveParallax = preset.u_waveParallax;
+  tweak.u_rippleStrength = preset.u_rippleStrength;
+  tweak.u_flickerSpeed = preset.u_flickerSpeed;
+  tweak.u_flickerAmount = preset.u_flickerAmount;
+  tweak.u_waveSharpness = preset.u_waveSharpness;
+  tweak.u_waveBrightness = preset.u_waveBrightness;
+  tweak.u_waveGlow = preset.u_waveGlow;
+  tweak.u_waveTemp = preset.u_waveTemp;
+  tweak.u_waveSpacing = preset.u_waveSpacing;
+  tweak.u_waveAlt = preset.u_waveAlt;
+  tweak.u_mouseRadius = preset.u_mouseRadius;
+}
+
+applyLivePreset(activePreset);
+
+function noteFreqForBand(bandIndex) {
+  const degree = hangDrumEnabled ?
+    HANG_DRUM_MAP[bandIndex] : bandIndex;
+  const keyMult = Math.pow(2, rootKeySemitones / 12);
+  const octaveMult = Math.pow(2, baseOctave - 3);
+  return currentScale[degree] * scrollFreqMult * keyMult * octaveMult;
+}
+
+currentFreq = noteFreqForBand(4);
+
+function angleDiff(target, current) {
+  let d = target - current;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+function getWellPositions() {
+  return [0, 1, 4].map((b) => (b + 0.5) / 8.0);
+}
+
+let audioCtx = null;
+let pageFocused = true;
+let masterGain = null;
+let pageFadeGain = null;
+let lastBand = -1;
+let activeBand = -1;
+let glideOsc1 = null;
+let glideOsc2 = null;
+let glideGain = null;
+let glideG1 = null;
+let glideG2 = null;
+let octaveLayerGain = null;
+let octaveLayerOsc1 = null;
+let octaveLayerOsc2 = null;
+let octaveLayerGainNode = null;
+let octaveLayerG1 = null;
+let octaveLayerG2 = null;
+let octaveDirection = 0;
+let octaveAmount = 0.0;
+
+function syncMasterGainFromSoundEnabled() {
+  if (!audioCtx || !masterGain) return;
+  const t = audioCtx.currentTime;
+  if (soundEnabled) {
+    masterGain.gain.setTargetAtTime(0.8, t, 0.3);
+  } else {
+    masterGain.gain.setTargetAtTime(0, t, 0.3);
+  }
+}
+
+function initSympathetic() {
+  if (!audioCtx || sympatheticOscs.length > 0) return;
+  for (let i = 0; i < 8; i++) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    osc.type = "sine";
+    const freq = noteFreqForBand(i);
+    osc.frequency.value = freq;
+    gain.gain.value = 0.0;
+    filter.type = "bandpass";
+    filter.Q.value = 8.0;
+    filter.frequency.value = freq;
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(pageFadeGain || audioCtx.destination);
+    osc.start();
+    sympatheticOscs.push(osc);
+    sympatheticGains.push(gain);
+    sympatheticFilters.push(filter);
+  }
+}
+
+function initGlide() {
+  if (!audioCtx || glideOsc1) return;
+  glideOsc1 = audioCtx.createOscillator();
+  glideOsc2 = audioCtx.createOscillator();
+  glideG1 = audioCtx.createGain();
+  glideG2 = audioCtx.createGain();
+  glideGain = audioCtx.createGain();
+  const glideFilter = audioCtx.createBiquadFilter();
+  glideOsc1.type = "sine";
+  glideOsc2.type = "sawtooth";
+  glideOsc1.frequency.value = currentFreq;
+  glideOsc2.frequency.value = currentFreq;
+  glideG1.gain.value = 0.6;
+  glideG2.gain.value = 0.1;
+  glideGain.gain.value = 0.0;
+  glideFilter.type = "lowpass";
+  glideFilter.frequency.value = 800;
+  glideOsc1.connect(glideG1);
+  glideG1.connect(glideFilter);
+  glideOsc2.connect(glideG2);
+  glideG2.connect(glideFilter);
+  glideFilter.connect(glideGain);
+  glideGain.connect(pageFadeGain || audioCtx.destination);
+  glideOsc1.start();
+  glideOsc2.start();
+}
+
+function initOctaveLayer() {
+  if (!audioCtx || octaveLayerOsc1) return;
+  octaveLayerOsc1 = audioCtx.createOscillator();
+  octaveLayerOsc2 = audioCtx.createOscillator();
+  const og1 = audioCtx.createGain();
+  const og2 = audioCtx.createGain();
+  octaveLayerGainNode = audioCtx.createGain();
+  const octFilter = audioCtx.createBiquadFilter();
+
+  octaveLayerOsc1.type = "sine";
+  octaveLayerOsc2.type = "sawtooth";
+  og1.gain.value = 0.7;
+  og2.gain.value = 0.15;
+  octaveLayerGainNode.gain.value = 0.0;
+  octFilter.type = "lowpass";
+  octFilter.frequency.value = 600;
+
+  octaveLayerOsc1.connect(og1);
+  og1.connect(octFilter);
+  octaveLayerOsc2.connect(og2);
+  og2.connect(octFilter);
+  octFilter.connect(octaveLayerGainNode);
+  octaveLayerGainNode.connect(pageFadeGain || audioCtx.destination);
+
+  octaveLayerG1 = og1;
+  octaveLayerG2 = og2;
+  octaveLayerGain = octaveLayerGainNode;
+
+  octaveLayerOsc1.start();
+  octaveLayerOsc2.start();
+}
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioContext();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  if (!masterGain) {
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = soundEnabled ? 0.8 : 0;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (!pageFadeGain) {
+    pageFadeGain = audioCtx.createGain();
+    pageFadeGain.gain.value = 1.0;
+    pageFadeGain.connect(masterGain);
+  }
+  initGlide();
+  initOctaveLayer();
+  initSympathetic();
+  syncMasterGainFromSoundEnabled();
+}
+
+addBody("pointerdown", () => {
+  initAudio();
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}, { once: true });
+
+addDoc("visibilitychange", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = !document.hidden;
+  if (document.hidden) {
+    pageFadeGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.5);
+  } else {
+    pageFadeGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+  }
+});
+
+addWin("blur", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = false;
+  pageFadeGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.8);
+});
+
+addWin("focus", () => {
+  if (!audioCtx || !pageFadeGain) return;
+  pageFocused = true;
+  pageFadeGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+});
+
+function playNoteWithVolume(bandIndex, vol) {
+  if (!audioCtx) return;
+  splatIntensity = 1.0;
+  splatX = mx / canvas.width;
+  splatY = 1.0 - (my / canvas.height);
+  splatAge = 0.0;
+  const freq = noteFreqForBand(bandIndex);
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain1 = audioCtx.createGain();
+  const gain2 = audioCtx.createGain();
+  const master = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  osc1.type = "sine";
+  osc2.type = "sawtooth";
+  osc1.frequency.value = freq;
+  osc2.frequency.value = freq;
+  const blend = mouseX;
+  gain1.gain.value = 1.0 - blend * 0.8;
+  gain2.gain.value = blend * 0.4;
+  filter.type = "lowpass";
+  filter.frequency.value = 400 + mouseX * 3600;
+  filter.Q.value = 1.5;
+  const t0 = audioCtx.currentTime;
+  master.gain.setValueAtTime(0.0, t0);
+  master.gain.linearRampToValueAtTime(vol, t0 + soundAttack / 1000);
+  master.gain.exponentialRampToValueAtTime(0.001, t0 + soundDecay / 1000);
+  osc1.connect(gain1);
+  gain1.connect(filter);
+  osc2.connect(gain2);
+  gain2.connect(filter);
+  filter.connect(master);
+  master.connect(pageFadeGain || audioCtx.destination);
+  osc1.start();
+  osc2.start();
+  osc1.stop(t0 + soundDecay / 1000 + 0.1);
+  osc2.stop(t0 + soundDecay / 1000 + 0.1);
+  activeBand = bandIndex;
+  setTimeout(() => {
+    if (activeBand === bandIndex) activeBand = -1;
+  }, 300);
+}
+
+function playNote(b) {
+  playNoteWithVolume(b, soundVolume);
+}
+
+let mx=innerWidth/2,my=innerHeight/2,tx=mx,ty=my;
+let mouseX=0.5;
+const trail = [];
+const TRAIL_LENGTH = 10;
+let prevTmy=ty;
+let prevTmx=tx;
+let mouseVelocity=0;
+let smoothVelocity=0;
+let mouseVelX=0;
+let smoothVelX=0;
+let dwellTime=0;
+let lastBandY=-1;
+let mouseStillTime=0;
+let mx2=mx,my2=my;
+let lastMoveTime=performance.now();
+let idleBreath=0;
+let splatIntensity = 0.0;
+let splatX = 0.5;
+let splatY = 0.5;
+let splatAge = 0.0;
+let vibratoPhase = 0;
+let vibratoAmount = 0;
+addDoc("mousemove", (e) => {
+  initAudio();
+  tx = e.clientX;
+  ty = e.clientY;
+  mouseX = e.clientX / window.innerWidth;
+  trail.push({x: mx, y: canvas.height - my, age: 0});
+  if (trail.length > TRAIL_LENGTH) trail.shift();
+  lastMoveTime = performance.now();
+});
+function resize(){
+  canvas.width=window.innerWidth * devicePixelRatio * renderScale;
+  canvas.height=window.innerHeight * devicePixelRatio * renderScale;
+  gl.viewport(0,0,canvas.width,canvas.height);
+}
+addWin("resize",resize);
+resize();
+addWin(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    initAudio();
+    zoneScrollAccum += e.deltaY;
+    while (zoneScrollAccum > 80) {
+      zoneScrollAccum -= 80;
+      targetScrollSemitones = Math.max(
+        -12,
+        Math.min(12, targetScrollSemitones + 1),
+      );
+    }
+    while (zoneScrollAccum < -80) {
+      zoneScrollAccum += 80;
+      targetScrollSemitones = Math.max(
+        -12,
+        Math.min(12, targetScrollSemitones - 1),
+      );
+    }
+  },
+  { passive: false },
+);
+function frame(t){
+  const now = performance.now();
+  frameInterval = 1000 / fpsCap;
+  if (now - lastFrameTime < frameInterval - 1) {
+    __rafId = requestAnimationFrame(frame);
+    return;
+  }
+  if (idleThrottle && mouseStillTime > 3.0) {
+    if (now - lastFrameTime < 66 - 1) {
+      __rafId = requestAnimationFrame(frame);
+      return;
+    }
+  }
+  lastFrameTime = now;
+  const tmx=tx;
+  const tmy=ty;
+  tweak.u_glowCoreRadius = glowSize * 0.25;
+  tweak.u_glowWideRadius = glowSize * 1.2;
+  tweak.u_glowCoreIntensity = glowIntensity * 1.8;
+  tweak.u_glowWideIntensity = glowIntensity * 0.45;
+  scrollSemitones = targetScrollSemitones;
+  smoothScrollSemitones+=
+    (targetScrollSemitones-smoothScrollSemitones)*0.03;
+  scrollFreqMult=Math.pow(2,smoothScrollSemitones/12);
+  splatAge += 0.016;
+  splatIntensity *= 0.92;
+  trail.forEach((p) => {
+    p.age += 0.016;
+  });
+  const rawVel=Math.abs(tmy-prevTmy);
+  prevTmy=tmy;
+  mouseVelocity=rawVel;
+  smoothVelocity+=(rawVel-smoothVelocity)*0.15;
+  const rawVelX=Math.abs(tmx-prevTmx);
+  prevTmx=tmx;
+  mouseVelX=rawVelX;
+  smoothVelX+=(rawVelX-smoothVelX)*0.15;
+  const totalVel=smoothVelocity+smoothVelX;
+  const isMovingPolar=totalVel>1.5;
+  if (isMovingPolar) {
+    mouseStillTime=0;
+  } else {
+    mouseStillTime+=0.016;
+  }
+  const lag=tweak.u_trailLag;
+  mx+=(tx-mx)*lag;my+=(ty-my)*lag;
+  mx2+=(mx-mx2)*lag;my2+=(my-my2)*lag;
+  const idle=Math.min(1.0,(performance.now()-lastMoveTime)/2000.0);
+  idleBreath+=(idle-idleBreath)*0.02;
+  const cx=window.innerWidth/2;
+  const cy=window.innerHeight/2;
+  const dx=tmx-cx;
+  const dy=tmy-cy;
+  const maxDist=Math.min(cx,cy)*0.85;
+  polarAngle=Math.atan2(dy,dx);
+  polarDist=maxDist>0?Math.min(Math.sqrt(dx*dx+dy*dy)/maxDist,1.0):0;
+  smoothAngle+=angleDiff(polarAngle,smoothAngle)*0.06;
+  smoothDist+=(polarDist-smoothDist)*0.05;
+  const screenCentreX=window.innerWidth/2;
+  const screenCentreY=window.innerHeight/2;
+  const normY=1.0-tmy/window.innerHeight;
+  const rawBand=normY*8;
+  const clampedBand=Math.max(0,Math.min(7,Math.floor(rawBand)));
+  const bandFraction=rawBand-Math.floor(rawBand);
+  const inDeadZone=bandFraction<deadZoneSize||
+    bandFraction>(1-deadZoneSize);
+  const shouldTrigger=!inDeadZone||
+    smoothVelocity>velocityThreshold;
+  const sensitivity=portamentoSensitivity;
+  const glideSpeed=0.02+(1.0-sensitivity)*0.08-sensitivity*smoothVelocity*0.002;
+  const clampedGlide=Math.max(0.01,Math.min(0.12,glideSpeed));
+  smoothBandY+=(normY-smoothBandY)*clampedGlide;
+  if (gravityEnabled) {
+    const wells=getWellPositions();
+    let totalPull=0;
+    wells.forEach((wellY)=>{
+      const dist=Math.abs(smoothBandY-wellY);
+      const pull=gravityStrength*Math.exp(-dist*6.0)*0.4;
+      totalPull+=(wellY-smoothBandY)*pull;
+    });
+    const maxPull=0.004;
+    smoothBandY+=Math.max(-maxPull,Math.min(maxPull,totalPull));
+    smoothBandY=Math.max(0,Math.min(1,smoothBandY));
+  }
+  const targetBand=Math.max(0,Math.min(7,Math.floor(smoothBandY*8)));
+  const targetFreq = noteFreqForBand(targetBand);
+  const isSettling=smoothVelocity<
+    velocityThreshold+portamentoSensitivity*8;
+  if (clampedBand!==lastBand&&isSettling&&shouldTrigger) {
+    lastBand=clampedBand;
+    vibratoPhase = 0;
+    vibratoAmount = 0;
+    const velVolume=soundVolume*
+      (0.4+Math.min(smoothVelocity/15.0,0.6));
+    playNoteWithVolume(clampedBand,velVolume);
+  }
+  const sustainFadeLogo=Math.max(0,1.0-mouseStillTime/releaseTime);
+  const holdingNoteLogo=clampedBand===lastBand;
+  const sustainBoostLogo=holdingNoteLogo?
+    Math.min(smoothVelX/10.0,0.3):0.0;
+  const targetGlideVol=soundVolume*
+    (sustainLevel+sustainBoostLogo)*sustainFadeLogo;
+  const sustainFade=Math.max(0,1.0-mouseStillTime/releaseTime);
+  const freqGlide=0.03+(1.0-sensitivity)*0.08;
+  if (glideOsc1&&audioCtx) {
+    currentFreq+=(targetFreq-currentFreq)*freqGlide;
+    const distPressure=smoothDist>0.9?(smoothDist-0.9)*10.0:0.0;
+    octaveAmount+=(distPressure-octaveAmount)*0.04;
+    octaveDirection=smoothDist>=0.5?1:-1;
+    if (octaveLayerOsc1&&audioCtx) {
+      const octFreq=currentFreq*2.0;
+      octaveLayerOsc1.frequency.setValueAtTime(octFreq,audioCtx.currentTime);
+      octaveLayerOsc2.frequency.setValueAtTime(octFreq,audioCtx.currentTime);
+      const octBlend=mouseX;
+      if (octaveLayerG1&&octaveLayerG2) {
+        octaveLayerG1.gain.setValueAtTime(1.0-octBlend*0.8,audioCtx.currentTime);
+        octaveLayerG2.gain.setValueAtTime(octBlend*0.4,audioCtx.currentTime);
+      }
+    }
+    if (octaveLayerOsc1&&audioCtx&&octaveLayerGainNode) {
+      const octVol=octaveAmount*soundVolume*sustainFade*octaveMix;
+      octaveLayerGainNode.gain.setTargetAtTime(octVol,audioCtx.currentTime,0.15);
+    }
+    const holdTime = mouseStillTime;
+    const vibratoRamp = Math.min(holdTime / 1.5, 1.0);
+    const vibratoRate = vibratoSpeedControl *
+      (0.7 + vibratoRamp * 0.3);
+    vibratoPhase += vibratoRate * 0.016 * Math.PI * 2;
+    vibratoAmount += (vibratoRamp - vibratoAmount) * 0.08;
+    const vibratoDepth = vibratoAmount *
+      vibratoDepthControl * 8.0;
+    const vibrato = Math.sin(vibratoPhase) *
+      vibratoDepth * (currentFreq / 440) * 0.015;
+    const expressiveVib = smoothVelX * 0.15 *
+      vibratoDepthControl;
+    glideOsc1.frequency.setValueAtTime(
+      currentFreq + vibrato + expressiveVib,
+      audioCtx.currentTime
+    );
+    glideOsc2.frequency.setValueAtTime(
+      currentFreq + vibrato + expressiveVib,
+      audioCtx.currentTime
+    );
+    const holdingNote=clampedBand===lastBand;
+    const sustainBoost=holdingNote?
+      Math.min(smoothVelX/10.0,0.3):0.0;
+    const glideVolTarget=soundVolume*
+      (sustainLevel+sustainBoost)*sustainFade;
+    if (glideGain&&audioCtx) {
+      glideGain.gain.setTargetAtTime(glideVolTarget,audioCtx.currentTime,0.3);
+    }
+    const blend=mouseX;
+    glideG1.gain.setValueAtTime(1.0-blend*0.8,audioCtx.currentTime);
+    glideG2.gain.setValueAtTime(blend*0.4,audioCtx.currentTime);
+  }
+  if (sympatheticOscs.length>0&&audioCtx) {
+    for (let i=0;i<8;i++) {
+      const freq=noteFreqForBand(i);
+      sympatheticOscs[i].frequency.setValueAtTime(
+        freq,
+        audioCtx.currentTime,
+      );
+      sympatheticFilters[i].frequency.setValueAtTime(
+        freq,
+        audioCtx.currentTime,
+      );
+      const isActive=i===lastBand;
+      const isNeighbour=
+        lastBand>=0&&
+        (Math.abs(i-lastBand)===1||Math.abs(i-lastBand)===7);
+      const isHintBand=
+        lastBand>=0&&
+        (HARMONIC_HINTS[lastBand]||[]).includes(i);
+      let targetLevel=0;
+      if (isActive) targetLevel=sympatheticMix*0.3;
+      else if (isHintBand) targetLevel=sympatheticMix*0.5;
+      else if (isNeighbour) targetLevel=sympatheticMix*0.2;
+      targetLevel*=sustainFade;
+      sympatheticLevels[i]+=
+        (targetLevel-sympatheticLevels[i])*0.015;
+      sympatheticGains[i].gain.setTargetAtTime(
+        sympatheticLevels[i],
+        audioCtx.currentTime,
+        0.3,
+      );
+    }
+  }
+  gl.uniform2f(ur,canvas.width,canvas.height);
+  const scaleX = canvas.width / window.innerWidth;
+  const scaleY = canvas.height / window.innerHeight;
+  gl.uniform2f(um,mx * scaleX,canvas.height - my * scaleY);
+  gl.uniform2f(um2,mx2 * scaleX,canvas.height - my2 * scaleY);
+  gl.uniform1f(ut,t*.001);
+  gl.uniform1f(uIdle,idleBreath);
+  gl.uniform1f(uActiveBand,clampedBand);
+  gl.uniform1f(uMouseX,mouseX);
+  gl.uniform1f(uSmoothBandY,smoothBandY);
+  gl.uniform1f(
+    uGravityStrength,
+    gravityEnabled ? gravityStrength : 0.0
+  );
+  gl.uniform1f(uOctaveAmount, octaveAmount);
+  gl.uniform1f(uOctaveDirection, octaveDirection);
+  gl.uniform1f(uVelocity,Math.min(smoothVelocity/20.0,1.0));
+  gl.uniform1f(uVelX,Math.min(smoothVelX/15.0,1.0));
+  gl.uniform1f(uHangDrum, hangDrumEnabled ? 1.0 : 0.0);
+  gl.uniform1fv(uSympathetic, sympatheticLevels);
+  gl.uniform1f(uDrift, Math.max(0.35, idleBreath * 0.8 + 0.45));
+  gl.uniform1f(uSplatIntensity, splatIntensity);
+  gl.uniform2f(uSplatPos, splatX, splatY);
+  gl.uniform1f(uSplatAge, splatAge);
+  gl.uniform1f(uActiveBandNorm, clampedBand / 7.0);
+  const trailPos = new Float32Array(TRAIL_LENGTH * 2);
+  const trailAge = new Float32Array(TRAIL_LENGTH);
+  for (let i = 0; i < TRAIL_LENGTH; i++) {
+    if (i < trail.length) {
+      trailPos[i * 2] = trail[i].x;
+      trailPos[i * 2 + 1] = trail[i].y;
+      trailAge[i] = trail[i].age;
+    }
+  }
+  gl.uniform2fv(uTrail, trailPos);
+  gl.uniform1fv(uTrailAge, trailAge);
+  gl.uniform1i(uTrailLen, Math.min(trail.length, 10));
+  if (activeBand>=0&&activeBand<8) {
+    const hints=HARMONIC_HINTS[activeBand];
+    gl.uniform1f(uHintBand0,hints[0]);
+    gl.uniform1f(uHintBand1,hints[1]);
+  } else {
+    gl.uniform1f(uHintBand0,-1.0);
+    gl.uniform1f(uHintBand1,-1.0);
+  }
+  applyTweakUniforms();
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+
+  __rafId = requestAnimationFrame(frame);
+}
+applyTweakUniforms();
+__rafId = requestAnimationFrame(frame);
+
+    return () => {
+      if (__rafId) cancelAnimationFrame(__rafId)
+      cleanup.forEach((off) => off())
+      if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state !== 'closed') {
+        void audioCtx.close()
+      }
+    }
+  }, [mergedPreset])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        ...style,
+      }}
+    />
+  )
+}
