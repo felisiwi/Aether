@@ -10,6 +10,7 @@
       "has": [{ "type": "host", "value": "play.aetherstudios.co.uk" }],
       "destination": "/play/$1"
     },
+    { "source": "/beta", "destination": "/clean.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
