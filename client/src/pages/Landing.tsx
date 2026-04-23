@@ -10,6 +10,7 @@ export default function Landing() {
         height: '100vh',
         position: 'relative',
         overflow: 'hidden',
+        touchAction: 'none',
       }}
     >
       <WaveCanvas
