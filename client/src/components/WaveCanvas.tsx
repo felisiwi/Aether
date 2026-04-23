@@ -957,6 +957,7 @@ addDoc("mousemove", (e) => {
   updatePointerFromClient(e.clientX, e.clientY);
 });
 addDoc("touchstart", (e) => {
+  initAudio();
   if (!e.touches || e.touches.length === 0) return;
   const touch = e.touches[0];
   updatePointerFromClient(touch.clientX, touch.clientY);

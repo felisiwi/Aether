@@ -1,11 +1,10 @@
 /*
- * Always-dark chrome (e.g. marketing landing) where <html> may stay data-theme="light"
- * from the app theme toggle. The [data-theme="dark"] palette maps text-inverted to #000000,
- * which is wrong on a black surface. This wrapper redefines practical tokens for light-on-dark.
- * Use: <div data-ds-dark-surface> … </div> (import this file once in the app or Storybook).
+ * Always-dark chrome (e.g. marketing landing) where surfaces must stay light-on-dark
+ * regardless of global [data-theme]. Rebind semantic tokens through DS variables only.
+ * Use: <div data-ds-dark-surface> … </div> (import once in app/Storybook).
  */
 [data-ds-dark-surface] {
-  --ds-text-inverted: #ffffff;
-  --ds-text-disabled: #ffffff1f;
-  --ds-backdrop-nautral-background: #ffffff;
+  --ds-text-inverted: var(--ds-semantic-stroke-static-stroke-white-solid);
+  --ds-text-disabled: var(--ds-semantic-stroke-static-stroke-white-weak);
+  --ds-backdrop-nautral-background: var(--ds-semantic-stroke-static-stroke-white-solid);
 }

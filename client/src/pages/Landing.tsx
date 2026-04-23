@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LandingComponent } from '@ds/Components/landingcomponent/LandingComponent.1.0.0'
 import { LandingPageLink } from '@ds/Components/landingpagelink/LandingPageLink.1.1.0'
+import { semanticColors } from '@ds/tokens/design-tokens'
 import logoUrl from '@ds/assets/aetherlogo.svg'
 import WaveCanvas from '../components/WaveCanvas'
 
@@ -52,6 +53,7 @@ export default function Landing() {
       >
         {isMobile ? (
           <div
+            data-ds-dark-surface=""
             style={{
               width: '100%',
               height: '100%',
@@ -62,16 +64,25 @@ export default function Landing() {
               background: 'transparent',
             }}
           >
-            <img
-              src={logoUrl}
-              alt="Aether"
+            <div
+              role="img"
+              aria-label="Aether"
               style={{
                 height: 32,
                 width: 136,
                 maxWidth: '100%',
-                objectFit: 'contain',
                 display: 'block',
                 flexShrink: 0,
+                backgroundColor: semanticColors.backdropNautralBackground,
+                maskImage: `url(${logoUrl})`,
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                maskMode: 'alpha',
+                WebkitMaskImage: `url(${logoUrl})`,
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
               }}
             />
             <div
