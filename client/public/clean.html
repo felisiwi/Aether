@@ -397,16 +397,16 @@ const tweak = {
   u_trailLag: 0.025,
   u_warpStrength: 0.4,
   u_noiseAmount: 0.3,
-  u_darkness: 0.04,
+  u_darkness: 0.028,
   u_waveCount: 8,
-  u_waveFreq: 2,
-  u_waveSpeed: 0.3,
-  u_waveParallax: 0.0,
+  u_waveFreq: 2.8,
+  u_waveSpeed: 0.5,
+  u_waveParallax: 1.88,
   u_rippleStrength: 0.6,
   u_flickerSpeed: 1.5,
   u_flickerAmount: 0.06,
   u_waveSharpness: 600,
-  u_waveBrightness: 1.6,
+  u_waveBrightness: 0.18,
   u_waveGlow: 0.3,
   u_waveTemp: 0.5,
   u_waveSpacing: 1.0,
@@ -445,26 +445,6 @@ function applyTweakUniforms() {
   setUniform1f(uMouseRadius, "u_mouseRadius", tweak.u_mouseRadius);
 }
 
-const sliderDefs = [
-  { key: "u_trailLag", label: "trail speed", min: 0.0001, max: 0.15, step: 0.0001 },
-  { key: "u_warpStrength", label: "warp strength", min: 0.0, max: 2.0, step: 0.01 },
-  { key: "u_noiseAmount", label: "noise amount", min: 0.0, max: 1.0, step: 0.01 },
-  { key: "u_darkness", label: "brightness", min: 0.01, max: 0.15, step: 0.001 },
-  { key: "u_waveCount", label: "wave count", min: 2, max: 12, step: 1 },
-  { key: "u_waveFreq", label: "wave frequency", min: 0.3, max: 20, step: 0.1 },
-  { key: "u_waveSpeed", label: "wave speed", min: 0, max: 3, step: 0.1 },
-  { key: "u_waveParallax", label: "wave parallax", min: 0, max: 3, step: 0.01 },
-  { key: "u_rippleStrength", label: "ripple strength", min: 0.0, max: 4.0, step: 0.05 },
-  { key: "u_flickerSpeed", label: "flicker speed", min: 0.1, max: 6.0, step: 0.1 },
-  { key: "u_flickerAmount", label: "flicker amount", min: 0.0, max: 0.3, step: 0.005 },
-  { key: "u_waveSharpness", label: "wave sharpness", min: 20, max: 2000, step: 10 },
-  { key: "u_waveBrightness", label: "wave brightness", min: 0.02, max: 3.0, step: 0.02 },
-  { key: "u_waveGlow", label: "wave glow", min: 0.0, max: 2.0, step: 0.05 },
-  { key: "u_waveTemp", label: "wave temp (0=deep red / 1=amber)", min: 0.0, max: 1.0, step: 0.01 },
-  { key: "u_waveSpacing", label: "wave spacing", min: 0.3, max: 2.0, step: 0.05 },
-  { key: "u_waveAlt", label: "wave alt", min: 0.0, max: 1.0, step: 0.01 },
-  { key: "u_mouseRadius", label: "mouse radius", min: 0.05, max: 1.0, step: 0.01 },
-];
 
 const SCALES = {
   Major: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
@@ -507,24 +487,24 @@ const HARMONIC_HINTS = [
 let soundAttack = 400;
 let soundDecay = 3000;
 let soundVolume = 0.3;
-let portamentoSensitivity = 0.85;
-let vibratoDepthControl = 0.6;
-let vibratoSpeedControl = 3.5;
+let portamentoSensitivity = 1;
+let vibratoDepthControl = 3;
+let vibratoSpeedControl = 8;
 let glowSize = 0.3;
 let glowIntensity = 1.0;
-let releaseTime = 4.0;
+let releaseTime = 8.8;
 let velocityThreshold = 5;
-let sustainLevel = 0.45;
-let deadZoneSize = 0.35;
-let gravityStrength = 0.55;
+let sustainLevel = 0.91;
+let deadZoneSize = 0.4;
+let gravityStrength = 0.75;
 let gravityEnabled = true;
-let octaveMix = 0.6;
+let octaveMix = 1;
 let oscType = "sine";
 let sympatheticGains = [];
 let sympatheticOscs = [];
 let sympatheticFilters = [];
 let sympatheticLevels = new Float32Array(8);
-let sympatheticMix = 0.15;
+let sympatheticMix = 0.33;
 let fpsCap = 60;
 let renderScale = 1.0;
 let idleThrottle = false;
@@ -533,12 +513,12 @@ let lastFrameTime = 0;
 let frameInterval = 1000 / 60;
 
 let scrollSemitones = 0;
-let targetScrollSemitones = 0;
+let targetScrollSemitones = 4;
 let smoothScrollSemitones = 0;
 let zoneScrollAccum = 0;
 let scrollFreqMult = 1;
-let rootKeySemitones = 0;
-let baseOctave = 3;
+let rootKeySemitones = 8;
+let baseOctave = 1;
 
 function noteFreqForBand(bandIndex) {
   const degree = hangDrumEnabled ?
@@ -562,17 +542,6 @@ function getWellPositions() {
 }
 
 const panel = document.getElementById("tweak-panel");
-const perfSection = document.createElement("div");
-perfSection.className = "tweak-row";
-const perfHead = document.createElement("div");
-perfHead.className = "tweak-head";
-const perfLab = document.createElement("span");
-perfLab.className = "tweak-label";
-perfLab.textContent = "── PERFORMANCE ──";
-perfHead.appendChild(perfLab);
-perfSection.appendChild(perfHead);
-panel.appendChild(perfSection);
-
 const perfSoundRow = document.createElement("div");
 perfSoundRow.className = "tweak-row";
 const perfSoundHead = document.createElement("div");
@@ -619,95 +588,6 @@ perfSoundWrap.appendChild(perfSoundOff);
 perfSoundRow.appendChild(perfSoundWrap);
 panel.appendChild(perfSoundRow);
 
-appendSoundSlider(
-  "fps cap",
-  10,
-  60,
-  5,
-  () => fpsCap,
-  (v) => {
-    fpsCap = v;
-  },
-  "fpsCap",
-);
-appendSoundSlider(
-  "render scale",
-  0.3,
-  1.0,
-  0.05,
-  () => renderScale,
-  (v) => {
-    renderScale = v;
-    resize();
-  },
-  "renderScale",
-);
-const perfThrottleRow = document.createElement("div");
-perfThrottleRow.className = "tweak-row";
-const perfThrottleHead = document.createElement("div");
-perfThrottleHead.className = "tweak-head";
-const perfThrottleLab = document.createElement("span");
-perfThrottleLab.className = "tweak-label";
-perfThrottleLab.textContent = "idle throttle";
-perfThrottleHead.appendChild(perfThrottleLab);
-perfThrottleRow.appendChild(perfThrottleHead);
-const perfThrottleWrap = document.createElement("div");
-perfThrottleWrap.id = "perf-throttle-row";
-const perfThrottleOn = document.createElement("button");
-perfThrottleOn.type = "button";
-perfThrottleOn.textContent = "THROTTLE ON";
-const perfThrottleOff = document.createElement("button");
-perfThrottleOff.type = "button";
-perfThrottleOff.textContent = "THROTTLE OFF";
-function syncPerfThrottleButtons() {
-  perfThrottleOn.classList.toggle("selected", idleThrottle);
-  perfThrottleOff.classList.toggle("selected", !idleThrottle);
-}
-perfThrottleOn.addEventListener("click", () => {
-  idleThrottle = true;
-  syncPerfThrottleButtons();
-});
-perfThrottleOff.addEventListener("click", () => {
-  idleThrottle = false;
-  syncPerfThrottleButtons();
-});
-syncPerfThrottleButtons();
-perfThrottleWrap.appendChild(perfThrottleOn);
-perfThrottleWrap.appendChild(perfThrottleOff);
-perfThrottleRow.appendChild(perfThrottleWrap);
-panel.appendChild(perfThrottleRow);
-
-const readouts = {};
-sliderDefs.forEach((def) => {
-  const row = document.createElement("div");
-  row.className = "tweak-row";
-  const head = document.createElement("div");
-  head.className = "tweak-head";
-  const lab = document.createElement("span");
-  lab.className = "tweak-label";
-  lab.textContent = def.label;
-  const val = document.createElement("span");
-  val.className = "tweak-val";
-  val.textContent = String(tweak[def.key]);
-  readouts[def.key] = val;
-  head.appendChild(lab);
-  head.appendChild(val);
-  const input = document.createElement("input");
-  input.type = "range";
-  input.min = String(def.min);
-  input.max = String(def.max);
-  input.step = String(def.step);
-  input.value = String(tweak[def.key]);
-  input.dataset.settingKey = def.key;
-  input.addEventListener("input", () => {
-    const x = parseFloat(input.value);
-    tweak[def.key] = x;
-    val.textContent = String(x);
-  });
-  row.appendChild(head);
-  row.appendChild(input);
-  panel.appendChild(row);
-});
 
 const scaleWrap = document.createElement("div");
 scaleWrap.style.marginBottom = "12px";
@@ -776,29 +656,6 @@ octaveSelect.addEventListener("change", () => {
 scaleWrap.appendChild(octaveLabel);
 scaleWrap.appendChild(octaveSelect);
 panel.appendChild(scaleWrap);
-
-appendSoundSlider(
-  "glow size",
-  0.05,
-  1.5,
-  0.01,
-  () => glowSize,
-  (v) => {
-    glowSize = v;
-  },
-  "glowSize",
-);
-appendSoundSlider(
-  "glow intensity",
-  0.0,
-  4.0,
-  0.05,
-  () => glowIntensity,
-  (v) => {
-    glowIntensity = v;
-  },
-  "glowIntensity",
-);
 
 function appendSoundSlider(label, min, max, step, getVal, setVal, settingKey) {
   const row = document.createElement("div");
@@ -1358,6 +1215,33 @@ importBtn.style.marginLeft = "8px";
 importBtn.addEventListener("click", () => importInput.click());
 panel.appendChild(importBtn);
 panel.appendChild(importInput);
+
+const saveDiskBtn = document.createElement("button");
+saveDiskBtn.type = "button";
+saveDiskBtn.id = "tweak-save-disk";
+saveDiskBtn.textContent = "Save to disk";
+saveDiskBtn.style.marginLeft = "8px";
+saveDiskBtn.addEventListener("click", () => {
+  const o = getCurrentSettings();
+  const text = JSON.stringify(o, null, 2);
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  a.download = "aether-preset-" + ts + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  saveDiskBtn.textContent = "Saved!";
+  saveDiskBtn.style.background = "rgba(80,200,120,0.25)";
+  setTimeout(() => {
+    saveDiskBtn.textContent = "Save to disk";
+    saveDiskBtn.style.background = "";
+  }, 1500);
+});
+panel.appendChild(saveDiskBtn);
 
 const presetSection = document.createElement("div");
 presetSection.id = "preset-section";
