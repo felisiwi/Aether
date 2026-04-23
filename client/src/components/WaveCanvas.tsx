@@ -944,13 +944,29 @@ let splatY = 0.5;
 let splatAge = 0.0;
 let vibratoPhase = 0;
 let vibratoAmount = 0;
-addDoc("mousemove", (e) => {
+function updatePointerFromClient(clientX, clientY) {
   initAudio();
-  tx = e.clientX;
-  ty = e.clientY;
-  mouseX = e.clientX / window.innerWidth;
+  tx = clientX;
+  ty = clientY;
+  mouseX = clientX / window.innerWidth;
   trail.push({x: mx, y: canvas.height - my, age: 0});
   if (trail.length > TRAIL_LENGTH) trail.shift();
+  lastMoveTime = performance.now();
+}
+addDoc("mousemove", (e) => {
+  updatePointerFromClient(e.clientX, e.clientY);
+});
+addDoc("touchstart", (e) => {
+  if (!e.touches || e.touches.length === 0) return;
+  const touch = e.touches[0];
+  updatePointerFromClient(touch.clientX, touch.clientY);
+}, { passive: true });
+addDoc("touchmove", (e) => {
+  if (!e.touches || e.touches.length === 0) return;
+  const touch = e.touches[0];
+  updatePointerFromClient(touch.clientX, touch.clientY);
+}, { passive: true });
+addDoc("touchend", () => {
   lastMoveTime = performance.now();
 });
 function resize(){
