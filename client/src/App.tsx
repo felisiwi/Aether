@@ -121,12 +121,14 @@ function Session({
     transportType,
     turnConfigured,
     remoteUser,
+    remoteBpm,
     error,
     connectToPeer,
     disconnect,
     sendMidi,
     sendPing,
     sendPatchState,
+    sendBpm,
   } = useWebRTC({
     signalUrl: SIGNAL_URL,
     username: joined ? username : null,
@@ -172,6 +174,7 @@ function Session({
 
   const noopSendMidi = useCallback(() => {}, [])
   const noopSendPatchState = useCallback((_patch: PatchStateMessage) => {}, [])
+  const noopSendBpm = useCallback((_bpm: number) => {}, [])
   const soloRemoteMidiRef = useRef<(event: MidiEvent) => void>(() => {})
   const emptySamplesRef = useRef<number[]>([])
 
@@ -214,6 +217,8 @@ function Session({
           synth={synth}
           remoteSynth={remoteSynth}
           sendPatchState={noopSendPatchState}
+          sendBpm={noopSendBpm}
+          remoteBpm={120}
           remoteUser={null}
           connectionState="idle"
           transportType="unknown"
@@ -232,6 +237,8 @@ function Session({
           synth={synth}
           remoteSynth={remoteSynth}
           sendPatchState={sendPatchState}
+          sendBpm={sendBpm}
+          remoteBpm={remoteBpm}
           remoteUser={remoteUser}
           connectionState={connectionState}
           transportType={transportType}

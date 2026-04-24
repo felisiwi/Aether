@@ -20,6 +20,8 @@ interface JamRoomPageProps {
   synth: Synth | null
   remoteSynth: Synth | null
   sendPatchState: (patch: PatchStateMessage) => void
+  sendBpm: (bpm: number) => void
+  remoteBpm: number
   remoteUser: string | null
   connectionState: DataChannelState
   transportType: TransportType
@@ -38,6 +40,8 @@ export default function JamRoomPage({
   synth,
   remoteSynth,
   sendPatchState,
+  sendBpm,
+  remoteBpm,
   remoteUser,
   connectionState,
   transportType,
@@ -79,6 +83,8 @@ export default function JamRoomPage({
         synth={synth}
         remoteSynth={remoteSynth}
         sendPatchState={sendPatchState}
+        sendBpm={sendBpm}
+        remoteBpm={remoteBpm}
         connectionState={connectionState}
         transportType={transportType}
         sendMidi={sendMidi}

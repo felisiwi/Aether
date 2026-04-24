@@ -51,6 +51,7 @@ export interface PeerCallbacks {
   onTransportType: (type: TransportType) => void
   onRemoteMidi: (event: MidiEvent) => void
   onPong: (originTs: number) => void
+  onRemoteBpm: (bpm: number) => void
   onRemotePatchState: (patch: PatchStateMessage) => void
 }
 
@@ -80,7 +81,11 @@ interface DCPong {
   t: 'pong'
   ts: number
 }
-type DCMessage = DCNoteOn | DCNoteOff | DCCC | DCPing | DCPong
+interface DCBpm {
+  t: 'bpm'
+  v: number
+}
+type DCMessage = DCNoteOn | DCNoteOff | DCCC | DCPing | DCPong | DCBpm
 
 function serializeMidi(event: MidiEvent): string {
   switch (event.type) {
@@ -241,6 +246,12 @@ export class PeerManager {
     }
   }
 
+  sendBpm(bpm: number): void {
+    if (this.dc && this.dc.readyState === 'open') {
+      this.dc.send(JSON.stringify({ t: 'bpm', v: bpm }))
+    }
+  }
+
   sendPatchState(patch: PatchStateMessage): void {
     if (this.patchDc && this.patchDc.readyState === 'open') {
       this.patchDc.send(JSON.stringify(patch))
@@ -327,6 +338,9 @@ export class PeerManager {
         break
       case 'pong':
         this.callbacks.onPong(msg.ts)
+        break
+      case 'bpm':
+        this.callbacks.onRemoteBpm(msg.v)
         break
     }
   }

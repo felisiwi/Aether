@@ -34,6 +34,7 @@ export function useWebRTC({
   const [transportType, setTransportType] =
     useState<TransportType>('unknown')
   const [remoteUser, setRemoteUser] = useState<string | null>(null)
+  const [remoteBpm, setRemoteBpm] = useState<number>(120)
   const [error, setError] = useState<string | null>(null)
 
   const midiRef = useRef(onRemoteMidi)
@@ -61,6 +62,7 @@ export function useWebRTC({
       onTransportType: setTransportType,
       onRemoteMidi: (event) => midiRef.current(event),
       onPong: (ts) => pongRef.current(ts),
+      onRemoteBpm: (bpm) => setRemoteBpm(bpm),
       onRemotePatchState: (patch) => patchRef.current(patch),
     })
     peerRef.current = peer
@@ -130,17 +132,23 @@ export function useWebRTC({
     peerRef.current?.sendPatchState(patch)
   }, [])
 
+  const sendBpm = useCallback((bpm: number) => {
+    peerRef.current?.sendBpm(bpm)
+  }, [])
+
   return {
     presence,
     connectionState,
     transportType,
     turnConfigured: _turnConfigured,
     remoteUser,
+    remoteBpm,
     error,
     connectToPeer,
     disconnect,
     sendMidi,
     sendPing,
     sendPatchState,
+    sendBpm,
   }
 }

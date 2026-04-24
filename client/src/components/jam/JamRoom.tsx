@@ -17,6 +17,7 @@ import {
 import type { WaveformId } from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
 import type { ButtonRowOption } from '@ds/Components/buttonrow/ButtonRow.1.0.0'
 import { TopNav } from '@ds/Components/topnav/TopNav.1.3.0'
+import { DataWindow } from '@ds/Components/datawindow/DataWindow.1.0.0'
 import { JamBoard } from '@ds/Components/jamboard/JamBoard.1.0.0'
 import type { ChordDisplayNote } from '@ds/Components/chorddisplay/ChordDisplay.2.7.0'
 import { EffectsBoard } from '@ds/Components/effectsboard/EffectsBoard.1.0.0'
@@ -78,6 +79,23 @@ const waveformOptions: ButtonRowOption[] = [
   { icon: 'waveform-square', label: 'Square' },
 ]
 
+function playMetronomeClick(
+  ctx: AudioContext,
+  isDownbeat: boolean,
+): void {
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.frequency.value = isDownbeat ? 1000 : 800
+  osc.type = 'sine'
+  const now = ctx.currentTime
+  gain.gain.setValueAtTime(0.3, now)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+  osc.start(now)
+  osc.stop(now + 0.05)
+}
+
 export interface JamRoomHandle {
   handleLocalMidi: (event: MidiEvent) => void
   handleRemoteMidi: (event: MidiEvent) => void
@@ -90,6 +108,8 @@ export interface JamRoomProps {
   synth: Synth | null
   remoteSynth: Synth | null
   sendPatchState: (patch: PatchStateMessage) => void
+  sendBpm: (bpm: number) => void
+  remoteBpm: number
   connectionState: DataChannelState
   transportType: TransportType
   sendMidi: (event: MidiEvent) => void
@@ -109,6 +129,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       synth,
       remoteSynth,
       sendPatchState,
+      sendBpm,
+      remoteBpm,
       connectionState,
       transportType: _transportType,
       sendMidi,
@@ -152,6 +174,14 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [reverbMix, setReverbMix] = useState(0)
 
     const [volume, setVolume] = useState(1)
+    const [bpm, setBpm] = useState(120)
+    const [metronomeOn, setMetronomeOn] = useState(false)
+    const sessionEpochRef = useRef(Date.now())
+    const metronomeRef = useRef<{
+      audioCtx: AudioContext | null
+      lastBeat: number
+      intervalId: ReturnType<typeof setInterval> | null
+    }>({ audioCtx: null, lastBeat: -1, intervalId: null })
 
     const patchSnapshotRef = useRef({
       waveform: 'sine' as WaveformId,
@@ -334,6 +364,13 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     transposeRef.current = transpose
 
     const [syncRemote, setSyncRemote] = useState(true)
+
+    useEffect(() => {
+      if (!remoteBpm || Number.isNaN(remoteBpm)) return
+      setBpm(remoteBpm)
+      sessionEpochRef.current = Date.now()
+      metronomeRef.current.lastBeat = -1
+    }, [remoteBpm])
 
     const recorderRef = useRef<SessionRecorder | null>(null)
     const [isRecording, setIsRecording] = useState(false)
@@ -779,6 +816,41 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       return () => cancelAnimationFrame(rafId)
     }, [synth, localNotes.length])
 
+    useEffect(() => {
+      const metro = metronomeRef.current
+      if (!metronomeOn) {
+        if (metro.intervalId !== null) {
+          clearInterval(metro.intervalId)
+          metro.intervalId = null
+        }
+        return
+      }
+      if (!metro.audioCtx) {
+        metro.audioCtx = new AudioContext()
+      }
+      const epoch = sessionEpochRef.current
+      metro.lastBeat = -1
+      const tick = () => {
+        const now = Date.now()
+        const msPerBeat = 60000 / bpm
+        const beatNum = Math.floor((now - epoch) / msPerBeat)
+        if (beatNum !== metro.lastBeat) {
+          metro.lastBeat = beatNum
+          playMetronomeClick(
+            metro.audioCtx!,
+            beatNum % 4 === 0,
+          )
+        }
+      }
+      metro.intervalId = setInterval(tick, 20)
+      return () => {
+        if (metro.intervalId !== null) {
+          clearInterval(metro.intervalId)
+          metro.intervalId = null
+        }
+      }
+    }, [metronomeOn, bpm])
+
     const topNavDefaultTheme = mode === 'dark' ? 'dark' : 'light'
 
     const horizontalPad = { paddingLeft: layout.gap48, paddingRight: layout.gap48 }
@@ -809,7 +881,20 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
             onBackToLobby={onLeave}
             defaultTheme={topNavDefaultTheme}
             onThemeChange={(t: 'light' | 'dark') => setThemeMode(t)}
+            showMetronome={true}
+            bpm={bpm}
+            onBpmChange={(newBpm) => {
+              setBpm(newBpm)
+              sessionEpochRef.current = Date.now()
+              metronomeRef.current.lastBeat = -1
+              sendBpm(newBpm)
+            }}
+            metronomeOn={metronomeOn}
+            onMetronomeToggle={() => setMetronomeOn((prev) => !prev)}
           />
+          <div style={{ display: 'none' }}>
+            <DataWindow value={bpm} suffix="BPM" compact />
+          </div>
         </div>
 
         <div
