@@ -171,7 +171,6 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
   /** Pre-transpose MIDI (KEY_MAP + octave) held while caps held mode is on. */
   const heldNotesRef = useRef<Set<number>>(new Set())
   const capsLockModeRef = useRef(false)
-  capsLockModeRef.current = capsLockMode
   const pointerNoteRef = useRef<number | null>(null)
 
   const notifyHeldRawNotes = useCallback(() => {
