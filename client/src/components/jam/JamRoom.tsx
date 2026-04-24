@@ -11,6 +11,8 @@ import {
   semanticColors,
   layout,
   fontFamily,
+  themeTokens,
+  typography,
 } from '@ds/tokens/design-tokens'
 import type { WaveformId } from '@ds/Components/soundwavecontroller/SoundWaveController.1.3.0'
 import type { ButtonRowOption } from '@ds/Components/buttonrow/ButtonRow.1.0.0'
@@ -123,6 +125,10 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [pianoOctaveShift, setPianoOctaveShift] = useState(0)
     const pianoOctaveShiftRef = useRef(pianoOctaveShift)
     pianoOctaveShiftRef.current = pianoOctaveShift
+
+    /** Pre-transpose computer-keyboard notes held in caps HELD mode (see PianoKeyboard). */
+    const computerHeldRawNotesRef = useRef<Set<number>>(new Set())
+    const [computerCapsHeldMode, setComputerCapsHeldMode] = useState(false)
 
     const pulseRef = useRef<HTMLDivElement>(null)
     const oscilloscopeRef = useRef<HTMLCanvasElement>(null)
@@ -403,8 +409,16 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       const activeMap = keyboardActiveNotesRef.current
       if (activeMap.size === 0 || totalDelta === 0) return
 
+      const skipHeldOctaveOnly =
+        tDelta === 0 &&
+        oDelta !== 0 &&
+        computerHeldRawNotesRef.current.size > 0
+
       const snapshot = new Map(activeMap)
-      for (const [, oldFinal] of snapshot) {
+      for (const [rawPre, oldFinal] of snapshot) {
+        if (skipHeldOctaveOnly && computerHeldRawNotesRef.current.has(rawPre)) {
+          continue
+        }
         const newFinal = oldFinal + totalDelta
         if (newFinal < 0 || newFinal > 127) continue
         synth.updateNotePitch(oldFinal, newFinal)
@@ -416,6 +430,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
       const semitoneShift = totalDelta
       for (const [key, oldNote] of [...keyboardActiveNotesRef.current]) {
+        if (skipHeldOctaveOnly && computerHeldRawNotesRef.current.has(key)) {
+          continue
+        }
         const newNote = oldNote + semitoneShift
         if (newNote < 0 || newNote > 127) {
           keyboardActiveNotesRef.current.delete(key)
@@ -428,6 +445,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     }, [transpose, pianoOctaveShift, localMode, synth, sendMidi])
 
     const handleComputerKeyboardCapsLockOff = useCallback(() => {
+      computerHeldRawNotesRef.current.clear()
+      setComputerCapsHeldMode(false)
       synth?.panicAllNotesOff()
       keyboardActiveNotesRef.current.clear()
       setLocalNotes([])
@@ -459,21 +478,12 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       if (localMode !== 'keyboard' && localMode !== 'nanokey') return
       const down = (e: KeyboardEvent) => {
         if (e.repeat) return
-        if (
-          e.code !== 'ArrowUp'
-          && e.code !== 'ArrowDown'
-          && e.code !== 'ArrowLeft'
-          && e.code !== 'ArrowRight'
-        ) {
+        if (e.code !== 'ArrowUp' && e.code !== 'ArrowDown') {
           return
         }
         e.preventDefault()
         e.stopPropagation()
-        if (e.code === 'ArrowLeft') {
-          pianoRef.current?.setOctaveShift(pianoOctaveShiftRef.current - 1)
-        } else if (e.code === 'ArrowRight') {
-          pianoRef.current?.setOctaveShift(pianoOctaveShiftRef.current + 1)
-        } else if (e.code === 'ArrowUp') {
+        if (e.code === 'ArrowUp') {
           setTranspose((v) => Math.min(v + 1, MAX_TRANSPOSE))
         } else if (e.code === 'ArrowDown') {
           setTranspose((v) => Math.max(v - 1, MIN_TRANSPOSE))
@@ -923,6 +933,10 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 <PianoKeyboard
                   ref={pianoRef}
                   onCapsLockOff={handleComputerKeyboardCapsLockOff}
+                  onCapsLockHeldModeChange={setComputerCapsHeldMode}
+                  onComputerHeldRawNotesChange={(raws) => {
+                    computerHeldRawNotesRef.current = new Set(raws)
+                  }}
                   onMidiEvent={handleLocalMidi}
                   remoteActiveNotes={remoteNotes}
                   onOctaveShiftChange={(s) => setPianoOctaveShift(s)}
@@ -948,6 +962,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 />
                 <div
                   style={{
+                    position: 'relative',
                     flex: 1,
                     minWidth: 0,
                     alignSelf: 'stretch',
@@ -955,6 +970,29 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     alignItems: 'flex-end',
                   }}
                 >
+                  {computerCapsHeldMode && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        zIndex: 2,
+                        padding: '2px 8px',
+                        borderRadius: layout.radiusRound,
+                        background: themeTokens.purple.primary10,
+                        border: `1px solid ${themeTokens.purple.primary40}`,
+                        fontFamily: `${fontFamily}, sans-serif`,
+                        fontSize: typography.label.fontSize,
+                        fontWeight: typography.label.fontWeight,
+                        letterSpacing: '0.08em',
+                        color: themeTokens.purple.primary50,
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      }}
+                    >
+                      HELD
+                    </div>
+                  )}
                   <InstrumentInterface
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
