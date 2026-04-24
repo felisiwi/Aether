@@ -157,7 +157,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                 insideWrapper
                 showText={false}
                 showIcon
-                iconName="music-notes-plus"
+                iconName="metronome"
                 latching
                 state={metronomeOn ? "pressed" : "active"}
                 aria-label="Metronome"

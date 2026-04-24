@@ -76,14 +76,18 @@ export const BpmController: React.FC<BpmControllerProps> = ({
       if (e.deltaY === 0) return;
       markScrollActive();
 
+      // Accumulate — Mac trackpad sends many small
+      // deltaY events, threshold prevents over-firing
       scrollAccRef.current += e.deltaY;
 
-      const threshold = 8;
+      const threshold = 60;
       const steps = Math.trunc(scrollAccRef.current / threshold);
       if (steps === 0) return;
       scrollAccRef.current -= steps * threshold;
 
-      const next = clamp(clamped - steps * step, min, max);
+      // Scroll UP (negative deltaY) = increase BPM
+      // steps is negative when scrolling up, so negate
+      const next = clamp(clamped + (-steps * step), min, max);
       if (next !== clamped) onChange(next);
     };
 

@@ -28,6 +28,7 @@ import {
   PinterestLogo,
   TiktokLogo,
   YoutubeLogo,
+  Metronome,
 } from '@phosphor-icons/react';
 import { colors } from '../../tokens/design-tokens';
 import type { IconName } from './icon-names';
@@ -54,6 +55,7 @@ const PHOSPHOR_MAP: Partial<Record<IconName, React.ComponentType<{ size?: number
   component: SquaresFour,
   plus: Plus,
   minus: Minus,
+  metronome: Metronome,
   instagram: InstagramLogo,
   facebook: FacebookLogo,
   pinterest: PinterestLogo,
