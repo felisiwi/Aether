@@ -233,9 +233,11 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
 
         if (capsIsNowOn) {
           // Caps lock light just turned ON — enter latch mode
+          capsLockModeRef.current = true // sync immediately (state lags one render)
           setCapsLockMode(true)
         } else {
           // Caps lock light just turned OFF — release all held notes
+          capsLockModeRef.current = false // sync immediately (state lags one render)
           for (const note of [...heldNotesRef.current]) {
             noteOff(note)
           }
