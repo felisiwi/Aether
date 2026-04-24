@@ -225,13 +225,17 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
     const down = (e: KeyboardEvent) => {
       if (e.code === 'CapsLock') {
         e.preventDefault()
-        // Guard against repeat events (some paths also double-fire CapsLock keydown)
         if (e.repeat) return
+
+        // Use OS caps lock state as source of truth (true = Caps Lock on after this keypress).
+        const capsIsNowOn = e.getModifierState('CapsLock')
         const wasOn = capsLockModeRef.current
-        console.log('CapsLock toggle', {
-          wasOn,
-          heldCount: heldNotesRef.current.size,
-        })
+
+        // Only act if OS state reflects a toggle relative to our latch; same state = duplicate keydown.
+        if (capsIsNowOn === wasOn) {
+          return
+        }
+
         if (wasOn) {
           for (const raw of [...heldNotesRef.current]) {
             noteOff(raw)

@@ -85,11 +85,7 @@ export const BpmController: React.FC<BpmControllerProps> = ({
       if (steps === 0) return;
       scrollAccRef.current -= steps * threshold;
 
-      // deltaY positive = scroll down = decrease BPM
-      // deltaY negative = scroll up = increase BPM
-      // steps positive when scrolling down, negative when up
-      const next = clamp(clamped - steps * step, min, max);
-      console.log("wheel", { deltaY: e.deltaY, steps, next, clamped });
+      const next = clamp(clamped + steps * step, min, max);
       if (next !== clamped) onChange(next);
     };
 
