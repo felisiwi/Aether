@@ -120,8 +120,6 @@ export interface PianoKeyboardProps {
   onCapsLockOff?: () => void
   /** Pre-transpose MIDI numbers (computer keyboard) currently held while caps held mode is on. */
   onComputerHeldRawNotesChange?: (rawNotes: ReadonlySet<number>) => void
-  /** Caps Lock "HELD" latch mode on/off (for UI next to visible keyboard). */
-  onCapsLockHeldModeChange?: (active: boolean) => void
   transpose?: number
 }
 
@@ -147,7 +145,6 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       onOctaveShiftChange,
       onCapsLockOff,
       onComputerHeldRawNotesChange,
-      onCapsLockHeldModeChange,
       transpose = 0,
     },
     ref,
@@ -170,8 +167,6 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
   callbackRef.current = onMidiEvent
   const heldNotesNotifyRef = useRef(onComputerHeldRawNotesChange)
   heldNotesNotifyRef.current = onComputerHeldRawNotesChange
-  const capsHeldModeUiRef = useRef(onCapsLockHeldModeChange)
-  capsHeldModeUiRef.current = onCapsLockHeldModeChange
   const activeKeyNotesRef = useRef<Map<string, number>>(new Map())
   /** Pre-transpose MIDI (KEY_MAP + octave) held while caps held mode is on. */
   const heldNotesRef = useRef<Set<number>>(new Set())
@@ -185,7 +180,6 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
 
   const clearComputerKeyboardPressState = useCallback(() => {
     setCapsLockMode(false)
-    capsHeldModeUiRef.current?.(false)
     heldNotesRef.current.clear()
     notifyHeldRawNotes()
     activeKeyNotesRef.current.clear()
@@ -231,20 +225,18 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
     const down = (e: KeyboardEvent) => {
       if (e.code === 'CapsLock') {
         e.preventDefault()
-        if (capsLockModeRef.current) {
+        const wasOn = capsLockModeRef.current
+        if (wasOn) {
           for (const raw of [...heldNotesRef.current]) {
             noteOff(raw)
           }
           heldNotesRef.current.clear()
           notifyHeldRawNotes()
           activeKeyNotesRef.current.clear()
+          pointerNoteRef.current = null
           onCapsLockOff?.()
-          capsHeldModeUiRef.current?.(false)
-          setCapsLockMode(false)
-        } else {
-          capsHeldModeUiRef.current?.(true)
-          setCapsLockMode(true)
         }
+        setCapsLockMode(!wasOn)
         return
       }
 
@@ -298,7 +290,13 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       if (shifted < 0 || shifted > 127) return
 
       if (capsLockModeRef.current) {
-        if (activeKeyNotesRef.current.has(e.code)) return
+        if (heldNotesRef.current.has(shifted)) {
+          heldNotesRef.current.delete(shifted)
+          notifyHeldRawNotes()
+          noteOff(shifted)
+          activeKeyNotesRef.current.delete(e.code)
+          return
+        }
         activeKeyNotesRef.current.set(e.code, shifted)
         heldNotesRef.current.add(shifted)
         notifyHeldRawNotes()
@@ -333,11 +331,21 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
   const handlePointerDown = useCallback(
     (note: number) => (e: React.PointerEvent) => {
       e.preventDefault()
+      if (capsLockModeRef.current && heldNotesRef.current.has(note)) {
+        heldNotesRef.current.delete(note)
+        notifyHeldRawNotes()
+        noteOff(note)
+        return
+      }
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
       pointerNoteRef.current = note
       noteOn(note)
+      if (capsLockModeRef.current) {
+        heldNotesRef.current.add(note)
+        notifyHeldRawNotes()
+      }
     },
-    [noteOn],
+    [noteOn, noteOff, notifyHeldRawNotes],
   )
 
   const handlePointerMove = useCallback(
@@ -349,17 +357,28 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       if (!noteStr) return
       const note = Number(noteStr)
       if (note !== pointerNoteRef.current) {
-        noteOff(pointerNoteRef.current)
+        const prev = pointerNoteRef.current
+        if (capsLockModeRef.current) {
+          heldNotesRef.current.delete(prev)
+          notifyHeldRawNotes()
+        }
+        noteOff(prev)
         pointerNoteRef.current = note
         noteOn(note)
+        if (capsLockModeRef.current) {
+          heldNotesRef.current.add(note)
+          notifyHeldRawNotes()
+        }
       }
     },
-    [noteOn, noteOff],
+    [noteOn, noteOff, notifyHeldRawNotes],
   )
 
   const handlePointerUp = useCallback(() => {
     if (pointerNoteRef.current !== null) {
-      noteOff(pointerNoteRef.current)
+      if (!capsLockModeRef.current) {
+        noteOff(pointerNoteRef.current)
+      }
       pointerNoteRef.current = null
     }
   }, [noteOff])

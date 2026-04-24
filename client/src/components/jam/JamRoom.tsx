@@ -150,7 +150,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     /** Pre-transpose computer-keyboard notes held in caps HELD mode (see PianoKeyboard). */
     const computerHeldRawNotesRef = useRef<Set<number>>(new Set())
-    const [computerCapsHeldMode, setComputerCapsHeldMode] = useState(false)
 
     const pulseRef = useRef<HTMLDivElement>(null)
     const oscilloscopeRef = useRef<HTMLCanvasElement>(null)
@@ -483,7 +482,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
 
     const handleComputerKeyboardCapsLockOff = useCallback(() => {
       computerHeldRawNotesRef.current.clear()
-      setComputerCapsHeldMode(false)
       synth?.panicAllNotesOff()
       keyboardActiveNotesRef.current.clear()
       setLocalNotes([])
@@ -1018,7 +1016,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                 <PianoKeyboard
                   ref={pianoRef}
                   onCapsLockOff={handleComputerKeyboardCapsLockOff}
-                  onCapsLockHeldModeChange={setComputerCapsHeldMode}
                   onComputerHeldRawNotesChange={(raws) => {
                     computerHeldRawNotesRef.current = new Set(raws)
                   }}
@@ -1055,29 +1052,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
                     alignItems: 'flex-end',
                   }}
                 >
-                  {computerCapsHeldMode && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        zIndex: 2,
-                        padding: '2px 8px',
-                        borderRadius: layout.radiusRound,
-                        background: themeTokens.purple.primary10,
-                        border: `1px solid ${themeTokens.purple.primary40}`,
-                        fontFamily: `${fontFamily}, sans-serif`,
-                        fontSize: typography.label.fontSize,
-                        fontWeight: typography.label.fontWeight,
-                        letterSpacing: '0.08em',
-                        color: themeTokens.purple.primary50,
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                      }}
-                    >
-                      HELD
-                    </div>
-                  )}
                   <InstrumentInterface
                     octave={3 + pianoOctaveShift}
                     octaveSpan={3}
