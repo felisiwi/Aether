@@ -38,6 +38,7 @@ export const BpmController: React.FC<BpmControllerProps> = ({
 }) => {
   const [scrollHot, setScrollHot] = useState(false);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollAccRef = useRef(0);
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const isActive = isActiveProp || scrollHot;
@@ -74,7 +75,15 @@ export const BpmController: React.FC<BpmControllerProps> = ({
       e.stopPropagation();
       if (e.deltaY === 0) return;
       markScrollActive();
-      const next = clamp(clamped + (e.deltaY > 0 ? -step : step), min, max);
+
+      scrollAccRef.current += e.deltaY;
+
+      const threshold = 8;
+      const steps = Math.trunc(scrollAccRef.current / threshold);
+      if (steps === 0) return;
+      scrollAccRef.current -= steps * threshold;
+
+      const next = clamp(clamped - steps * step, min, max);
       if (next !== clamped) onChange(next);
     };
 

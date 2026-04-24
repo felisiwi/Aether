@@ -149,22 +149,17 @@ export const TopNav: React.FC<TopNavProps> = ({
               <BpmController value={bpm} onChange={onBpmChange} label="BPM" />
             ) : null}
             {showMetronome ? (
+              // BasicButton uses visual state "active" for idle (there is no "default" token).
               <BasicButton
-                variant="tertiary"
+                variant="primary"
                 size="small"
                 colourFill={false}
                 insideWrapper
                 showText={false}
                 showIcon
                 iconName="music-notes-plus"
-                latching={false}
-                state={
-                  onMetronomeToggle
-                    ? metronomeOn
-                      ? "pressed"
-                      : "active"
-                    : undefined
-                }
+                latching
+                state={metronomeOn ? "pressed" : "active"}
                 aria-label="Metronome"
                 type="button"
                 disabled={!onMetronomeToggle}
