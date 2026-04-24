@@ -227,26 +227,23 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
         e.preventDefault()
         if (e.repeat) return
 
-        // Use OS caps lock state as source of truth (true = Caps Lock on after this keypress).
+        // Read OS caps lock state AFTER this keypress
+        // true = light is now ON, false = light is now OFF
         const capsIsNowOn = e.getModifierState('CapsLock')
-        const wasOn = capsLockModeRef.current
 
-        // Only act if OS state reflects a toggle relative to our latch; same state = duplicate keydown.
-        if (capsIsNowOn === wasOn) {
-          return
-        }
-
-        if (wasOn) {
-          for (const raw of [...heldNotesRef.current]) {
-            noteOff(raw)
+        if (capsIsNowOn) {
+          // Caps lock light just turned ON — enter latch mode
+          setCapsLockMode(true)
+        } else {
+          // Caps lock light just turned OFF — release all held notes
+          for (const note of [...heldNotesRef.current]) {
+            noteOff(note)
           }
           heldNotesRef.current.clear()
           notifyHeldRawNotes()
-          activeKeyNotesRef.current.clear()
-          pointerNoteRef.current = null
           onCapsLockOff?.()
+          setCapsLockMode(false)
         }
-        setCapsLockMode(!wasOn)
         return
       }
 
