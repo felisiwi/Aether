@@ -52,6 +52,11 @@ const INSTR_WHITE_W = layout.gap48;
 const INSTR_WHITE_H = layout.gap96;
 const INSTR_BLACK_SZ = layout.gap48;
 
+/** Figma Text/Static tokens — fixed across light/dark themes. */
+const STATIC_BLACK = '#000000';
+const STATIC_WHITE = '#FFFFFF';
+const STATIC_GREY = '#808080';
+
 const pad14 = layout.gap8 + layout.gap4 + layout.gap2;
 
 export default function PianoKey({
@@ -134,7 +139,7 @@ export default function PianoKey({
   if (showPressed) {
     background = semanticColors.backdropSurfaceColouredSurface;
   } else if (isBlack) {
-    background = semanticColors.backdropStatesHoverSurface;
+    background = semanticColors.backdropStaticLightenedBlack;
   } else {
     background = semanticColors.backdropStaticDarkenedWhite;
   }
@@ -176,8 +181,8 @@ export default function PianoKey({
       : showPressed
         ? colors.textPressed
         : isBlack
-          ? semanticColors.strokeInvertedMedium
-          : colors.textDisabled,
+          ? colors.textBodyNeutralDark
+          : colors.textBodyNeutral,
   };
 
   return (
@@ -289,8 +294,8 @@ function InstrumentKeyBody({
       : showGhost
         ? themeTokens.purple.primary50
         : isBlack
-          ? semanticColors.strokeInvertedSolid
-          : colors.textBodyNeutral,
+          ? STATIC_WHITE
+          : STATIC_BLACK,
   };
 
   const noteStyle: React.CSSProperties = {
@@ -305,9 +310,7 @@ function InstrumentKeyBody({
       ? colors.textPressed
       : showGhost
         ? themeTokens.purple.primary50
-        : isBlack
-          ? semanticColors.semanticStrokeStaticStrokeWhiteSolid
-          : colors.textBodyNeutral,
+        : STATIC_GREY,
   };
 
   const containerStyle: React.CSSProperties = {
