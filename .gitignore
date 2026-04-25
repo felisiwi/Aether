@@ -5,3 +5,5 @@ server/dist/
 .env.*.local
 *.log
 .DS_Store
+client/.env.local
+.env.local

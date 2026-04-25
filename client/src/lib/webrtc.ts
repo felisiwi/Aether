@@ -2,12 +2,26 @@ import type { MidiEvent } from './midi'
 import type { SignallingClient } from './signalling'
 
 // ─── TURN configuration ──────────────────────────────────────────
+//
+// metered.ca free tier provides 5 ICE entries: 1 STUN + 4 TURN variants
+// covering UDP/TCP × ports 80/443 + TLS. Browser tries them in order and
+// uses whichever connects — important for users on restrictive networks
+// (corporate WiFi, mobile carriers, VPNs that filter UDP).
+//
+// Env vars (VITE_* are read at build time, baked into the client bundle):
+//   VITE_TURN_HOST      e.g. "standard.relay.metered.ca"  (free tier)
+//                       or   "global.relay.metered.ca"    (paid tiers)
+//   VITE_TURN_USERNAME  metered credential username
+//   VITE_TURN_CREDENTIAL metered credential password
+//
+// If any are missing, falls back to Google's public STUN only.
+// Logs a warning so dev knows TURN isn't wired.
 
-const turnUrl = import.meta.env.VITE_TURN_URL
+const turnHost = import.meta.env.VITE_TURN_HOST
 const turnUser = import.meta.env.VITE_TURN_USERNAME
 const turnCred = import.meta.env.VITE_TURN_CREDENTIAL
 
-export const turnConfigured = Boolean(turnUrl && turnUser && turnCred)
+export const turnConfigured = Boolean(turnHost && turnUser && turnCred)
 
 if (!turnConfigured) {
   console.warn(
@@ -15,13 +29,31 @@ if (!turnConfigured) {
   )
 }
 
-const iceServers: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-]
-
-if (turnConfigured) {
-  iceServers.push({ urls: turnUrl, username: turnUser, credential: turnCred })
-}
+const iceServers: RTCIceServer[] = turnConfigured
+  ? [
+      { urls: `stun:${turnHost}:80` },
+      {
+        urls: `turn:${turnHost}:80`,
+        username: turnUser,
+        credential: turnCred,
+      },
+      {
+        urls: `turn:${turnHost}:80?transport=tcp`,
+        username: turnUser,
+        credential: turnCred,
+      },
+      {
+        urls: `turn:${turnHost}:443`,
+        username: turnUser,
+        credential: turnCred,
+      },
+      {
+        urls: `turns:${turnHost}:443?transport=tcp`,
+        username: turnUser,
+        credential: turnCred,
+      },
+    ]
+  : [{ urls: 'stun:stun.l.google.com:19302' }]
 
 // ─── Types ───────────────────────────────────────────────────────
 

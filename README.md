@@ -192,7 +192,7 @@ These hardcoded values are intentional and not DS token misses:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_SIGNAL_URL` | Yes | WebSocket URL for signalling (default: `ws://localhost:3000`) |
-| `VITE_TURN_URL` | No | TURN server URL for NAT traversal |
+| `VITE_TURN_HOST` | No | TURN server host for NAT traversal (e.g. `standard.relay.metered.ca`) |
 | `VITE_TURN_USERNAME` | No | TURN server username |
 | `VITE_TURN_CREDENTIAL` | No | TURN server credential |
 | `NGROK_AUTHTOKEN` | No | ngrok auth token for tunnel mode |
