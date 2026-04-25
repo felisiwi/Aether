@@ -221,30 +221,32 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
   }, [])
 
   useEffect(() => {
+    // macOS Chrome fires only ONE edge per caps-lock toggle and the edge
+    // varies by OS/browser (sometimes keydown, sometimes keyup). Handle both,
+    // and act only when osCaps actually differs from our latched state.
+    const syncCapsLock = (e: KeyboardEvent) => {
+      if (e.repeat) return
+      const capsIsNowOn = e.getModifierState('CapsLock')
+      if (capsIsNowOn === capsLockModeRef.current) return
+      if (capsIsNowOn) {
+        capsLockModeRef.current = true
+        setCapsLockMode(true)
+      } else {
+        capsLockModeRef.current = false
+        for (const note of [...heldNotesRef.current]) {
+          noteOff(note)
+        }
+        heldNotesRef.current.clear()
+        notifyHeldRawNotes()
+        onCapsLockOff?.()
+        setCapsLockMode(false)
+      }
+    }
+
     const down = (e: KeyboardEvent) => {
       if (e.code === 'CapsLock') {
         e.preventDefault()
-        if (e.repeat) return
-
-        // Read OS caps lock state AFTER this keypress
-        // true = light is now ON, false = light is now OFF
-        const capsIsNowOn = e.getModifierState('CapsLock')
-
-        if (capsIsNowOn) {
-          // Caps lock light just turned ON — enter latch mode
-          capsLockModeRef.current = true // sync immediately (state lags one render)
-          setCapsLockMode(true)
-        } else {
-          // Caps lock light just turned OFF — release all held notes
-          capsLockModeRef.current = false // sync immediately (state lags one render)
-          for (const note of [...heldNotesRef.current]) {
-            noteOff(note)
-          }
-          heldNotesRef.current.clear()
-          notifyHeldRawNotes()
-          onCapsLockOff?.()
-          setCapsLockMode(false)
-        }
+        syncCapsLock(e)
         return
       }
 
@@ -316,7 +318,10 @@ const PianoKeyboard = forwardRef<PianoKeyboardHandle, PianoKeyboardProps>(
       noteOn(shifted)
     }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'CapsLock') return
+      if (e.code === 'CapsLock') {
+        syncCapsLock(e)
+        return
+      }
 
       const shifted = activeKeyNotesRef.current.get(e.code)
       if (shifted === undefined) return
