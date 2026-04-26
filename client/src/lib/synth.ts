@@ -39,6 +39,8 @@ export class Synth {
   private ctx: AudioContext | null
   private masterGain: GainNode | null = null
   private filterNode: BiquadFilterNode | null = null
+  /** Soft saturation post-filter, pre-delay/chorus (native WaveShaper — no Tone.js in bundle). */
+  private driveNode: WaveShaperNode | null = null
   private delayNode: DelayNode | null = null
   private feedbackGain: GainNode | null = null
   private dryGain: GainNode | null = null
@@ -81,6 +83,10 @@ export class Synth {
       this.filterNode.type = 'lowpass'
       this.filterNode.frequency.value = this.brightness
 
+      this.driveNode = audioCtx.createWaveShaper()
+      this.driveNode.oversample = '4x'
+      this.rebuildDriveCurve(0)
+
       // Delay with feedback loop
       this.delayNode = audioCtx.createDelay(1.0)
       this.delayNode.delayTime.value = 0
@@ -97,8 +103,9 @@ export class Synth {
       this.convolverNode = audioCtx.createConvolver()
       this.convolverNode.buffer = createImpulseResponse(audioCtx)
 
-      // Chain: filter → delay → dry/wet split → masterGain
-      this.filterNode.connect(this.delayNode)
+      // Chain: filter → drive (soft clip) → delay → dry/wet split → masterGain
+      this.filterNode.connect(this.driveNode)
+      this.driveNode.connect(this.delayNode)
       this.delayNode.connect(this.dryGain)
       this.delayNode.connect(this.convolverNode)
       this.convolverNode.connect(this.wetGain)
@@ -128,7 +135,7 @@ export class Synth {
     }
   }
 
-  // Audio graph per voice: oscillator → voiceGain → filterNode → masterGain → destination
+  // Audio graph per voice: oscillator → voiceGain → filterNode → driveNode → delay → …
 
   noteOn(note: number): void {
     if (!this.ctx || !this.filterNode) return
@@ -234,6 +241,7 @@ export class Synth {
   dispose(): void {
     this.panicAllNotesOff()
     this.filterNode?.disconnect()
+    this.driveNode?.disconnect()
     this.delayNode?.disconnect()
     this.feedbackGain?.disconnect()
     this.dryGain?.disconnect()
@@ -247,6 +255,7 @@ export class Synth {
     this.analyserNode?.disconnect()
     this.masterGain?.disconnect()
     this.filterNode = null
+    this.driveNode = null
     this.delayNode = null
     this.feedbackGain = null
     this.dryGain = null
@@ -350,6 +359,34 @@ export class Synth {
   /** Sustain level; `pct` is 0–100 from UI. */
   setSustain(pct: number): void {
     this.sustainLevel = Math.max(0, Math.min(100, pct)) / 100
+  }
+
+  /** Drive / saturation; `pct` is 0–100 from EffectsBoard. Local-only — not synced to peers. */
+  setDrive(pct: number): void {
+    const clamped = Math.max(0, Math.min(100, pct))
+    // squared for perceptual linearity — do not change to linear
+    const squared = (clamped / 100) ** 2
+    this.rebuildDriveCurve(squared)
+  }
+
+  private rebuildDriveCurve(amount01: number): void {
+    if (!this.driveNode) return
+    const n = 2048
+    const curve = new Float32Array(n)
+    if (amount01 <= 1e-8) {
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1
+        curve[i] = x
+      }
+    } else {
+      const k = 1 + amount01 * 20
+      const th = Math.tanh(k)
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1
+        curve[i] = Math.tanh(k * x) / th
+      }
+    }
+    this.driveNode.curve = curve
   }
 
   /** Chorus wet send; `pct` is 0–100 from UI. */

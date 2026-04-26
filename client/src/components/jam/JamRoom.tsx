@@ -164,6 +164,7 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const [envelopeDecay, setEnvelopeDecay] = useState(0)
     const [chorusMix, setChorusMix] = useState(0)
     const [chorusDepth, setChorusDepth] = useState(0)
+    const [drive, setDrive] = useState(0)
     const [pitchRate, setPitchRate] = useState(0)
     const [pitchDepth, setPitchDepth] = useState(0)
     const [brightness, setBrightness] = useState(20000)
@@ -251,7 +252,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       synth.setEnvelopeDecay(envelopeDecay)
       synth.setChorusMix(chorusMix)
       synth.setChorusDepth(chorusDepth)
-    }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth])
+      synth.setDrive(drive)
+    }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth, drive])
 
     const handleWaveformChange = useCallback(
       (w: WaveformId) => {
@@ -297,6 +299,9 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       },
       [schedulePatchSend],
     )
+    const handleDrive = useCallback((v: number) => {
+      setDrive(v)
+    }, [])
     const handleRelease = useCallback(
       (ms: number) => {
         setRelease(ms)
@@ -961,8 +966,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               waveformOptions={waveformOptions}
               filter={filterK}
               onFilterChange={handleFilterK}
-              drive={0}
-              onDriveChange={() => {}}
+              drive={drive}
+              onDriveChange={handleDrive}
               reverb={Math.round(reverbMix * 100)}
               onReverbChange={(v) => handleReverbMix(v / 100)}
               attack={Math.round(attack)}
