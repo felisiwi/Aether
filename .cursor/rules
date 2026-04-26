@@ -8,7 +8,8 @@ You implement. You do not make architectural decisions without being told to.
 
 ## Repo
 - Path: /Users/felix/GitHub/Aether
-- Active branch: ui-redesign-v2
+- Active branch: main
+- ui-redesign-v2: merged into main April 20 — frozen historical reference only, not an active work branch
 - Client: client/src/ (React/TypeScript/Vite)
 - Server: server/ (Node/Express/WebSocket)
 
@@ -47,8 +48,34 @@ After your commit, report: files changed, commit hash, and any vendor-cp paths F
 Roland Aerophone AE-1 Mini. Hardware transposes +6 semitones — app default transpose is -6.
 
 ## Deploy
-Vercel (client) + Railway (server). Deploys from main branch.
-Current work is on ui-redesign-v2 — not yet merged or deployed.
+Vercel (client) + Railway (server). Vercel and Railway both auto-deploy from main on push to main.
+
+## Infrastructure & external services
+
+### TURN server (metered.ca)
+- WebRTC needs TURN to relay traffic when peer-to-peer fails (VPN users, restrictive networks, mobile carriers with carrier-grade NAT).
+- Provider: metered.ca free 20GB/month plan
+- Account: aetherstudios at dashboard.metered.ca
+- Server host: standard.relay.metered.ca
+
+### Env vars
+Three TURN env vars are required for production WebRTC:
+- VITE_TURN_HOST
+- VITE_TURN_USERNAME
+- VITE_TURN_CREDENTIAL
+
+Where they live:
+- Local dev: client/.env.local AND root .env.local (Vite reads from root when run via "vite client" from npm script in repo root). Both gitignored.
+- Production: Vercel project env vars (Settings → Environment Variables). All three set to "All Environments". After changes, redeploy required because VITE_* vars are baked in at build time.
+- Server-side env vars (signalling): set on Railway, not Vercel.
+
+### Connection failure debugging
+When users report "can't connect to a jam":
+1. Ask if VPN is active — disable and retry (most common cause)
+2. Try Incognito to rule out browser extensions
+3. Check metered dashboard quota
+4. Check Vercel deployment status for stale builds
+5. Browser console: setRemoteDescription errors → signalling bug; ICE failures → network/TURN issue
 
 ## Code extraction / porting — CRITICAL
 When extracting or porting logic from an existing file into a new architecture (e.g. static HTML → React component, vanilla JS → TypeScript module):
