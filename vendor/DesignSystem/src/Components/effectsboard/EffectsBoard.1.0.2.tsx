@@ -1,3 +1,4 @@
+/** EffectsBoard v1.0.2 — adds Tone row Resonance slider (Q / 0–100 UI). */
 import React, { useMemo } from "react";
 import type { ButtonRowOption } from "../buttonrow/ButtonRow.1.0.0";
 import { SettingsPanel } from "../settingspanel/SettingsPanel.1.0.0";
@@ -27,6 +28,7 @@ const SECTION_GAP = layout.gap24 + layout.gap2;
 
 const TONE_FILTER = { min: 0, max: 16, step: 0.1, suffix: "K" as const };
 const TONE_DRIVE = { min: 0, max: 100, step: 1, suffix: "%" as const };
+const TONE_RESONANCE = { min: 0, max: 100, step: 1, suffix: "%" as const };
 const TONE_REVERB = { min: 0, max: 100, step: 1, suffix: "%" as const };
 
 const ENV_ATTACK = { min: 0, max: 500, step: 5, suffix: "ms" as const };
@@ -58,6 +60,8 @@ export interface EffectsBoardProps {
   onFilterChange: (v: number) => void;
   drive: number;
   onDriveChange: (v: number) => void;
+  resonance: number;
+  onResonanceChange: (v: number) => void;
   reverb: number;
   onReverbChange: (v: number) => void;
   attack: number;
@@ -92,6 +96,8 @@ export const EffectsBoard: React.FC<EffectsBoardProps> = ({
   onFilterChange,
   drive,
   onDriveChange,
+  resonance,
+  onResonanceChange,
   reverb,
   onReverbChange,
   attack,
@@ -138,6 +144,15 @@ export const EffectsBoard: React.FC<EffectsBoardProps> = ({
         onChange: onDriveChange,
       },
       {
+        title: "Resonance",
+        value: resonance,
+        suffix: TONE_RESONANCE.suffix,
+        min: TONE_RESONANCE.min,
+        max: TONE_RESONANCE.max,
+        step: TONE_RESONANCE.step,
+        onChange: onResonanceChange,
+      },
+      {
         title: "Reverb",
         value: reverb,
         suffix: TONE_REVERB.suffix,
@@ -147,7 +162,16 @@ export const EffectsBoard: React.FC<EffectsBoardProps> = ({
         onChange: onReverbChange,
       },
     ],
-    [filter, onFilterChange, drive, onDriveChange, reverb, onReverbChange],
+    [
+      filter,
+      onFilterChange,
+      drive,
+      onDriveChange,
+      resonance,
+      onResonanceChange,
+      reverb,
+      onReverbChange,
+    ],
   );
 
   const envelopeControllers: SettingsPanelController[] = useMemo(
