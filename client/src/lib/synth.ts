@@ -379,7 +379,7 @@ export class Synth {
         curve[i] = x
       }
     } else {
-      const k = 1 + amount01 * 20
+      const k = 1 + amount01 * 6
       const th = Math.tanh(k)
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1
