@@ -7,3 +7,4 @@ server/dist/
 .DS_Store
 client/.env.local
 .env.local
+.claude/

@@ -512,15 +512,11 @@ let soundEnabled = true;
 let lastFrameTime = 0;
 let frameInterval = 1000 / 60;
 
-let tensionPosition = 0;
-let precomputedMaps = [];
-let activeBandMap = [0, 4, 2, 6, 7, 3, 5, 1];
 let shiftHeld = false;
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 let wheelAccum = 0;
 let rootKeySemitones = 8;
 let baseOctave = 1;
-
-const TENSION_ORDER = [0, 4, 2, 5, 1, 3, 6, 7];
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Shift") shiftHeld = true;
@@ -529,71 +525,11 @@ document.addEventListener("keyup", (e) => {
   shiftHeld = e.shiftKey;
 });
 
-function getScaleSemitones(scale) {
-  const base = scale[0];
-  return scale.map((f) => Math.round(12 * Math.log2(f / base)));
-}
-
-function scoreMapping(map, pitches) {
-  let score = 0;
-  for (let i = 0; i < 7; i++) {
-    const interval =
-      Math.abs(pitches[map[i]].semitone - pitches[map[i + 1]].semitone) % 12;
-    if ([3, 4, 5, 7, 8, 9].includes(interval)) score += 2;
-    else if ([0, 12].includes(interval)) score += 1;
-    else if ([1, 2, 6, 10, 11].includes(interval)) score -= 2;
-  }
-  return score;
-}
-
-function generateConsonantMap(tensionPos) {
-  const rotation = TENSION_ORDER[tensionPos];
-  const semitonesInScale = getScaleSemitones(currentScale);
-  const pitches = [];
-  for (let i = 0; i < 8; i++) {
-    const degree = (i + rotation) % 8;
-    const octaveUp = Math.floor((i + rotation) / 8);
-    pitches.push({
-      index: i,
-      semitone: semitonesInScale[degree] + octaveUp * 12,
-    });
-  }
-  let bestMap = [0, 4, 2, 6, 7, 3, 5, 1];
-  let bestScore = scoreMapping(bestMap, pitches);
-  for (let attempt = 0; attempt < 500; attempt++) {
-    const candidate = [...bestMap];
-    const a = Math.floor(Math.random() * 8);
-    let b = Math.floor(Math.random() * 8);
-    while (b === a) b = Math.floor(Math.random() * 8);
-    [candidate[a], candidate[b]] = [candidate[b], candidate[a]];
-    const score = scoreMapping(candidate, pitches);
-    if (score > bestScore) {
-      bestScore = score;
-      bestMap = candidate;
-    }
-  }
-  return bestMap;
-}
-
-function recomputeAllMaps() {
-  precomputedMaps = [];
-  for (let t = 0; t < 8; t++) {
-    precomputedMaps.push(generateConsonantMap(t));
-  }
-  activeBandMap = precomputedMaps[tensionPosition];
-}
-
-recomputeAllMaps();
-
 function noteFreqForBand(bandIndex) {
-  const rotation = TENSION_ORDER[tensionPosition];
-  const mappedIndex = hangDrumEnabled ? activeBandMap[bandIndex] : bandIndex;
-  const degree = (mappedIndex + rotation) % 8;
-  const octaveFromRotation = Math.floor((mappedIndex + rotation) / 8);
+  const degree = hangDrumEnabled ? HANG_DRUM_MAP[bandIndex] : bandIndex;
   const keyMult = Math.pow(2, rootKeySemitones / 12);
   const octaveMult = Math.pow(2, baseOctave - 3);
-  return currentScale[degree] * Math.pow(2, octaveFromRotation) * keyMult *
-    octaveMult;
+  return currentScale[degree] * keyMult * octaveMult;
 }
 
 currentFreq = noteFreqForBand(4);
@@ -677,7 +613,6 @@ Object.keys(SCALES).forEach((name) => {
 });
 scaleSelect.addEventListener("change", () => {
   currentScale = SCALES[scaleSelect.value];
-  recomputeAllMaps();
 });
 scaleWrap.appendChild(scaleHead);
 scaleWrap.appendChild(scaleSelect);
@@ -1118,7 +1053,6 @@ function getCurrentSettings() {
     octaveMix,
     sympatheticMix,
     hangDrumEnabled,
-    tensionPosition,
   };
 }
 
@@ -1163,12 +1097,6 @@ function applySettings(o) {
   if (n(o.sympatheticMix)) sympatheticMix = o.sympatheticMix;
   if (typeof o.hangDrumEnabled === "boolean")
     hangDrumEnabled = o.hangDrumEnabled;
-  if (n(o.tensionPosition))
-    tensionPosition = ((Math.round(o.tensionPosition) % 8) + 8) % 8;
-  else if (n(o.targetScrollSemitones))
-    tensionPosition = 0;
-  if (precomputedMaps.length === 8)
-    activeBandMap = precomputedMaps[tensionPosition];
   syncGravityToggleButtons();
   syncHangDrumToggleButtons();
   syncPerfThrottleButtons();
@@ -1632,47 +1560,39 @@ window.addEventListener(
     e.preventDefault();
     initAudio();
     wheelAccum += e.deltaY;
-    const TENSION_LABELS = [
-      "Home",
-      "Open",
-      "Warm",
-      "Drift",
-      "Lift",
-      "Pull",
-      "Edge",
-      "Rise",
-    ];
+
     while (wheelAccum > 80) {
       wheelAccum -= 80;
       if (shiftHeld || e.shiftKey) {
-        baseOctave = Math.min(7, baseOctave + 1);
+        rootKeySemitones = ((rootKeySemitones + 7) % 12 + 12) % 12;
       } else {
-        tensionPosition = (tensionPosition + 1) % 8;
-        activeBandMap = precomputedMaps[tensionPosition];
+        rootKeySemitones = ((rootKeySemitones + 1) % 12 + 12) % 12;
       }
     }
     while (wheelAccum < -80) {
       wheelAccum += 80;
       if (shiftHeld || e.shiftKey) {
-        baseOctave = Math.max(1, baseOctave - 1);
+        rootKeySemitones = ((rootKeySemitones - 7) % 12 + 12) % 12;
       } else {
-        tensionPosition = (tensionPosition + 7) % 8;
-        activeBandMap = precomputedMaps[tensionPosition];
+        rootKeySemitones = ((rootKeySemitones - 1) % 12 + 12) % 12;
       }
     }
+
     const ind = document.getElementById("zone-indicator");
     if (ind) {
-      ind.textContent = (shiftHeld || e.shiftKey) ?
-        ("Oct " + String(baseOctave)) :
-        TENSION_LABELS[tensionPosition];
+      const label = (shiftHeld || e.shiftKey) ?
+        NOTE_NAMES[rootKeySemitones] + " (5th)" :
+        NOTE_NAMES[rootKeySemitones];
+      ind.textContent = label;
       ind.style.opacity = "0.6";
       clearTimeout(ind._fadeTimer);
       ind._fadeTimer = setTimeout(() => {
         ind.style.opacity = "0.15";
       }, 2000);
     }
-    const octaveSelectEl = document.getElementById("octaveSelect");
-    if (octaveSelectEl) octaveSelectEl.value = String(baseOctave);
+
+    const keySelectEl = document.getElementById("keySelect");
+    if (keySelectEl) keySelectEl.value = String(rootKeySemitones);
   },
   { passive: false },
 );
