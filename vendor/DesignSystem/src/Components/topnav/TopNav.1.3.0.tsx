@@ -9,7 +9,7 @@ import {
   typography,
   fontFamily,
 } from "../../tokens/design-tokens";
-import logoUrl from "../../assets/aetherlogo.svg";
+import { Logo } from "../logo/Logo.1.0.2";
 
 export interface TopNavProps {
   /** Primary navigation — returns to lobby / session list. */
@@ -83,12 +83,6 @@ export const TopNav: React.FC<TopNavProps> = ({
     gap: layout.gap4,
   };
 
-  const logoStyle: React.CSSProperties = {
-    height: layout.gap24,
-    width: "auto",
-    display: "block",
-  };
-
   const handleTheme = (next: ThemeWheelTheme) => {
     if (next === "colour") return;
     const m = next === "dark" ? "dark" : "light";
@@ -133,7 +127,11 @@ export const TopNav: React.FC<TopNavProps> = ({
       </div>
 
       <div style={centre}>
-        <img src={logoUrl} alt="Aether" style={logoStyle} />
+        <Logo
+          colour={mode === "dark" ? "White" : "Black"}
+          height={layout.gap24}
+          aria-label="Aether"
+        />
       </div>
 
       <div
