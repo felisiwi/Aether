@@ -197,6 +197,58 @@ These hardcoded values are intentional and not DS token misses:
 | `VITE_TURN_CREDENTIAL` | No | TURN server credential |
 | `NGROK_AUTHTOKEN` | No | ngrok auth token for tunnel mode |
 
+## Deployment & Infrastructure
+
+### Hosting
+
+| Layer | Service | URL |
+|-------|---------|-----|
+| Client | Vercel | [aetherstudios.co.uk](https://aetherstudios.co.uk) (also `aether-nine-theta.vercel.app`) |
+| Signalling server | Railway | `web-production-93f1d.up.railway.app` |
+| TURN relay | metered.ca (free 20GB plan) | `standard.relay.metered.ca` |
+
+Both Vercel and Railway auto-deploy from the `main` branch. Pushing to `main` ships to production.
+
+### TURN server
+
+WebRTC peer-to-peer connections often fail without a TURN relay. Common causes:
+
+- User has a VPN active (NordVPN, ExpressVPN, etc. — VPN leak protection rewrites/blocks ICE candidates)
+- Restrictive networks (corporate WiFi, hotels, mobile carriers with carrier-grade NAT)
+- Browser extensions blocking WebRTC
+
+Without TURN, ~30% of real-world peer pairs fail to connect. With TURN, ~99% succeed. metered.ca relays MIDI traffic through their servers when direct peer-to-peer isn't possible.
+
+**Account:** dashboard at [dashboard.metered.ca](https://dashboard.metered.ca/) → app `aetherstudios` → "TURN Server" sidebar.
+
+**Plan:** Free 20GB/month, no overage charges (TURN simply stops working if quota is exceeded). MIDI is tiny (~6 bytes per note event) so 20GB covers thousands of hours of jamming. Upgrade to a paid plan only if real usage approaches the limit.
+
+**Credentials:** stored as Vercel env vars (`VITE_TURN_HOST`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`). Same values in `client/.env.local` and root `.env.local` for local dev. To rotate credentials, generate new ones in metered's dashboard, update Vercel env vars, redeploy, update local `.env.local`.
+
+### Env var flow
+
+Three places env vars need to be set, depending on where the code runs:
+
+| Env var location | Used by |
+|------------------|---------|
+| `client/.env.local` (gitignored) | Local dev (Vite project root) |
+| Root `.env.local` (gitignored) | Local dev — Vite reads from here when run via `vite client` from repo root |
+| Vercel project env vars | Production builds at aetherstudios.co.uk |
+
+`VITE_*` env vars are read at build time and baked into the client bundle. Changing them on Vercel requires a redeploy to take effect (Deployments → three-dot menu on latest → Redeploy).
+
+Server-side env vars (signalling server) are set on Railway, not Vercel.
+
+### Connection troubleshooting
+
+If a user reports "can't connect to a jam":
+
+1. Ask them to disable any VPN and reload — most common cause
+2. Ask them to try Incognito mode (rules out browser extensions)
+3. Check the metered dashboard quota usage
+4. Check Vercel deployment status — failed builds mean stale code in prod
+5. Check the browser console for `setRemoteDescription` errors (signalling bug) vs ICE failures (network/TURN issue)
+
 ## Key decisions
 
 - **No React Router** — navigation is local state (`login` → `session`, `lobby` → `jam`). The app has only 3 views.
