@@ -965,8 +965,6 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
               onDriveChange={() => {}}
               reverb={Math.round(reverbMix * 100)}
               onReverbChange={(v) => handleReverbMix(v / 100)}
-              glide={0}
-              onGlideChange={() => {}}
               attack={Math.round(attack)}
               onAttackChange={handleAttack}
               sustain={sustain}
