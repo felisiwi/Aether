@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import "../../tokens/semantic-tokens.css";
 import { TopNav } from "./TopNav.1.3.0";
 
 const meta: Meta<typeof TopNav> = {
