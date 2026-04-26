@@ -254,7 +254,8 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       synth.setChorusMix(chorusMix)
       synth.setChorusDepth(chorusDepth)
       synth.setDrive(drive)
-    }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth, drive])
+      synth.setResonance(resonance)
+    }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth, drive, resonance])
 
     const handleWaveformChange = useCallback(
       (w: WaveformId) => {
@@ -303,9 +304,13 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
     const handleDrive = useCallback((v: number) => {
       setDrive(v)
     }, [])
-    const handleResonance = useCallback((v: number) => {
-      setResonance(v)
-    }, [])
+    const handleResonance = useCallback(
+      (v: number) => {
+        setResonance(v)
+        synth?.setResonance(v)
+      },
+      [synth],
+    )
     const handleRelease = useCallback(
       (ms: number) => {
         setRelease(ms)

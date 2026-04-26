@@ -324,6 +324,16 @@ export class Synth {
     }
   }
 
+  /** Resonance / filter Q; `pct` is 0–100 from UI. */
+  setResonance(pct: number): void {
+    const clamped = Math.max(0, Math.min(100, pct))
+    // log curve: 0.5–20 Q range
+    const q = 0.5 * Math.pow(40, clamped / 100)
+    if (this.filterNode) {
+      this.filterNode.Q.value = q
+    }
+  }
+
   setDelayTime(ms: number): void {
     this._delayTime = Math.max(0, Math.min(1000, ms)) / 1000
     if (this.delayNode) {
