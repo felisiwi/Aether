@@ -66,6 +66,8 @@ export class Synth {
   private chorusSendGain: GainNode | null = null
   private _chorusMix = 0
   private _chorusDepth = 0
+  private pitchLfo: OscillatorNode | null = null
+  private pitchLfoGain: GainNode | null = null
 
   constructor(audioCtx: AudioContext | null, mode: 'keyboard' | 'wind' = 'keyboard') {
     this.ctx = audioCtx
@@ -132,6 +134,15 @@ export class Synth {
       this.delayNode.connect(this.chorusDelay)
       this.chorusDelay.connect(this.chorusSendGain)
       this.chorusSendGain.connect(this.masterGain)
+
+      // Pitch LFO — vibrato
+      this.pitchLfo = audioCtx.createOscillator()
+      this.pitchLfo.type = 'sine'
+      this.pitchLfo.frequency.value = 5 // default 5 Hz
+      this.pitchLfoGain = audioCtx.createGain()
+      this.pitchLfoGain.gain.value = 0 // silent until depth is set
+      this.pitchLfo.connect(this.pitchLfoGain)
+      this.pitchLfo.start()
     }
   }
 
@@ -142,6 +153,13 @@ export class Synth {
 
     const existing = this.activeNotes.get(note)
     if (existing) {
+      try {
+        if (this.pitchLfoGain) {
+          this.pitchLfoGain.disconnect(existing.oscillator.detune)
+        }
+      } catch {
+        /* already disconnected */
+      }
       try {
         existing.oscillator.stop()
         existing.oscillator.disconnect()
@@ -174,6 +192,10 @@ export class Synth {
       gain.gain.setTargetAtTime(sustain, decayStart, this.envelopeDecay / 3)
     }
 
+    if (this.pitchLfoGain) {
+      this.pitchLfoGain.connect(osc.detune)
+    }
+
     osc.connect(gain)
     gain.connect(this.filterNode)
     osc.start()
@@ -194,6 +216,13 @@ export class Synth {
 
     oscillator.stop(now + this.releaseTime + RELEASE_MARGIN_S)
     oscillator.onended = () => {
+      try {
+        if (this.pitchLfoGain) {
+          this.pitchLfoGain.disconnect(oscillator.detune)
+        }
+      } catch {
+        /* already disconnected */
+      }
       oscillator.disconnect()
       gain.disconnect()
     }
@@ -228,6 +257,13 @@ export class Synth {
   panicAllNotesOff(): void {
     for (const active of this.activeNotes.values()) {
       try {
+        if (this.pitchLfoGain) {
+          this.pitchLfoGain.disconnect(active.oscillator.detune)
+        }
+      } catch {
+        /* already disconnected */
+      }
+      try {
         active.oscillator.stop()
         active.oscillator.disconnect()
         active.gain.disconnect()
@@ -250,6 +286,9 @@ export class Synth {
     this.chorusLfo?.stop()
     this.chorusLfo?.disconnect()
     this.chorusLfoGain?.disconnect()
+    this.pitchLfo?.stop()
+    this.pitchLfo?.disconnect()
+    this.pitchLfoGain?.disconnect()
     this.chorusDelay?.disconnect()
     this.chorusSendGain?.disconnect()
     this.analyserNode?.disconnect()
@@ -263,6 +302,8 @@ export class Synth {
     this.convolverNode = null
     this.chorusLfo = null
     this.chorusLfoGain = null
+    this.pitchLfo = null
+    this.pitchLfoGain = null
     this.chorusDelay = null
     this.chorusSendGain = null
     this.analyserNode = null
@@ -412,6 +453,24 @@ export class Synth {
     this._chorusDepth = Math.max(0, Math.min(10, ms)) / 1000
     if (this.chorusLfoGain) {
       this.chorusLfoGain.gain.value = this._chorusDepth
+    }
+  }
+
+  /** Pitch LFO rate; `pct` is 0–100 from UI. Maps 0.1–10 Hz logarithmically. */
+  setPitchRate(pct: number): void {
+    const clamped = Math.max(0, Math.min(100, pct))
+    // map 0–100 to 0.1–10 Hz logarithmically
+    const hz = 0.1 * Math.pow(100, clamped / 100)
+    if (this.pitchLfo) {
+      this.pitchLfo.frequency.value = hz
+    }
+  }
+
+  /** Pitch LFO depth in cents; `pct` is 0–100 from UI (0–100 cents, one semitone max). */
+  setPitchDepth(pct: number): void {
+    const clamped = Math.max(0, Math.min(100, pct))
+    if (this.pitchLfoGain) {
+      this.pitchLfoGain.gain.value = clamped
     }
   }
 

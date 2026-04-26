@@ -255,7 +255,19 @@ const JamRoomComponent = forwardRef<JamRoomHandle, JamRoomProps>(
       synth.setChorusDepth(chorusDepth)
       synth.setDrive(drive)
       synth.setResonance(resonance)
-    }, [synth, sustain, envelopeDecay, chorusMix, chorusDepth, drive, resonance])
+      synth.setPitchRate(pitchRate)
+      synth.setPitchDepth(pitchDepth)
+    }, [
+      synth,
+      sustain,
+      envelopeDecay,
+      chorusMix,
+      chorusDepth,
+      drive,
+      resonance,
+      pitchRate,
+      pitchDepth,
+    ])
 
     const handleWaveformChange = useCallback(
       (w: WaveformId) => {
