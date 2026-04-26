@@ -114,7 +114,7 @@ export class Synth {
 
       // Chorus send — taps from delayNode (third fan-out), modulated delay, into masterGain
       this.chorusDelay = audioCtx.createDelay(0.05)
-      this.chorusDelay.delayTime.value = 0.02
+      this.chorusDelay.delayTime.value = 0.015
 
       this.chorusLfo = audioCtx.createOscillator()
       this.chorusLfo.type = 'sine'
