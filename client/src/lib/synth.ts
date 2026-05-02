@@ -177,7 +177,9 @@ export class Synth {
     const gain = this.ctx.createGain()
 
     const now = this.ctx.currentTime
-    const peak = this.currentExpression
+    const voiceCount = this.activeNotes.size + 1
+    const polyScale = 1 / Math.sqrt(voiceCount)
+    const peak = this.currentExpression * polyScale
     const sustain = peak * this.sustainLevel
 
     if (this.attackTime > 0) {
@@ -368,8 +370,8 @@ export class Synth {
   /** Resonance / filter Q; `pct` is 0–100 from UI. */
   setResonance(pct: number): void {
     const clamped = Math.max(0, Math.min(100, pct))
-    // log curve: 0.5–20 Q range
-    const q = 0.5 * Math.pow(40, clamped / 100)
+    // log curve: 0.5–10 Q range
+    const q = 0.5 * Math.pow(20, clamped / 100)
     if (this.filterNode) {
       this.filterNode.Q.value = q
     }
@@ -430,7 +432,7 @@ export class Synth {
         curve[i] = x
       }
     } else {
-      const k = 1 + amount01 * 6
+      const k = 1 + amount01 * 3
       const th = Math.tanh(k)
       for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1
